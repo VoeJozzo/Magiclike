@@ -7,13 +7,6 @@
 // registered at boot") applies to them too. makePlayer runs the same shape
 // check over a slot's persisted bonusTrigger (warn-only — the trigger still
 // attaches; behavior-neutral).
-//
-// Arms:
-//   1. KEY — the validator exists and the LIVE tables validate clean.
-//   2. KEY — injected typos in each of the three tables are caught
-//      (bad effect kind / bad token id / bad predicate / bad event).
-//   3. KEY — a stale-save bonusTrigger with unknown ids warns at makePlayer
-//      (and still attaches — the check is loud, not behavior-changing).
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -88,7 +81,6 @@ if (!hasFn) {
       r.unknownAtomics.some(s => s.includes('__BadBoon__'))
       && r.unknownKinds.some(s => s.includes('__BadBoon__')),
       JSON.stringify({ atomics: r.unknownAtomics, kinds: r.unknownKinds }));
-    // Tables restored — validator must be clean again (no lasting mutation).
     const origWarn2 = console.warn;
     console.warn = () => {};
     const clean = ENGINE.validateGeneratedTriggerTables();
@@ -115,7 +107,6 @@ if (!hasFn) {
       warns.some(w => /bonusTrigger/.test(w) || /__StaleBoon__/.test(w)
         || (/bogus_event/.test(w) && /gain_lyfe/.test(w))),
       warns.length ? warns.join(' | ') : '(no warning)');
-    // Behavior-neutral: the trigger is still attached (validation warns, not strips).
     const G = ENGINE.state();
     let carrier = null;
     for (const zone of ['hand', 'library', 'battlefield', 'graveyard']) {

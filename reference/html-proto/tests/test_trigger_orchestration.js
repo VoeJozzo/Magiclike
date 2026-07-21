@@ -92,9 +92,7 @@ else {
 
   console.log('\n=== #10c rider: damageFace encodes target:player; the heuristic makes the "opponent" text true ===');
   (() => {
-    // The printed "deal N to opponent" text only agrees with behavior because
-    // pickBestTriggerTarget routes free-choice damage at the opponent. A behavior
-    // fork (target:'opp') is a separate decision.
+    // A behavior fork (target:'opp') is a separate decision.
     const fac = GENERATOR_EFFECTS.find(e => e.id === 'damageFace');
     check('generator damageFace exists and encodes target:player (free choice)',
       !!fac && fac.roll()[0].target === 'player', fac ? JSON.stringify(fac.roll()[0]) : 'no damageFace');

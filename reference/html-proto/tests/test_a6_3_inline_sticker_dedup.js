@@ -1,8 +1,7 @@
-// Inline set-semantics sticker descriptors (set_color / set_types)
-// dedup on push instead of appending an identical entry every application
-// (unbounded growth of the stored list, e.g. Bleaching one slot across N games).
+// set_color / set_types dedup on push, avoiding unbounded growth of the stored
+// list (e.g. Bleaching one slot across N games).
 // The EFFECT is idempotent either way; this only stops the duplicate STORE.
-// cost_mod stays stackable (embargo taxes intentionally accumulate).
+// cost_mod: embargo taxes intentionally accumulate.
 const setup = require('./_setup');
 setup.loadEngine();
 

@@ -33,8 +33,8 @@ console.log('=== keywordIconsHtml: inline coins + source colors + tooltips ===')
 }
 
 {
-  // Source coloring: native (template) = blue, sticker (kw_*) = gold,
-  // permanent-granted (grantedBy) = teal.
+  // Source coloring: native (template) takes the card's own frame color
+  // (inline style), sticker (kw_*) = gold, permanent-granted (grantedBy) = teal.
   global.CARDS.__kwtest = { keywords: ['flying'] };
   const grantedBy = new Map([['trample', new Set([999])]]);
   const card = {
@@ -54,7 +54,7 @@ console.log('=== keywordIconsHtml: inline coins + source colors + tooltips ===')
 }
 
 {
-  // Native coin color follows the card's frame color (red here -> red ink).
+  // Native coin color follows the card's frame color.
   global.CARDS.__redkw = { keywords: ['flying'], colors: ['R'] };
   const card = { tplId: '__redkw', types: ['Creature'], keywords: ['flying'], colors: ['R'] };
   const html = keywordIconsHtml(card);
@@ -85,7 +85,6 @@ console.log('=== keywordIconsHtml: inline coins + source colors + tooltips ===')
 }
 
 {
-  // Non-creature: only spell-legal keywords (flash) show; combat ones don't.
   const card = { tplId: 'x', types: ['Instant'], keywords: ['flash', 'trample'] };
   const html = keywordIconsHtml(card);
   const svgCount = (html.match(/<svg/g) || []).length;

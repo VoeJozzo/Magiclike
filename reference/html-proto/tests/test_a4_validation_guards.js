@@ -197,9 +197,7 @@ console.log('\n=== A4-21 guards: the discard arm honors its selector ===');
   const G = newGame();
   G.opp.hand = [mk('forest', 'opp'), mk('plains', 'opp')];
   G.forcedDiscard = null;
-  // 'controller_chosen' ("you discard") with a stray player target in scope:
-  // the CONTROLLER (opp here — AI auto-discards, measurable) must discard,
-  // never the targeted player.
+  // opp is the controller here because AI auto-discards, making the outcome externally measurable.
   const ctx = { controller: 'opp', sourceName: 'Mind Rot', sourceIid: null };
   ENGINE.applyEffect(ctx,
     { kind: 'move_card', from_zone: 'hand', to_zone: 'graveyard', selector: 'controller_chosen', amount: 1 },
@@ -209,7 +207,6 @@ console.log('\n=== A4-21 guards: the discard arm honors its selector ===');
   check('the targeted player got NO forced-discard prompt', !G.forcedDiscard,
     JSON.stringify(G.forcedDiscard));
 
-  // 'target_player_chosen' WITH a player target: the target discards.
   G.opp.hand = [mk('forest', 'opp'), mk('plains', 'opp')];
   ENGINE.applyEffect({ controller: 'you', sourceName: 'Targeted Rot', sourceIid: null },
     { kind: 'move_card', from_zone: 'hand', to_zone: 'graveyard', selector: 'target_player_chosen', amount: 1 },
@@ -217,7 +214,6 @@ console.log('\n=== A4-21 guards: the discard arm honors its selector ===');
   check("'target_player_chosen' discards the targeted player", G.opp.hand.length === 1,
     'opp hand=' + G.opp.hand.length);
 
-  // 'target_player_chosen' WITHOUT a player target: logged fizzle, no discard.
   G.opp.hand = [mk('forest', 'opp'), mk('plains', 'opp')];
   ENGINE.applyEffect({ controller: 'you', sourceName: 'Aimless Rot', sourceIid: null },
     { kind: 'move_card', from_zone: 'hand', to_zone: 'graveyard', selector: 'target_player_chosen', amount: 1 },

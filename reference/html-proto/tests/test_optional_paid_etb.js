@@ -72,20 +72,19 @@ console.log('\n=== play the land → prompt opens for the controller; PAY → ef
 
   ENGINE.executeAction('you', { type: 'optionalCost', pay: true });
   check('prompt cleared after paying', G.pendingOptionalCost == null);
-  // The effect running IS the payment proof: doOptionalCost only calls
-  // runTriggerEffects after payMana succeeds (and the can't-pay case below
-  // confirms no-pay → no-effect). We don't assert a post-action mana delta —
-  // since B2, the settle advances MAIN1→COMBAT and empties the pool anyway.
+  // doOptionalCost only calls runTriggerEffects after payMana succeeds; the
+  // can't-pay case below confirms no-pay → no-effect. We don't assert a
+  // post-action mana delta — the settle advances MAIN1→COMBAT and empties
+  // the pool anyway.
   check('stapled effect resolved (goblin tokens entered → cost was paid)',
     G.you.battlefield.filter(c => hasType(c, 'Creature')).length > bfBefore);
 }
 
 console.log('\n=== DECLINE → effect does not run ===');
 {
-  // (Mana isn't asserted here either: since B2, the settle empties the pool
-  // at the next phase boundary regardless of pay/decline. The no-effect
-  // signal below is the real contract: the decline path never calls payMana
-  // or runTriggerEffects.)
+  // Mana isn't asserted here either — the settle empties the pool at the
+  // next phase boundary regardless of pay/decline. The decline path never
+  // calls payMana or runTriggerEffects.
   const G = newGame();
   const land = stapleInstance('plains', 'you');
   G.you.hand.push(land);
@@ -157,8 +156,6 @@ if (CARDS.lightning_bolt) {
 
   const youLife0 = G.you.life;
   ENGINE.executeAction('opp', { type: 'playLand', cardIid: land.iid });
-  // Drive the priority loop to resolution: pass / pay the optional cost / pick
-  // any trigger target, until nothing's owed.
   let threw = null, guard = 0;
   try {
     while (guard++ < 60) {
@@ -182,9 +179,8 @@ if (CARDS.lightning_bolt) {
 
 console.log('\n=== cost sticker reduces the optional ETB cost (not just the vestigial land cost) ===');
 if (CARDS.mind_rot) {
-  // mindrot is {B}{1}; a "-1 cost" (cost_minus_1) sticker on the spell must
-  // reduce the ETB's optional_cost too, not just the vestigial (free-land)
-  // card.cost.
+  // A "-1 cost" (cost_minus_1) sticker on the spell must reduce the ETB's
+  // optional_cost too, not just the vestigial (free-land) card.cost.
   const inst = ENGINE.makeCard('mountain', ['cost_minus_1'], 0, undefined, undefined, ['mind_rot']);
   const etb = (inst.triggers || []).find(t => t.event === 'card_zone_change');
   check('mindrot base cost is {B}{1}', CARDS.mind_rot.cost.B === 1 && CARDS.mind_rot.cost.C === 1);

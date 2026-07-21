@@ -47,7 +47,6 @@ console.log('\n=== A1-23: endTurnPending arms + fast-forwards past a would-pause
   }
   ENGINE.executeAction(ap0, { type: 'endTurn' });
   check('endTurn ARMS endTurnPending', G.endTurnPending === true, 'flag=' + G.endTurnPending);
-  // Pump passes; the flag auto-declares empty combat so the turn rolls over.
   let s = 400;
   while (G.activePlayer === ap0 && !G.gameOver && s-- > 0) { const w = ENGINE.expectedActor(); if (!w) break; ENGINE.executeAction(w, { type: 'pass' }); }
   check('flag fast-forwarded past combat to the next turn (AP changed)', G.activePlayer !== ap0, 'ap ' + ap0 + ' -> ' + G.activePlayer);

@@ -4,13 +4,6 @@
 // membership, one attack role per creature. executeAction is the public
 // protocol surface (tests, console, imported actions, future callers); do*
 // handlers assume isLegalAction-validated input.
-//
-// This file pins:
-//   1. a duplicate declaration [A, A] is rejected: executeAction returns
-//      false, nothing is declared, and NO damage lands
-//   2. after the rejection the player can still declare legally
-//   3. guard (green before AND after): a normal multi-attacker declaration
-//      [A, B] is accepted and deals each attacker's damage exactly once
 
 const setup = require('./_setup');
 setup.loadEngine();

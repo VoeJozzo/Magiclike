@@ -101,10 +101,9 @@ proof('A12/A13',
 proof('R32b',
   'A "Loses Defender" sticker survives the subtype rule — on a Wall (whose defender is subtype-derived) and across a re-derive',
   () => {
-    // The sticker exists to let a Wall attack. Both keyword paths must honor
-    // it: makeCard's build AND intrinsicKeywords' re-derive (leave-play, EOT
-    // grant strip) — otherwise SUBTYPE_KEYWORDS.Wall silently hands defender
-    // back and the reward buys nothing.
+    // Both keyword paths — makeCard's build and intrinsicKeywords' re-derive
+    // (leave-play, EOT grant strip) — must honor this, or SUBTYPE_KEYWORDS.Wall
+    // silently hands defender back and the reward buys nothing.
     const walls = Object.values(CARDS).filter(c => (c.types || []).includes('Wall'));
     const bad = [];
     for (const tpl of walls) {
@@ -128,9 +127,9 @@ proof('R60/R61',
     const li = slots.findIndex(s => s.tplId === 'plains');
     if (li < 0) throw new Error('no plains slot after RUN.start');
     const before = (RUN.getSlots()[li].stickers || []).length;
-    RUN.applyStickerToSlot(li, 'land_color_' + 'U'.toLowerCase());  // canonical land-color sticker id
+    RUN.applyStickerToSlot(li, 'land_color_' + 'U'.toLowerCase());
     const afterCanonical = (RUN.getSlots()[li].stickers || []).length;
-    RUN.applyStickerToSlot(li, 'landColor_B');                       // legacy camelCase id — must not apply
+    RUN.applyStickerToSlot(li, 'landColor_B');                       // must not apply
     const afterLegacy = (RUN.getSlots()[li].stickers || []).length;
     return {
       ok: afterCanonical - before === 1 && afterLegacy === afterCanonical,

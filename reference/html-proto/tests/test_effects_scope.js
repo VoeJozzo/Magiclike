@@ -118,7 +118,7 @@ console.log('\n=== sacrifice vs annihilate (graveyard contract) ===');
 (() => {
   function inZone(who, zone, iid) { return G[who][zone].some(c => c.iid === iid); }
 
-  // sacrifice → goes to graveyard, fires leave/death emits.
+  // sacrifice fires leave/death emits.
   clearBoards();
   const s = place('you');
   const sIid = s.iid;
@@ -126,7 +126,6 @@ console.log('\n=== sacrifice vs annihilate (graveyard contract) ===');
   check('sacrifice: off battlefield', !inZone('you', 'battlefield', sIid));
   check('sacrifice: in graveyard', inZone('you', 'graveyard', sIid));
 
-  // annihilate → ceases to exist: not on battlefield, NOT in graveyard/exile.
   clearBoards();
   const a = place('you');
   const aIid = a.iid;

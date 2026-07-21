@@ -1,17 +1,8 @@
 // Triggers queued while priority is CLOSED (canon §605 — e.g. parked on a
 // pending attacker/block declaration) wait for the next real priority
 // window rather than draining into a synthetic one. Canon §1004.4: they
-// drain at the next openPriorityRound.
-//
-// Arms:
-//   1. KEY — parked on declare-attackers, a sac-for-mana ability fires a
-//      dies-trigger: the trigger must stay QUEUED (no synthetic round, no
-//      stack push, no resolution) and the engine must stay parked on the
-//      declaration.
-//   2. KEY continuation — declaring attackers then drains the queued
-//      trigger into the real (a.ii) window and combat happens.
-//   3. Guard — the same sac-for-mana ability used during an OPEN round
-//      drains immediately onto the stack.
+// drain at the next openPriorityRound — engine.js's post-attackers
+// "(a.ii)" window.
 
 const setup = require('./_setup');
 setup.loadEngine();

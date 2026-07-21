@@ -24,14 +24,9 @@ func _test_get_legal_actions_main_phase() -> void:
 	RulesEngine.init_phase4()
 	var s: EngineState = RulesEngine.state()
 	# init_phase4() gives you 3 untapped Mountains + 3 cards in hand
-	# (Pyromaniac, Bloodlust Berserker, Lightning Bolt). At MAIN1 with no
-	# mana yet, legal actions should be:
-	#   - pass priority (1)
-	#   - end turn (1, active player on an empty stack)
-	#   - tap each Mountain (3 mana abilities)
-	#   - Pyromaniac, Berserker = sorcery-speed, but no mana yet → not legal
-	#   - Lightning Bolt = needs target AND no R → not legal yet
-	# So the count is exactly 5.
+	# (Pyromaniac, Bloodlust Berserker, Lightning Bolt).
+	# Pyromaniac and Berserker are sorcery-speed with no mana yet; Lightning
+	# Bolt needs a target and R — none of the three are legal yet.
 	var actions := RulesEngine.get_legal_actions("you")
 	_assert_eq(actions.size(), 5, "MAIN1 with no mana: 1 pass + 1 end-turn + 3 land taps")
 	var has_pass := false
@@ -44,12 +39,8 @@ func _test_get_legal_actions_main_phase() -> void:
 	for c in s.you.battlefield:
 		if c.template.card_id == "mountain":
 			RulesEngine.execute_action(Action.make_tap_land_for_mana(c.instance_id))
-	# Now: pass + Pyromaniac cast (no target) + Berserker cast (no target)
-	# + Lightning Bolt fan-out across legal targets.
-	# Berserker costs {R:2, C:1} = 3 mana total, and RRR is enough since the
-	# generic pip can be paid with red. So Berserker IS castable.
-	# Legal Bolt targets: you, opp, plus opp's Grizzly Bears = 3 targets.
-	# Final: 1 pass + 1 end-turn + 1 Pyromaniac + 1 Berserker + 3 Bolt targets = 7.
+	# Berserker costs {R:2, C:1}; RRR covers it since the generic pip can be
+	# paid with red. Legal Bolt targets: you, opp, and opp's Grizzly Bears.
 	actions = RulesEngine.get_legal_actions("you")
 	_assert_eq(actions.size(), 7, "MAIN1 with RRR: 1 pass + 1 end-turn + 1 Pyromaniac + 1 Berserker + 3 Bolt targets")
 
@@ -63,7 +54,6 @@ func _test_get_legal_actions_combat_attack() -> void:
 	s.phase_machine.current = PhaseMachine.Phase.COMBAT_ATTACK
 	s.priority_player_key = "you"
 	var actions := RulesEngine.get_legal_actions("you")
-	# Should include declare_attacker for the bear (plus pass + maybe mana abilities)
 	var has_attack := false
 	for a in actions:
 		if a.kind == Action.KIND_DECLARE_ATTACKER and a.source_iid == bear.instance_id:
@@ -107,8 +97,7 @@ func _test_card_value_orderings() -> void:
 		RulesEngine.card_value(bolt) > 0.0,
 		"card_value: Lightning Bolt has positive value"
 	)
-	# Walking Wall (defender) should be penalised — score lower than Grizzly Bears
-	# despite better stats, because defender = -3.
+	# Heuristic: defender = -3.
 	_assert_true(
 		RulesEngine.card_value(wall) < RulesEngine.card_value(bears),
 		"card_value: Walking Wall (defender 0/4) < Grizzly Bears (2/2 vanilla)"

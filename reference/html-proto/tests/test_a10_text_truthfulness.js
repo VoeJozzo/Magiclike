@@ -7,7 +7,6 @@ function check(label, ok, info) {
   if (ok) pass++; else fail++;
 }
 
-// --- A10-1: picker labels ARE the oracle, never a hand-rolled duplicate ---
 console.log('=== A10-1: abilityPickerLabel === the engine oracle (no lying table) ===');
 (() => {
   const RAW_KIND = /\b(affect_creature|add_type|set_types|move_card|add_mana|apply_in_game_splice|returnFromGraveyard|grant_keyword)\b/;
@@ -28,14 +27,12 @@ console.log('=== A10-1: abilityPickerLabel === the engine oracle (no lying table
   check('every picker label IS its capped oracle text', mismatches.length === 0, mismatches.slice(0, 4).join(' | '));
   check('no picker label leaks a raw effect-kind token', rawLeaks.length === 0, rawLeaks.slice(0, 4).join(' | '));
 
-  // carrion_feeder's self-pump is a permanent +1/+1 counter, not an EOT buff.
   const cfAb = CARDS['carrion_feeder'].abilities[0];
   const cfLabel = abilityPickerLabel(cfAb);
   check('carrion_feeder label is the oracle, non-empty', cfLabel === segsToText(describeAbility(cfAb, cfAb)) && cfLabel.length > 0, cfLabel);
   check('carrion_feeder label drops the old "EOT" lie (permanent counter)', !/EOT/i.test(cfLabel), cfLabel);
 })();
 
-// --- A10-3: ~ never reaches a player; substitution is global ---
 console.log('\n=== A10-3: formatTriggerText substitutes ~ -> card name (every consumer) ===');
 (() => {
   check('single ~ replaced', formatTriggerText('~ attacks', 'Goblin Raider') === 'Goblin Raider attacks', formatTriggerText('~ attacks', 'Goblin Raider'));
@@ -51,7 +48,6 @@ console.log('\n=== A10-3: formatTriggerText substitutes ~ -> card name (every co
   check('Mercurial Adept face has NO raw ~ leak', !face.includes('~'), face);
 })();
 
-// --- A10-4: add_type/set_types scope:'self' has the subject "this" ---
 console.log('\n=== A10-4: add_type/set_types scope:self subject is "this" (no empty subject) ===');
 (() => {
   const addSelf = segsToText(describeEffect({ kind: 'add_type', scope: 'self', types: ['Artifact'] }));

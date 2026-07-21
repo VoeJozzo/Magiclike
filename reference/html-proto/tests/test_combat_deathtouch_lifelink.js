@@ -5,18 +5,6 @@
 // dealCombatDamage assigns dose 1 to every blocker, including indestructible
 // ones — lethal-marked but immune to death (checkDeaths enforces the
 // survival). ai.js's simulateCombat mirrors this dose-of-1 rule.
-//
-// This file pins:
-//   1. deathtouch+trample vs Iron Statue: dose 1, spill 2 to the defender,
-//      statue lethal-marked but alive
-//   2. deathtouch+lifelink (no trample) vs Iron Statue: dose 1 satisfies,
-//      overkill wasted but lifelink gains full power (3)
-//   3. lifelink overkill full-gain: 6/6 lifelink vs 2/2 blocker, no
-//      trample -> gains 6 (2 assigned + 4 wasted)
-//   4. guard (green before AND after): lifelink+trample 6/6 vs 2/2 ->
-//      gains 6 (2 + 4 spill), defender takes 4
-//   5. guard (green before AND after): deathtouch vs a KILLABLE blocker —
-//      dose 1, blocker dies at the SBA sweep
 
 const setup = require('./_setup');
 setup.loadEngine();

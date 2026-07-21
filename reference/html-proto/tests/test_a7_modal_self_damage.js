@@ -76,8 +76,7 @@ const SUICIDE_FLAT = {
   name: 'Flat Gambit',
   types: ['Sorcery'],
   cost: { R: 1 },
-  // Non-modal twin of the suicide mode — regression check that the
-  // non-modal self-damage gate still fires outside modal scoring.
+  // Non-modal twin of the suicide mode above.
   effects: [ {kind: 'damage', scope: 'self', amount: 5}, {kind: 'draw', amount: 4} ],
 };
 

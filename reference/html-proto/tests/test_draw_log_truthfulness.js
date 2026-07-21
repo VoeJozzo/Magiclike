@@ -3,12 +3,6 @@
 // player loses) and a Phylactery rip (curse rips a slot instead of
 // drawing) — state for both is correct per §100.6/§512; only the log
 // must independently avoid a false "draws." line.
-//
-// This file pins:
-//   1. a deck-out DRAW step produces NO "draws." line (loss line present)
-//   2. a Phylactery-protected empty-library DRAW produces NO "draws." line
-//      (rip line present, game continues)
-//   3. a normal draw still logs "draws." (regression guard)
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -45,7 +39,6 @@ console.log('=== A1-9: deck-out DRAW step logs the loss, NOT a draw ===');
 (() => {
   const G = newGame();
   readyMain(G, 'you');
-  // The opponent will deck out on their upcoming DRAW step.
   G.opp.library = [];
   G.log.length = 0;   // only inspect lines produced from here on
   endTurn(G);
@@ -59,8 +52,6 @@ console.log('=== A1-9: deck-out DRAW step logs the loss, NOT a draw ===');
 
 console.log('\n=== A1-9: Phylactery rip on empty library logs the rip, NOT a draw ===');
 (() => {
-  // 'you' holds a Phylactery slot: drawing from an empty library rips a slot
-  // instead of losing — and must not claim a draw either.
   const deck = Array(11).fill('plains'); deck.push('phylactery');
   const G = newGame(deck);
   check('you have Phylactery protection',

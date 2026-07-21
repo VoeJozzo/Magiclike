@@ -57,7 +57,7 @@ console.log('=== A3-13 site 1: makePlayer Mercurial pool pick does not alias the
       poolClean,
       poolClean ? '' : 'pool entry now: ' + JSON.stringify(
         (MERCURIAL_TRIGGER_POOL.find(e => e.label === trig.label) || {}).condition));
-    restorePool(); // reset the pool so later arms see a clean state
+    restorePool();
   } else { fail += 2; console.log('  FAIL x2: (no trigger -- aliasing arms skipped)'); }
 })();
 

@@ -24,8 +24,7 @@ console.log('=== migrated pool shape (invariants, not counts) ===');
     if (!card.target) continue;
     withStep++;
     if (!ENGINE.TARGET_FILTERS.has(card.target)) { badFilter++; console.log('   out-of-taxonomy:', card.tplId, card.target); }
-    // On-cast effects operating on the step must be bare (no own target), except
-    // target:'self' effects which legitimately keep theirs.
+    // Exception: target:'self' effects legitimately keep their own target.
     for (const e of (Array.isArray(card.effects) ? card.effects : [])) {
       if (e && e.target && e.target !== 'self') { residualTarget++; }
     }
@@ -63,7 +62,6 @@ console.log('\n=== representative cards (canonical decompositions) ===');
   check('bolt: target(creature_or_player)', bolt.target === 'creature_or_player');
   check('bolt: bare damage(3)', bolt.effects[0].kind === 'damage' && bolt.effects[0].amount === 3 && !bolt.effects[0].target);
 
-  // Boot validation: the whole pool is clean (behavioral — runs the validator).
   const r = ENGINE.validateAllCardEffects(CARDS);
   check('boot validation: no unknown kinds', r.unknownKinds.length === 0, r.unknownKinds.join(','));
   check('boot validation: no out-of-taxonomy filters', r.unknownFilters.length === 0, r.unknownFilters.join(','));
@@ -73,7 +71,7 @@ console.log('\n=== skipped cards kept their non-taxonomy filters (no silent loss
 (() => {
   // Cards whose targeted on-cast effect carries a subtype/keyword/max_tough
   // filter are intentionally not migrated (the closed taxonomy can't express
-  // them). At least one such card must still have its filter and NO top-level step.
+  // them).
   let preserved = 0;
   for (const card of Object.values(CARDS)) {
     if (card.target) continue;
@@ -112,16 +110,13 @@ console.log('\n=== kind-collapse: retired kinds gone, collapsed forms present ==
 
   // add_counter's +1/+1 form is expressed as pump duration:permanent. The kind
   // survives for NAMED counters (verse etc.) — a bare resource that does NOT
-  // change P/T, which pump cannot express. So the invariant is narrower than
-  // "gone": no card may use the legacy +1/+1 (counter-less) form.
+  // change P/T, which pump cannot express.
   let legacyPtCounter = 0;
   for (const card of Object.values(CARDS)) {
     for (const e of allEffs(card)) if (e && e.kind === 'add_counter' && !e.counter) legacyPtCounter++;
   }
   check('no card uses legacy +1/+1 add_counter (use pump duration:permanent)', legacyPtCounter === 0, legacyPtCounter + ' remain');
 
-  // The collapsed forms are PRESENT in the pool (existence, not count — a count
-  // would break every time a card of that shape is added).
   let massDmg = 0, massPump = 0, massRemove = 0, signedPump = 0;
   for (const card of Object.values(CARDS)) {
     for (const e of allEffs(card)) {

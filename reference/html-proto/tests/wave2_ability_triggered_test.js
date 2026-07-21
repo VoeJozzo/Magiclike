@@ -143,9 +143,8 @@ console.log('\n=== (c) another_card keeps a well-formed listener off its own pro
   G.you.battlefield.push(listener);
   G.opp.battlefield.push(mk('grizzly_bears', 'opp'));
   const life0 = G.you.life;
-  // One pyromaniac ETB → one listener proc. The listener's own gain-life
-  // trigger firing ALSO emits ability_triggered (no bespoke exclusion), but
-  // another_card filters the self-echo — no chain, exactly +1.
+  // The listener's own gain-life trigger firing ALSO emits ability_triggered
+  // (no bespoke exclusion); another_card filters the self-echo.
   cast(G, 'pyromaniac');
   check('exactly one gain (no self-echo chain)', G.you.life === life0 + 1,
     life0 + ' -> ' + G.you.life);
@@ -156,8 +155,7 @@ console.log('\n=== (d) KEY: the depth-cap meta-rule contains a self-feeding meta
   const G = freshGame();
   // Deliberately loosely-conditioned: hears EVERY ability_triggered,
   // including its own procs → self-feeding loop → the per-episode trigger
-  // budget bails loudly. This is the MTG infinite-loop meta-rule in action —
-  // the designed containment, not a crash.
+  // budget bails loudly. This is the MTG infinite-loop meta-rule in action.
   const loop = mkListener('you', []);
   loop.name = 'Ouroboros';
   G.you.battlefield.push(loop);

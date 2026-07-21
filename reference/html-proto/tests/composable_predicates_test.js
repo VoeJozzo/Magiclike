@@ -17,7 +17,6 @@ function S(youLost, oppLost) {
   return { you: { lifeLostThisTurn: youLost || 0 }, opp: { lifeLostThisTurn: oppLost || 0 } };
 }
 
-// ── Parser: _parseCall / arg coercion ────────────────────────────────────
 console.log('=== _parseCall ===');
 (() => {
   const p = _parseCall('card_moves(battlefield, graveyard)');
@@ -43,7 +42,6 @@ console.log('=== _parseCall ===');
   check('quoted "3" is string not int', forcedStr.args[0] === '3' && typeof forcedStr.args[0] === 'string');
 })();
 
-// ── evaluate() expression shapes ─────────────────────────────────────────
 console.log('\n=== evaluateCondition shapes ===');
 (() => {
   const source = { iid: 1 };
@@ -81,7 +79,6 @@ console.log('\n=== evaluateCondition shapes ===');
   check('malformed number expr → false', evaluateCondition(42, ctx) === false);
 })();
 
-// ── Atomic predicates against synthetic events ───────────────────────────
 console.log('\n=== atomic predicates ===');
 (() => {
   const source = { iid: 10 };
@@ -147,7 +144,7 @@ console.log('\n=== atomic predicates ===');
     ATOMIC_PREDICATES.lost_life_this_turn({ state: S(0, 4), source, event: {}, who: 'you' }, ['you']) === false);
 })();
 
-// ── Worked composition: Bloodlust Berserker (plan §4.1) ──────────────────
+// See docs/plans/plan-zone-change-and-composable-predicates.md §4.1.
 console.log('\n=== worked: Bloodlust Berserker condition ===');
 (() => {
   const cond = ['this_card', 'card_moves(battlefield, graveyard)', 'lost_life_this_turn(opp)'];
@@ -164,7 +161,8 @@ console.log('\n=== worked: Bloodlust Berserker condition ===');
     evaluateCondition(cond, { state: S(0, 2), source, event: otherDies, who: 'you' }) === false);
 })();
 
-// ── Boot validation ──────────────────────────────────────────────────────
+// Boot validator: js/main.js calls this after loadCards() (plan §8) to catch
+// condition typos before runtime.
 console.log('\n=== validateAllCardConditions ===');
 (() => {
   const synthetic = [

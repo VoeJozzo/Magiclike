@@ -66,8 +66,8 @@ else {
     const G = newGame();
     const A = mk(VANILLA,'you'); A.power=2; A.toughness=5; A.sick=false;
     G.you.battlefield.push(A); giveHold(G,'you'); readyMain(G,'you');
-    const small = mk(VANILLA,'opp'); small.power=1; small.toughness=1; small.sick=false; // declared FIRST
-    const big   = mk(VANILLA,'opp'); big.power=1; big.toughness=2; big.sick=false;       // declared second
+    const small = mk(VANILLA,'opp'); small.power=1; small.toughness=1; small.sick=false;
+    const big   = mk(VANILLA,'opp'); big.power=1; big.toughness=2; big.sick=false;
     G.opp.battlefield.push(small, big); giveHold(G,'opp');
     passUntil(G, ()=>G.phase==='COMBAT_ATTACK');
     ENGINE.executeAction('you', { type:'declareAttackers', cardIids:[A.iid] });

@@ -31,10 +31,9 @@ check('non-mana ability (T: draw) is not a mana ability',
   ENGINE.isManaAbility(M([{ kind: 'draw', amount: 1 }])) === false);
 
 console.log('\n=== isManaAbility: cost is a SEPARATE axis (a costly mana ability is still off-stack) ===');
-// Cost-triviality gates only the AUTO-PAYER (isAutoUsableManaAbility), not what
-// counts as a mana ability — a sacrifice/mana-cost mana ability still resolves
-// off-stack and is legal any time its cost can be paid (this is the contract the
-// closed-window-drain test relies on). Targeting, not cost, is the discriminator.
+// Cost-triviality gates only the AUTO-PAYER (isAutoUsableManaAbility); the
+// closed-window-drain contract (test_trigger_closed_window_drain.js) relies
+// on a costly mana ability still resolving off-stack.
 check('non-tap extra cost does NOT disqualify (still a mana ability)',
   ENGINE.isManaAbility(M([{ kind: 'add_mana', choose: ['G'] }], { cost: { tap: true, R: 1 } })) === true);
 
@@ -47,8 +46,8 @@ console.log('\n=== getLegalActions does not throw on a permanent with an empty-e
     RUN.startNextGame();
     const G = ENGINE.state();
     const who = G.activePlayer;
-    // getLegalActions' activated-ability lane must not crash on an
-    // empty-effects ability (the effects[0] deref case).
+    // The activated-ability lane derefs effects[0] — the crash site for an
+    // empty-effects ability.
     const c = ENGINE.makeCard('plains');
     c.abilities = [{ cost: { tap: true }, effects: [] }];
     c.tapped = false;
@@ -63,8 +62,7 @@ console.log('\n=== getLegalActions does not throw on a permanent with an empty-e
 
 console.log('\n=== tap-lane resolves through the shared path: color choice + untargeted rider ===');
 // doTapLandForMana routes through runAbilityEffects — the same path as
-// doActivateAbility — so a {choose} color and an untargeted rider both
-// resolve like any other mana ability.
+// doActivateAbility.
 (() => {
   RUN.clearSave && RUN.clearSave();
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
@@ -76,7 +74,7 @@ console.log('\n=== tap-lane resolves through the shared path: color choice + unt
   c.types = ['Creature'];                 // a dork, so the tap lane applies
   c.abilities = [{ cost: { tap: true }, effects: [
     { kind: 'add_mana', choose: ['G'] },
-    { kind: 'gain_life', amount: 1 },     // untargeted rider
+    { kind: 'gain_life', amount: 1 },
   ] }];
   c.tapped = false; c.summoningSick = false; c.sick = false;
   G[who].battlefield.push(c);

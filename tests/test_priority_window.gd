@@ -43,7 +43,6 @@ func _test_can_pay_potential() -> void:
 	_assert_true(RulesEngine._can_pay_potential("you", {"C": 2}),
 		"2 generic payable via 2 Mountains")
 
-	# After tapping both Mountains, potential == floated (no untapped lands left).
 	var s: EngineState = RulesEngine.state()
 	for c in s.you.battlefield:
 		c.tapped = true
@@ -54,7 +53,7 @@ func _test_can_pay_potential() -> void:
 		"R:3 NOT payable (2 floated, 0 untapped lands)")
 
 
-# B6 core + case "mana abilities alone do NOT prevent auto-pass".
+# B6 core.
 func _test_has_no_meaningful_action() -> void:
 	print("-- _has_no_meaningful_action --")
 	RulesEngine.init_phase1()
@@ -62,13 +61,11 @@ func _test_has_no_meaningful_action() -> void:
 	_assert_true(not RulesEngine._has_no_meaningful_action("you"),
 		"Bolt (instant) castable via potential mana → has a meaningful action")
 
-	# Empty hand, untapped Mountains, MAIN1: only mana taps remain → no action.
 	s.you.hand.clear()
 	_assert_true(RulesEngine._has_no_meaningful_action("you"),
 		"empty hand + untapped lands → mana taps don't count, no meaningful action")
 
 
-# B6 + B7 gating combined.
 func _test_should_auto_pass() -> void:
 	print("-- _should_auto_pass --")
 	RulesEngine.init_phase1()
@@ -80,14 +77,12 @@ func _test_should_auto_pass() -> void:
 	_assert_true(RulesEngine._should_auto_pass("you"),
 		"MAIN1 empty hand → auto-pass (B6)")
 
-	# AP empty-stack END step auto-passes even with a castable instant in hand.
 	RulesEngine.init_phase1()
 	s = RulesEngine.state()
 	s.phase_machine.current = PhaseMachine.Phase.END
 	_assert_true(RulesEngine._should_auto_pass("you"),
 		"AP END step, empty stack → auto-pass even holding Bolt (proto skipApEndStep)")
 
-	# end_turn_pending forces auto-pass for the AP on an empty stack mid-turn.
 	RulesEngine.init_phase1()
 	s = RulesEngine.state()
 	s.end_turn_pending = true
@@ -136,8 +131,3 @@ func _assert_true(condition: bool, name: String) -> void:
 #   - End-turn with a trigger firing mid-fast-forward → pauses for instant
 #     response; pass resumes, or acting (re-engagement) clears end_turn_pending.
 #   - end_turn_pending clears on UNTAP of next turn.
-#   - Existing test_phase1..5c: re-run and RECONCILE — B6 now auto-resolves
-#     spells once the caster has no further action, so any test that cast a
-#     spell and then asserted "stack has 1 entry" before an explicit pass needs
-#     its intermediate assertions updated. Do this with the runner's output in
-#     hand, not blind.

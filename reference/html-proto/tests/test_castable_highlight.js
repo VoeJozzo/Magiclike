@@ -64,7 +64,6 @@ console.log('\n=== gates still apply (no false highlight) ===');
 console.log('\n=== restricted target highlights only when a legal target exists ===');
 (() => {
   const G = game();
-  // Vine Strangle: opp creature WITH flying.
   G.opp.battlefield.push(mkCreature('opp', { keywords: [] }));
   check('vinestrangle NOT highlighted vs a ground opp creature', !canPlayFromUI('you', inHand(G, 'vine_strangle')));
   G.opp.battlefield.push(mkCreature('opp', { keywords: ['flying'] }));

@@ -159,8 +159,7 @@ console.log('\n=== 5. Threaten shape: EOT haste survives the lord-grant revocati
 console.log('\n=== 6. A2-9: the stat half no longer buffs non-creatures ===');
 (() => {
   const G = freshGame();
-  // Hand-crafted subtype-free lord (vanguard_ensign already ships this
-  // shape) — the Creature gate must still hold.
+  // Hand-crafted subtype-free lord (vanguard_ensign already ships this shape).
   const lord = mk('goblin_chieftain', 'you');
   lord.static_buffs = [{ filter: { controller: 'self' }, power: 1, toughness: 1 }];
   const land = mk('mountain', 'you');
@@ -180,7 +179,6 @@ console.log('\n=== 7. the real emit path heals a stale grant (no direct reconcil
   G.you.battlefield.push(lord, raider);
   ENGINE.applyStaticKeywordGrants();
   steal(G, 'opp', raider);
-  // No direct call — cast a creature; the resolution's emits reconcile.
   const burn = mk('goblin_raider', 'you');
   G.you.hand.push(burn);
   ENGINE.executeAction('you', { type: 'castSpell', cardIid: burn.iid });

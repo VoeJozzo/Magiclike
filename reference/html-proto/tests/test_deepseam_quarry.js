@@ -71,7 +71,7 @@ console.log('\n=== enters tapped + taps for {C} ===');
   sorceryWindow();
   check('cannot tap for mana while tapped',
     !ENGINE.isLegalAction('you', { type: 'tapLandForMana', cardIid: q.iid, color: 'C' }));
-  onbf.tapped = false;  // simulate untap step
+  onbf.tapped = false;
   check('mana ability legal once untapped',
     ENGINE.isLegalAction('you', { type: 'tapLandForMana', cardIid: q.iid, color: 'C' }));
   // (The added {C} is real but the settle loop empties the pool at the phase
@@ -86,14 +86,14 @@ console.log('\n=== greatest total mana cost among all graveyards ===');
   G.you.graveyard = []; G.opp.graveyard = [];
   const cheap = grdCreature('you', 2);
   const mid = grdCreature('opp', 4);
-  const big = grdCreature('opp', 7);  // unique greatest
+  const big = grdCreature('opp', 7);
   G.you.graveyard.push(cheap);
   G.opp.graveyard.push(mid, big);
   const tg = ENGINE.getValidTargets({ target: 'graveyard_card', filter: REANIMATE_F }, 'you');
   check('exactly one legal target (unique greatest)', tg.length === 1, 'got ' + tg.length);
   check('it is the total-7 creature', tg[0] && tg[0].iid === big.iid);
   check('target tags the opp graveyard it sits in', tg[0] && tg[0].controller === 'opp');
-  const tie = grdCreature('you', 7);  // a second total-7, in your yard
+  const tie = grdCreature('you', 7);
   G.you.graveyard.push(tie);
   const tg2 = ENGINE.getValidTargets({ target: 'graveyard_card', filter: REANIMATE_F }, 'you');
   check('ties stay legal (two at total 7)',
@@ -120,7 +120,6 @@ console.log('\n=== reanimate under your control (take_control) ===');
   check('arrived under YOUR control', !!arrived && G.opp.battlefield.length === 0);
   check('owner preserved as opp (control != ownership)', arrived && arrived.owner === 'opp');
   check('summoning sick', arrived && arrived.sick === true);
-  // Control sanity: WITHOUT take_control, an opp-owned card returns to OPP.
   G.you.battlefield = []; G.opp.battlefield = []; G.opp.graveyard = [];
   const oppC2 = grdCreature('opp', 5);
   G.opp.graveyard.push(oppC2);
@@ -139,7 +138,7 @@ console.log('\n=== full activation: {2},{T},Sac self → reanimate the biggest =
   const q = ENGINE.makeCard('deepseam_quarry'); q.owner = 'you'; q.tapped = false;
   G.you.battlefield.push(q);
   const mine = grdCreature('you', 2); G.you.graveyard.push(mine);
-  const big = grdCreature('opp', 8); G.opp.graveyard.push(big);  // unique greatest, opp-owned
+  const big = grdCreature('opp', 8); G.opp.graveyard.push(big);
   sorceryWindow();
   G.you.mana.C = 2;  // the quarry taps as the {T} cost, so {2} comes from the pool
   const acts = ENGINE.getLegalActions('you').filter(a => a.type === 'activateAbility' && a.cardIid === q.iid);
@@ -185,7 +184,7 @@ console.log('\n=== AI values and plays the reanimate ===');
   const l1 = ENGINE.makeCard('plains'); l1.owner = 'opp'; l1.tapped = false;
   const l2 = ENGINE.makeCard('plains'); l2.owner = 'opp'; l2.tapped = false;
   G.opp.battlefield.push(q, l1, l2);
-  const big = grdCreature('opp', 8); big.power = 6; big.toughness = 6;  // clearly worth reanimating
+  const big = grdCreature('opp', 8); big.power = 6; big.toughness = 6;
   G.opp.graveyard.push(big);
   let activated = false;
   for (let i = 0; i < 6 && !activated; i++) {

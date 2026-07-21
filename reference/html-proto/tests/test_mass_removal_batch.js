@@ -85,10 +85,8 @@ console.log('\n=== Day of Reckoning + Blood Artist LAST (order independence) ===
 
 console.log('\n=== batch visibility pin: mass DESTROY emits with the full batch ===');
 (() => {
-  // checkDeaths semantics: each death's zone-change emit carries the whole
-  // batch as extraSources, so a listener plucked first still hears the later
-  // deaths. Counted at the queue (pre-resolution) so the pin is independent
-  // of trigger-resolution order.
+  // Counted at the queue (pre-resolution) so the pin is independent of
+  // trigger-resolution order.
   const G = game('you');
   const artist = place(G, 'you', 'blood_artist');   // first = plucked first
   place(G, 'you', 'goblin_raider');

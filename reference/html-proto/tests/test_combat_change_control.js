@@ -3,12 +3,6 @@
 // control change would otherwise still let the swapped creature deal combat
 // damage, credited to its live (new) controller. Real MTG removes a
 // permanent from combat when its controller changes (CR 506.4c; canon §801).
-//
-// This file pins:
-//   1. a stolen ATTACKER is pruned from G.attackers and deals NO damage
-//   2. a stolen attacker can NOT be assigned to block itself
-//   3. a stolen BLOCKER stops participating: no damage exchange, while the
-//      attacker it was blocking STAYS blocked (510.1c)
 
 const setup = require('./_setup');
 setup.loadEngine();

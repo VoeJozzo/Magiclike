@@ -137,9 +137,8 @@ if (!CARDS['prodigal_sorcerer'] || !CARDS['llanowar_elves'] || !CARDS['grizzly_b
 
   console.log('\n=== (c) condition scoping: opponent activations and non-creature sources stay silent ===');
   (() => {
-    // Opponent activates THEIR creature: controlled_by(you) fails for your
-    // listener, so nothing fires (event still emitted — the condition is the
-    // filter, same contract as every composable trigger).
+    // The event still fires here — controlled_by(you) is the filter, same
+    // contract as every composable trigger.
     const G = newGame();
     G.activePlayer = 'opp'; G.priorityHolder = 'opp';
     setup.startMainPhase('opp');
@@ -162,8 +161,6 @@ if (!CARDS['prodigal_sorcerer'] || !CARDS['llanowar_elves'] || !CARDS['grizzly_b
     settle(G);
     check('opponent took no listener damage', G.opp.life === oppLife0);
 
-    // Non-creature source: an artifact's non-mana ability emits the event,
-    // but card_is_creature filters it out.
     const G2 = newGame();
     const listener2 = mkListener('you');
     G2.you.battlefield.push(listener2);

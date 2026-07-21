@@ -1,14 +1,8 @@
 extends Node
 
-# Smoke test for the interactive trigger target picker:
-#   - When a you-controlled trigger needs a target, the engine halts the
-#     drainer and surfaces awaiting_target_for_trigger
-#   - KIND_PICK_TRIGGER_TARGET completes the pick, pushes the trigger to
-#     the stack, and resumes the drain
-#   - Targets are validated against the trigger's target_filter
-#   - Opp-controlled triggers auto-pick (no UI prompt — picks opponent
-#     player for the "creature_or_player" filter as the greedy default)
-#   - Creature targeting works: Pyromaniac can shoot an opposing creature
+# Smoke test for the interactive trigger target picker: you-controlled
+# triggers halt for a UI pick; opp-controlled triggers auto-pick the
+# greedy default (engine.gd's _auto_pick_trigger_target) instead.
 
 var failures: int = 0
 
@@ -46,8 +40,6 @@ func _ready() -> void:
 	_assert_true(ok, "cast Pyromaniac")
 	_assert_eq(s.stack.size(), 1, "Pyromaniac spell on stack")
 
-	# Pass priority → Pyromaniac resolves → ETB trigger queues → drain halts
-	# at the target picker.
 	ok = RulesEngine.execute_action(Action.make_pass_priority())
 	_assert_true(ok, "pass priority — Pyromaniac resolves")
 	_assert_true(not s.awaiting_target_for_trigger.is_empty(), "engine awaits target after ETB drain")
@@ -74,11 +66,9 @@ func _ready() -> void:
 	_assert_eq(s.stack.size(), 1, "trigger pushed to stack")
 	_assert_true(s.awaiting_target_for_trigger.is_empty(), "no longer awaiting")
 
-	# Pass priority → trigger resolves → Bear takes 1 damage
 	ok = RulesEngine.execute_action(Action.make_pass_priority())
 	_assert_true(ok, "pass priority on trigger")
 	_assert_eq(opp_bear.damage_marked, 1, "Bear took 1 damage from Pyromaniac ETB")
-	# Bear has 2 toughness → still alive
 	var bear_alive: bool = false
 	for c in s.opp.battlefield:
 		if c == opp_bear:

@@ -1,6 +1,4 @@
-// Exercises the removeSlotByIdx caller contract (js/run.js): removing a run
-// slot must decrement remaining slotIdx pointers above the removed index and
-// remap playedSlotIdxs (drop-at + decrement-above); EFFECTS.rip must honor it.
+// Exercises the removeSlotByIdx caller contract (js/run.js).
 
 const setup = require('./_setup');
 setup.loadEngine();

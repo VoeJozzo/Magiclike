@@ -21,9 +21,8 @@ console.log('=== no card carries a DEAD top-level text field (render-identical w
   const dead = [];
   for (const id of Object.keys(CARDS)) {
     const c = CARDS[id];
-    if (typeof c.text !== 'string') continue;     // no field — fine
-    if (c.custom_text === true) continue;          // authored — the field IS the text
-    // Does the stored text change what renders? If not, it's dead.
+    if (typeof c.text !== 'string') continue;
+    if (c.custom_text === true) continue;
     const withText = render(c);
     const saved = c.text;
     delete c.text;

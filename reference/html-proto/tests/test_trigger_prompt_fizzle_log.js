@@ -68,8 +68,7 @@ console.log('=== A3-12: stranding a later slot mid-prompt logs the fizzle ===');
     G.pendingTriggerTarget ? 'slot=' + G.pendingTriggerTarget.currentSlot
       + ' valid=' + G.pendingTriggerTarget.valid.length : 'no prompt');
   const pick = G.pendingTriggerTarget.valid[0];
-  // Strand slot 1 ("target creature you control gets +1/+1") mid-prompt:
-  // every creature you control leaves the battlefield.
+  // Strand slot 1 ("target creature you control gets +1/+1") mid-prompt.
   G.you.battlefield = G.you.battlefield.filter(c => !hasType(c, 'Creature'));
   G.log.length = 0;
   ENGINE.executeAction('you', { type: 'triggerTargetPick', target: pick });

@@ -1,6 +1,5 @@
-// Per-instance independence: stickersForSlot computes from a template
-// without mutating it. Otherwise one slot's stickers could bleed onto
-// every card sharing the tplId.
+// Templates are shared by tplId across every card instance in play --
+// a mutation here would bleed onto them all.
 
 const setup = require('./_setup');
 setup.loadEngine();

@@ -44,7 +44,7 @@ function newGame() {
 const SAC_MANA = [{ cost: { tap: true, sacrifice: 'creature' }, effects: [{ kind: 'add_mana', amounts: { B: 2 } }] }];
 const TAPLESS_SAC_MANA = [{ cost: { sacrifice: 'creature' }, effects: [{ kind: 'add_mana', amounts: { B: 1 } }] }];
 const TRIVIAL_MANA = [{ cost: { tap: true }, effects: [{ kind: 'add_mana', choose: ['G'] }] }];
-const MANA_ONLY_COST = [{ cost: { tap: true, mana: { C: 1 } }, effects: [{ kind: 'add_mana', amounts: { W: 1, U: 1 } }] }]; // filter-land shape
+const MANA_ONLY_COST = [{ cost: { tap: true, mana: { C: 1 } }, effects: [{ kind: 'add_mana', amounts: { W: 1, U: 1 } }] }];
 
 console.log('=== A7-1 boot tripwire: extra-cost mana abilities flagged; trivial ones not ===');
 (() => {
@@ -132,8 +132,7 @@ console.log('\n=== A7-1: the mana SOLVER excludes extra-cost abilities as source
     Array.isArray(altarColors) && altarColors.length === 0, JSON.stringify(altarColors));
   check('landProducibleColors(trivial dork) is non-empty (still a source)',
     Array.isArray(dorkColors) && dorkColors.length >= 1, JSON.stringify(dorkColors));
-  // Filter-land follow-up: a {1},{T} mana cost is also non-auto-payable, so the
-  // solver excludes it too (else it would net free fixing).
+  // Skipping this cost would let auto-cast net free color fixing.
   const filterLand = mk('gray_ogre', 'you', MANA_ONLY_COST); filterLand.types = ['Land'];
   const filterColors = ENGINE.landProducibleColors(filterLand);
   check('landProducibleColors(filter-land {1},{T}) is [] (mana cost not auto-payable)',

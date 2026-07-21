@@ -39,11 +39,10 @@ function newGame() {
 
 const RETURN_EFF = { kind: 'move_card', from_zone: 'graveyard', to_zone: 'hand', selector: 'target' };
 // bear_cub (low value) vs ancient_hydra (high value) — a wide, unambiguous gap
-// so the pick can't tie. The AI should always prefer the Hydra.
+// so the pick can't tie.
 
 console.log('=== A7-3: AI value-picks grave-return targets (migrated move_card shape) ===');
 (() => {
-  // ASSERT 1 — graveyard order [bear, hydra]: must pick the Hydra, NOT valid[0].
   let G = newGame();
   const bear1 = mk('bear_cub', 'opp'), hydra1 = mk('ancient_hydra', 'opp');
   G.opp.graveyard = [bear1, hydra1];
@@ -52,7 +51,6 @@ console.log('=== A7-3: AI value-picks grave-return targets (migrated move_card s
   check('order [bear, hydra]: picks the higher-value Hydra (not valid[0])',
     pick && pick.iid === hydra1.iid, pick ? 'picked iid ' + pick.iid + ' (hydra=' + hydra1.iid + ' bear=' + bear1.iid + ')' : 'null');
 
-  // ASSERT 2 — reversed order [hydra, bear]: still the Hydra (order-independent).
   G = newGame();
   const hydra2 = mk('ancient_hydra', 'opp'), bear2 = mk('bear_cub', 'opp');
   G.opp.graveyard = [hydra2, bear2];
@@ -61,7 +59,7 @@ console.log('=== A7-3: AI value-picks grave-return targets (migrated move_card s
   check('reversed order: still picks the Hydra (order-independent)',
     pick && pick.iid === hydra2.iid, pick ? 'picked iid ' + pick.iid : 'null');
 
-  // ASSERT 3 — grant_cast_permission disjunct stays alive and value-picks.
+  // grant_cast_permission is the other isGraveReturn disjunct, not move_card.
   G = newGame();
   const bear3 = mk('bear_cub', 'opp'), hydra3 = mk('ancient_hydra', 'opp');
   G.opp.graveyard = [bear3, hydra3];
@@ -70,8 +68,6 @@ console.log('=== A7-3: AI value-picks grave-return targets (migrated move_card s
   check('grant_cast_permission still value-picks the Hydra',
     pick && pick.iid === hydra3.iid, pick ? 'picked iid ' + pick.iid : 'null');
 
-  // ASSERT 4 — cross-yard: bear in opp yard, hydra in your yard. Per-target
-  // stamped controller tag must value the Hydra correctly across yards.
   G = newGame();
   const bear4 = mk('bear_cub', 'opp'), hydra4 = mk('ancient_hydra', 'you');
   G.opp.graveyard = [bear4]; G.you.graveyard = [hydra4];

@@ -41,10 +41,10 @@ console.log('=== A5-15: charge-rip routes battlefield removal through leave-play
   G.opp.battlefield = [oppBase, bystander, someAttacker];
 
   // CONSTRUCTED observables — only cleared if leave-play discipline runs on the rip:
-  G.attackers = [staplerIid, someAttacker.iid];            // stapler is (artificially) attacking
-  G.blockers = new Map([[staplerIid, someAttacker.iid]]);  // ...and blocking someAttacker
+  G.attackers = [staplerIid, someAttacker.iid];
+  G.blockers = new Map([[staplerIid, someAttacker.iid]]);
   bystander.cantAttack = true;
-  bystander.cantAttackBy = new Set([staplerIid]);          // stapler granted this restriction
+  bystander.cantAttackBy = new Set([staplerIid]);
 
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: staplerIid, abilityIdx: 0,
     targets: [{ kind: 'permanent', iid: oppBase.iid, label: oppBase.name },

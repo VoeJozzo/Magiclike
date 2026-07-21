@@ -34,7 +34,7 @@ console.log('\n=== A1-4: startMainPhase helper drives to an open MAIN1 round ===
   check('startMainPhase: the requested player is the expected actor', ENGINE.expectedActor() === ap, 'actor=' + ENGINE.expectedActor());
   check('startMainPhase: stack empty', g.stack.length === 0);
   check('startMainPhase: a priority round is open (passes is a Set)', g.priority && g.priority.passes instanceof Set);
-  // The other seat exercises the authoritative fallback path.
+  // Exercises the authoritative fallback path.
   const other = ap === 'you' ? 'opp' : 'you';
   const g2 = setup.startMainPhase(other);
   check('startMainPhase(other seat): MAIN1 + that seat is the actor', g2.phase === 'MAIN1' && ENGINE.expectedActor() === other);

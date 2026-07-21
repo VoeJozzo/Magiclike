@@ -104,7 +104,7 @@ console.log('\n=== multi-tag add (Golem Forge): land → 4/4 Artifact Creature =
     hasType(inst, 'Land') && hasType(inst, 'Artifact') && hasType(inst, 'Creature')
     && JSON.stringify(ENGINE.getStats(inst)) === '[4,4]');
   // Basics carry their color subtype ("Basic Land — Forest"), so the line
-  // HAS an em-dash — assert the three card types all sit in the LEFT half.
+  // has an em-dash.
   check('typeLine lists all three types left of the dash',
     ['Land', 'Artifact', 'Creature'].every(t => typeLine(inst).split('—')[0].includes(t)), typeLine(inst));
 })();
@@ -173,7 +173,6 @@ console.log('\n=== 6 artifact lands (WUBRG + C), mana DERIVED from basic subtype
   check('derived land taps for {W} and becomes tapped', G.you.mana.W === w0 + 1 && gs.tapped);
   check('cover all six mana colors W/U/B/R/G/C',
     ['W', 'U', 'B', 'R', 'G', 'C'].every(c => lands.some(id => CARDS[id].mana === c)));
-  // Draft pool: artifact lands IN, basic lands OUT.
   const inPool = (id) => {
     // Re-derive the pool predicate (draftPool is cached/internal): non-land OR artifact-land, non-special.
     const c = CARDS[id];
@@ -257,17 +256,14 @@ console.log('\n=== staple same-class UNION: Artifact co-type rides along ===');
   check('Cr base + artifact-Cr staple → merged is BOTH Artifact and Creature',
     hasType(syn, 'Artifact') && hasType(syn, 'Creature') && governingType(syn) === 'Creature');
   check('merged carries the staple subtype (Construct)', hasType(syn, 'Construct'), typeLine(syn));
-  // Land staple still COLLAPSES (no true land-creatures): a Cr+Ld staple stays a
-  // cast creature, NOT playable as a land.
+  // Land staple still COLLAPSES: this game has no true land-creatures.
   const synLand = ENGINE.synthesizeStapledTemplate(vanilla, ['forest']);
   check('Cr base + Land staple → Creature, NOT a Land (collapse preserved)',
     hasType(synLand, 'Creature') && !hasType(synLand, 'Land'));
   const synArtLand = ENGINE.synthesizeStapledTemplate(vanilla, ['gilded_seat']);
   check('Cr base + artifact-Land staple → Artifact rides, Land collapses',
     hasType(synArtLand, 'Artifact') && hasType(synArtLand, 'Creature') && !hasType(synArtLand, 'Land'));
-  // Every card carries types[], so the merge legitimately has one too — the
-  // invariant is it stays a plain Creature with no Artifact/Enchantment
-  // co-type bolted on, governing as Creature.
+  // Every card carries types[], so the merge legitimately has one too.
   const vanilla2 = Object.keys(CARDS).find(id => id !== vanilla && hasType(CARDS[id], 'Creature') && !isUndraftable(CARDS[id]) && CARDS[id].cost && !(Array.isArray(CARDS[id].types) && CARDS[id].types.filter(t => isCardTypeTag(t)).length > 1) && !CARDS[id].triggers && !CARDS[id].abilities);
   const synPlain = ENGINE.synthesizeStapledTemplate(vanilla, [vanilla2]);
   check('vanilla Cr + vanilla Cr staple → governs Creature, no spurious Artifact co-type',

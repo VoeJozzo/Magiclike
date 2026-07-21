@@ -48,7 +48,7 @@ console.log('\n=== §12.12 regression: an unhandled HANDLERS kind is CAUGHT ==='
 (() => {
   const EFFECTS = ENGINE.EFFECTS;
   const FAKE = '__coverage_probe_kind__';
-  EFFECTS[FAKE] = function () {};   // register a throwaway handler, no valuation/text
+  EFFECTS[FAKE] = function () {};
   try {
     const cov = ENGINE.effectCoverageReport();
     check('unclassified valuation flags the fake kind', cov.unclassifiedValuation.includes(FAKE),
@@ -70,7 +70,7 @@ console.log('\n=== a stale valuation entry (registered kind with no handler) is 
 (() => {
   const valued = AI.VALUED_EFFECT_KINDS;
   const GHOST = '__ghost_removed_handler__';
-  valued.add(GHOST);   // simulate: handler deleted but its registration left behind
+  valued.add(GHOST);
   try {
     const cov = ENGINE.effectCoverageReport();
     check('stale valuation entry is reported', cov.staleValuation.includes(GHOST), cov.staleValuation.join(','));
@@ -81,13 +81,12 @@ console.log('\n=== a stale valuation entry (registered kind with no handler) is 
 
 console.log('\n=== A7-2: a VALUED kind with no cast-scorer branch is CAUGHT (unscoredValuation) ===');
 (() => {
-  // A VALUED-claimed kind with a HANDLERS entry but no spellValueForEffects
-  // branch must be flagged in unscoredValuation.
+  // The cast-scorer branch lives in spellValueForEffects (ai.js).
   const EFFECTS = ENGINE.EFFECTS;
   const valued = AI.VALUED_EFFECT_KINDS;
   const FAKE = '__unscored_probe_kind__';
   EFFECTS[FAKE] = function () {};   // a real handler (so not 'stale'/'unclassified')
-  valued.add(FAKE);                 // ...claimed VALUED, but no cast-scorer branch exists
+  valued.add(FAKE);
   try {
     const cov = ENGINE.effectCoverageReport();
     check('a VALUED kind with no cast-scorer branch is flagged in unscoredValuation',
@@ -97,8 +96,7 @@ console.log('\n=== A7-2: a VALUED kind with no cast-scorer branch is CAUGHT (uns
     valued.delete(FAKE);
   }
   const after = ENGINE.effectCoverageReport();
-  // Documented zero-price exception: 'sacrifice' prices 0 on the cast path ON
-  // PURPOSE (its value rides the edict `chooses`) — must NOT be flagged.
+  // 'sacrifice' rides the edict `chooses` for its value, not the cast-scorer.
   check("'sacrifice' (zero-price by design) is NOT flagged", !after.unscoredValuation.includes('sacrifice'),
     after.unscoredValuation.join(','));
   check('live pool clean: no VALUED kind lacks a real cast-scorer branch',

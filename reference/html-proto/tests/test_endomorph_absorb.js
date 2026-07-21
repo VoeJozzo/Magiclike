@@ -114,7 +114,6 @@ console.log('\n=== fallback: vanilla victim → +1/+1 (modifiers + sticker + slo
 console.log('\n=== defender is never absorbed (intrinsic Wall defender, both shapes) ===');
 (() => {
   // iron_statue: Wall (subtype-implied defender) + printed indestructible.
-  // The filter must skip defender while still taking the real trophy.
   const G = freshRun();
   const endo = place(G, 'endomorph', 'you', 0);
   const statue = place(G, 'iron_statue', 'opp');
@@ -126,7 +125,6 @@ console.log('\n=== defender is never absorbed (intrinsic Wall defender, both sha
   check('defender NOT absorbed alongside it', !endo.keywords.includes('defender'));
 })();
 (() => {
-  // Defender-ONLY victim (vanilla bear made a Wall): nothing claimable → +1/+1.
   const G = freshRun();
   const endo = place(G, 'endomorph', 'you', 0);
   const victim = place(G, 'grizzly_bears', 'opp');
@@ -207,8 +205,6 @@ console.log('\n=== shared trophy rule: lord-granted keywords are claimable by NE
 
 console.log('\n=== claim-system consistency: stickers claimable, borrowed grants not ===');
 (() => {
-  // One kill, one victim carrying BOTH a sticker keyword (lifelink) and a
-  // lord-granted keyword (haste): both systems take the sticker, skip the loan.
   const G = freshRun();
   const endo = place(G, 'endomorph', 'you', 0);
   place(G, 'goblin_chieftain', 'opp');
@@ -230,8 +226,6 @@ console.log('\n=== claim-system consistency: stickers claimable, borrowed grants
 
 console.log('\n=== novelty is intrinsic: a BORROWED keyword does not block absorbing it for keeps ===');
 (() => {
-  // Endomorph temporarily has flying (until-EOT grant). Killing a flier should
-  // still absorb flying PERMANENTLY — what it borrows isn't what it owns.
   const G = freshRun();
   const endo = place(G, 'endomorph', 'you', 0);
   ENGINE.applyEffect({ controller: 'you', sourceName: 'Wings', sourceIid: 88001 },
@@ -274,10 +268,8 @@ console.log('\n=== finisher kills: chip + ANY death this turn feeds (SBA + destr
   // Endomorph need not deal the killing blow. Two real shapes, exercising
   // BOTH death paths:
   // (a) Endomorph chips 2, a burn spell finishes — death via the checkDeaths
-  //     SBA batch (the path real combat kills take, with extraSources). The
-  //     spell's damage is recorded too (any iid-bearing source stamps —
-  //     future "whenever this kills" artifacts/spells need the evidence),
-  //     but only Endomorph's stamp matches its trigger.
+  //     SBA batch (the path real combat kills take, with extraSources); only
+  //     Endomorph's stamp matches its trigger even though both sources record.
   // (b) Endomorph chips 2 (block), a destroy spell finishes — death via
   //     moveToGraveyard. The destroy stamps nothing into damagedBySources
   //     (destroying isn't damage) but must not erase Endomorph's chip either.
@@ -312,8 +304,8 @@ console.log('\n=== finisher kills: chip + ANY death this turn feeds (SBA + destr
   drain(G);
   check('(b) destroy finish after a block chip: absorb fired', endo.keywords.includes('lifelink'),
     JSON.stringify(endo.keywords));
-  // Negative: a victim Endomorph never touched feeds nothing — pin on the
-  // sticker count (a wrong fire would add a keyword OR a +1/+1 sticker).
+  // Pinned on the sticker count — a wrong fire would add either a keyword
+  // or a +1/+1 sticker.
   const bystander = place(G, 'savannah_lions', 'opp');
   const stickersBefore = endo.stickers.length;
   ENGINE.applyEffect({ controller: 'you', sourceName: 'Doom Blade', sourceIid: 77003 },

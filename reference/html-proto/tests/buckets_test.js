@@ -43,11 +43,10 @@ function check(label, ok, info) {
 
   // Subtype-implied keywords reach the graph (engine.js SUBTYPE_KEYWORDS via
   // ENGINE.addSubtypeKeywords): this Serra Angel has no explicit flying in
-  // keywords[], but Angels fly at runtime — the graph must agree.
+  // keywords[] — Angels fly at runtime only.
   const serra = BUCKETS.analyzeCard('serra_angel');
   check('implied keywords: Angel gets the flying plan tag', serra.tags.has('flying'));
 
-  // Humans are NOT special-cased: they provide their subtype like any tribe.
   const knight = BUCKETS.analyzeCard('white_knight');
   check('Humans provide sub:Human like any tribe (no exclusion list)',
     knight && knight.provides['sub:Human'] > 0);
@@ -102,7 +101,7 @@ function check(label, ok, info) {
   check('flying-hate wants nothing (cannot manufacture their fliers): choking_vines',
     Object.keys(w2('choking_vines').wants).length === 0, JSON.stringify(w2('choking_vines').wants));
   // etbtrigger (Joe's direction review of the sweep): blink wants ETB VALUE,
-  // not just bodies — vanishing_act pulls pyromaniac, never a vanilla bear.
+  // not just bodies.
   check('etbtrigger: vanishing_act wants, pyromaniac provides, grizzly_bears does not',
     w2('vanishing_act').wants.etbtrigger > 0 && w2('pyromaniac').provides.etbtrigger > 0
     && !w2('grizzly_bears').provides.etbtrigger);
@@ -141,17 +140,16 @@ function check(label, ok, info) {
     && /dies/.test(BUCKETS.edgeBetween('murder', 'blood_artist').reasons[0] || ''));
   // Joe's generic-target correction ("your etb value deck will get more out
   // of it than their deck"): a generic creature target includes YOURS, and a
-  // mass bounce rebuys your whole board — both provide etb/wrathproof and
-  // want etbtrigger. Deaths still require destruction (the dies pin above).
+  // mass bounce rebuys your whole board. Deaths still require destruction
+  // (the dies pin above).
   check('generic bounce provides replay value: mist_raider + cloud_caller provide etb',
     w2('mist_raider').provides.etb >= 0.75 && w2('cloud_caller').provides.etb >= 0.75
     && w2('mist_raider').wants.etbtrigger > 0);
   check('mass bounce is the Evacuation engine: wash_away provides etb 1.5 + wants etbtrigger 3',
     w2('wash_away').provides.etb === 1.5 && w2('wash_away').wants.etbtrigger === 3
     && BUCKETS.edgeBetween('wash_away', 'bramble_acolyte').w > 2);
-  // The fallback flag IS the contract line: a seed-grown bucket carries a
-  // story (why[] non-empty), a fallback bundle carries none — the flag and
-  // the story must never disagree.
+  // The fallback flag IS the contract line between a bucket's story and its
+  // origin — the two must never disagree.
   let unstoried = 0, storiedFallbacks = 0;
   for (let i = 0; i < 20; i++) {
     for (const b of BUCKETS.rollBucketOffer([])) {
@@ -164,10 +162,8 @@ function check(label, ok, info) {
   check('fallback bundles never carry a story (value-sampling made no contract)',
     storiedFallbacks === 0, storiedFallbacks + ' fallbacks with why[]');
 
-  // Qualified-entry wart (Joe's playtest catch: drummer had an etb edge to
-  // a Human Cleric that can never fire it): a subtype-gated entry trigger
-  // wants its TRIBE, never generic etb; unqualified any-creature entry
-  // payoffs keep the generic want.
+  // Qualified-entry wart: Joe's playtest catch — drummer had an etb edge to
+  // a Human Cleric that can never fire it.
   check('subtype-gated entry payoffs want the tribe, NOT generic etb',
     !w2('goblin_war_drummer').wants.etb && w2('goblin_war_drummer').wants['sub:Goblin'] > 0
     && !w2('chapter_recruiter').wants.etb && !w2('skyfire_drakelord').wants.etb
@@ -196,9 +192,7 @@ function check(label, ok, info) {
   check('damaged-by-this dies payoffs want no generic dies (sengir, endomorph)',
     !w2('sengir_vampire').wants.your_dies && !w2('sengir_vampire').wants.opp_dies
     && !w2('endomorph').wants.your_dies && !w2('endomorph').wants.opp_dies);
-  // The ownership discrimination (Joe's question made it a rule): an
-  // any-death payoff wants both directions; a your-side-only payoff wants
-  // your_dies ONLY — so Murder never edges into charnel_shaman.
+  // The ownership discrimination: Joe's question made it a rule.
   check('any-death payoff wants both directions (blood_artist)',
     w2('blood_artist').wants.your_dies > 0 && w2('blood_artist').wants.opp_dies > 0);
   check('your-side-only payoff wants your_dies only (charnel_shaman)',
@@ -302,7 +296,7 @@ function check(label, ok, info) {
   // ~0 and trapped a mono deck in its one color.
   check('mono deck: no color fence, off-color rides at full weight',
     fit('counterspell', ['R']) === 1, String(fit('counterspell', ['R'])));
-  // Off-color splash stays a temptation, not a ban (Joe's call).
+  // Deliberate: damping off-color splash instead of banning it is Joe's call.
   const onColor = fit('lightning_bolt', ['B', 'R']);
   const offColor = fit('counterspell', ['B', 'R']);
   check('committed deck: on-color card rides at full weight', onColor === 1,
@@ -411,7 +405,6 @@ function check(label, ok, info) {
   check('bucket lands cover every needed color (U3/B1 → island+swamp)',
     lands.includes('island') && lands.includes('swamp'), lands.join(','));
 
-  // Reinforcements must never sell the player their own deck back.
   const deck = ['skyfire_drakelord', 'mind_control', 'final_strike', 'island', 'island'];
   let soldOwnCard = false;
   let rolls = 0, seen = 0;
@@ -427,10 +420,10 @@ function check(label, ok, info) {
 
 // --- §6c2 Elystra's authored want -------------------------------------------
 {
-  // The synergy-hint mechanism's design exemplar finally uses it: Elystra's
-  // permanence (EOT effects stick forever) is declared as wants:trick on the
-  // card. She's a boon (never offered), but a deck holding her must pull
-  // trick spells into offers via seed affinity.
+  // Elystra's permanence (EOT effects stick forever) auto-derives
+  // wants:eot_buff from permanent_eot, not a synergy hint. She's a boon
+  // (never offered), but a deck holding her must still pull trick spells
+  // into offers via seed affinity.
   const w2 = (id) => BUCKETS.analyzeCard(id);
   const ely = BUCKETS.analyzeCard('elystra_the_immortal');
   check('elystra WANTS eot_buff (derived from permanent_eot, not a hint)',
@@ -474,8 +467,7 @@ function check(label, ok, info) {
 // --- §6f the Reinforcements retirement ---------------------------------------
 {
   // Per-slot value fill: a stranded bucket keeps its grown members and
-  // fills only the empty seats — value-weighted, color-fenced, never a
-  // card you own, with an honest value-type why line per filled seat.
+  // value-weights only the empty seats.
   const deck = ['murder', 'swamp', 'swamp'];
   const r = BUCKETS._valueFillForTest(['blood_artist'], deck);
   check('value fill completes a stranded bucket to 3 cards', r.cards.length === 3,

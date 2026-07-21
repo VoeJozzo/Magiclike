@@ -57,7 +57,7 @@ function drain(G) {
 
 console.log('\n=== Blood Priest drains the OPPONENT (and tracks life loss) ===');
 (() => {
-  const G = game('opp');                 // opp casts → drains "you"
+  const G = game('opp');
   const youLife0 = G.you.life;
   const bp = mk('blood_priest', 'opp'); G.opp.hand.push(bp);
   ENGINE.executeAction('opp', { type: 'castSpell', cardIid: bp.iid });
@@ -78,7 +78,7 @@ console.log('\n=== Demonic Tutor: the "you lose 2 life" is self life loss (after
   const dt = mk('demonic_tutor', 'you'); G.you.hand.push(dt);
   ENGINE.executeAction('you', { type: 'castSpell', cardIid: dt.iid });
   drain(G);
-  // The trailing "lose 2 life" resolves after the human's search pick (canon §704.2, in-order resolution).
+  // canon §704.2: in-order resolution.
   check('self life-loss DEFERRED until the search pick', G.you.life === myLife0, 'life=' + G.you.life);
   ENGINE.executeAction('you', { type: 'searchPick', cardIid: findable.iid });
   check('caster lost 2 life (self drain) after the pick', G.you.life === myLife0 - 2, myLife0 + '→' + G.you.life);
@@ -86,11 +86,9 @@ console.log('\n=== Demonic Tutor: the "you lose 2 life" is self life loss (after
 
 console.log('\n=== AI still values + casts a drain creature (not undervalued) ===');
 (() => {
-  // abilityValue must score the drain trigger positively; getCardValue reflects it.
   const v = ENGINE.getCardValue(CARDS.blood_priest, 'play');
   check('bloodPriest has positive card value (drain trigger valued, not negative)', v > 0, 'value=' + v);
-  // And the AI actually casts it when it's the only play (clear the dealt hand
-  // so it doesn't prefer a land drop or another spell).
+  // Clear the dealt hand so it doesn't prefer a land drop or another spell.
   const G = game('opp');
   G.opp.hand.length = 0;
   const bp = mk('blood_priest', 'opp'); G.opp.hand.push(bp);

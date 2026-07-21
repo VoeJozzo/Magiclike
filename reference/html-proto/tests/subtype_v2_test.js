@@ -1,5 +1,3 @@
-// Exactly one 'subtype' sticker exists.
-
 const setup = require('./_setup');
 setup.loadEngine();
 

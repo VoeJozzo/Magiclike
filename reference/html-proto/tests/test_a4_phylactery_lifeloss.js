@@ -1,6 +1,5 @@
-// Life loss floors at 0 under protection; loss past 0 rips slots like damage.
 // losePlayerLife(who, n) is the single writer for both damagePlayer and
-// gain_life's negative branch, tracking lifeLostThisTurn from the actual loss.
+// gain_life's negative branch.
 
 const setup = require('./_setup');
 setup.loadEngine();

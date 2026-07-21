@@ -97,8 +97,7 @@ if (CARDS['demonic_tutor']) {
 console.log('\n=== Synthetic forced-discard sorcery (human): trailing "+3 life" defers until the LAST discard ===');
 {
   // A real card with a HUMAN discard + a trailing effect doesn't ship today, so
-  // synthesize one (added post-boot; boot validation already ran). The +3 must
-  // replay exactly once, after the SECOND discard.
+  // synthesize one (added post-boot; boot validation already ran).
   CARDS['_a4_23_rummage'] = {
     card_id: '_a4_23_rummage', name: 'Test Rummage', cost: { C: 0 }, types: ['Sorcery'],
     effects: [

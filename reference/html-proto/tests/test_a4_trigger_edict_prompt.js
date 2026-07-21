@@ -79,7 +79,6 @@ console.log('=== A4-7: AI-controlled Heir dies → the HUMAN chooser gets the pr
     G.you.battlefield.filter(c => hasType(c, 'Land')).length === 2,
     'lands=' + G.you.battlefield.filter(c => hasType(c, 'Land')).length);
 
-  // The human picks: the chosen land (and ONLY it) is sacrificed.
   if (G.pendingEdictChoice) {
     const ok = ENGINE.executeAction('you', { type: 'edictChoice', iid: landB.iid });
     check('edictChoice action accepted', ok === true);

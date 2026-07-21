@@ -87,8 +87,7 @@ console.log('\n=== creature_or_player includes both players ===');
 console.log('\n=== edict chain sacrifices a HEXPROOF creature (the §3.5 proof) ===');
 (() => {
   clearBoards();
-  // Opp's only creature is hexproof. A targeted-removal spell (target(creature))
-  // could NOT touch it; the edict can, because the creature is chosen, not targeted.
+  // The edict still succeeds below because the creature is chosen, not targeted.
   const oppHex = place('opp', { hexproof: true });
   check('precondition: opp hexproof is NOT a legal target() for creature removal',
     !ids(ENGINE.targetsForFilter('creature', 'you')).includes(oppHex.iid));

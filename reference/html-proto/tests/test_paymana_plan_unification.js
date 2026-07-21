@@ -64,8 +64,8 @@ CARDS[B2_TPL.tplId] = B2_TPL;
 
 console.log('=== 1. KEY: the payer executes the solution the checker found ===');
 (() => {
-  // 1a. Direct payment: payMana alone (no settle loop) must solve the
-  // overlap — A pays {B}, B pays {U}.
+  // 1a. Direct payMana call, no settle loop — 1b exercises that through
+  // executeAction.
   const G = newGame();
   const { landA, landB } = makeDuals(G);
   let threw = null;
@@ -78,10 +78,8 @@ console.log('=== 1. KEY: the payer executes the solution the checker found ===')
   check('no mana stranded in the pool', poolTotal(G.you.mana) === 0,
     JSON.stringify(G.you.mana));
 
-  // 1b. End to end through the public API: the checker-approved cast must
-  // actually happen. The settle loop resolves the stack and rolls the turn,
-  // so the durable proof of "payment + resolution fully happened" is the
-  // life delta.
+  // 1b. End to end through executeAction, whose settle loop resolves the
+  // stack and rolls the turn — 1a calls payMana directly, without it.
   const G2 = newGame();
   makeDuals(G2);
   const card = ENGINE.makeCard(UB_TPL.tplId, null, null);
@@ -123,8 +121,8 @@ console.log('\n=== 2. KEY: unaffordable payment fails atomically (no mutation) =
 console.log('\n=== 3. Guard: pool-first and fixed-preferred behavior unchanged ===');
 (() => {
   const G = newGame();
-  // Floating {U} + a U/B dual; {U}{B} must spend the pool's U and tap the
-  // dual for B (one tap, not two-and-strand).
+  // Floating {U} in the pool plus a U/B dual (island + B sticker) on the
+  // battlefield.
   const landA = ENGINE.makeCard('island', 'you', null);
   applyOneStickerToRuntimeCard(landA, 'land_color_b');
   G.you.battlefield.push(landA);
@@ -134,7 +132,6 @@ console.log('\n=== 3. Guard: pool-first and fixed-preferred behavior unchanged =
     landA.tapped === true && poolTotal(G.you.mana) === 0,
     JSON.stringify(G.you.mana));
 
-  // Fixed source preferred over a flexible one for the same color.
   const G2 = newGame();
   const plains = ENGINE.makeCard('plains', 'you', null);
   const cob = ENGINE.makeCard('city_of_brass', 'you', null);

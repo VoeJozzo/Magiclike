@@ -19,11 +19,9 @@ function check(label, ok, info) {
 CARDS._testBolt  = { tplId: '_testBolt',  name: 'Test Bolt',  types: ['Instant'], cost: { R: 1 }, color: 'R', colors: ['R'], target: 'creature_or_player', effects: [{ kind: 'damage', amount: 3 }] };
 CARDS._testEdict = { tplId: '_testEdict', name: 'Test Edict', types: ['Instant'], cost: { B: 1 }, color: 'B', colors: ['B'], target: 'player', effects: [{ kind: 'chooses', filter: 'creature' }, { kind: 'sacrifice' }] };
 CARDS._testPyro  = { tplId: '_testPyro',  name: 'Test Pyro',  types: ['Sorcery'], cost: { R: 1 }, color: 'R', colors: ['R'], effects: [{ kind: 'damage', amount: 2, scope: 'all_creatures' }] };
-// Creature with a top-level-target ETB trigger — exercises the trigger-path
-// target() wiring.
+// Exercises the trigger-path target() wiring.
 CARDS._testZapper = { tplId: '_testZapper', name: 'Test Zapper', types: ['Creature'], cost: { R: 1 }, color: 'R', colors: ['R'], power: 1, toughness: 1,
   triggers: [{ event: 'card_zone_change', condition: ['this_card', 'card_moves(anywhere, battlefield)'], target: 'creature', effects: [{ kind: 'damage', amount: 1 }] }] };
-// Creature with a top-level-target activated ability.
 CARDS._testPinger = { tplId: '_testPinger', name: 'Test Pinger', types: ['Creature'], cost: { R: 1 }, color: 'R', colors: ['R'], power: 0, toughness: 3,
   abilities: [{ cost: { tap: true }, target: 'creature', effects: [{ kind: 'damage', amount: 1 }] }] };
 
@@ -94,7 +92,6 @@ console.log('\n=== Test Bolt CANNOT target an opp hexproof creature (cast-time h
   readyForCast(G, 'you');
   const cast = { type: 'castSpell', cardIid: bolt.iid, targets: [{ kind: 'creature', iid: hex.iid, label: hex.name }] };
   check('targeting opp hexproof is ILLEGAL', !ENGINE.isLegalAction('you', cast));
-  // ...but the SAME bolt can target the opponent player.
   const castP = { type: 'castSpell', cardIid: bolt.iid, targets: [{ kind: 'player', who: 'opp', label: 'Opp' }] };
   check('targeting the player is legal', ENGINE.isLegalAction('you', castP));
 })();
@@ -155,9 +152,7 @@ console.log('\n=== Triggered ability with a top-level target() step ===');
   G.opp.battlefield.push(victim);
   const zapper = mk('_testZapper', 'you'); G.you.hand.push(zapper);
   readyForCast(G, 'you');
-  // With the zapper itself now on the board there are TWO legal creature
-  // targets, so a PLAYER-controlled trigger must PROMPT for the target — it
-  // must not silently auto-pick.
+  // After the zapper resolves there are TWO legal creature targets (victim + zapper).
   ENGINE.executeAction('you', { type: 'castSpell', cardIid: zapper.iid, targets: [] });
   drainAll(G);
   check('zapper resolved onto the battlefield', G.you.battlefield.some(c => c.tplId === '_testZapper'));
@@ -196,10 +191,8 @@ console.log('\n=== Activated ability with a top-level target() step ===');
 
 console.log('\n=== #5b canonical multi-target: target_slots is the single source ===');
 (() => {
-  // The 5 multi-target spells carry a card-level target_slots array; their
-  // slot-bound effects bind via target_slot and carry NO inline target (the
-  // filter lives in the slot spec). Pin the shape so a regression can't
-  // silently reintroduce per-effect target.
+  // The filter for each slot lives in the slot spec, not on the effect —
+  // pinned so a regression can't silently reintroduce a per-effect target.
   for (const id of ['branching_bolt', 'twin_strike', 'drain_life', 'roots_and_branches', 'sword_and_sorcery']) {
     const c = CARDS[id];
     const slotsOk = Array.isArray(c.target_slots) && c.target_slots.length === 2;
@@ -218,7 +211,7 @@ console.log('\n=== Branching Bolt: 2-target cross-product enumerates + both take
   const bb = mk('branching_bolt', 'you'); G.you.hand.push(bb);
   readyForCast(G, 'you');
   const casts = ENGINE.getLegalActions('you').filter(x => x.type === 'castSpell' && x.cardIid === bb.iid);
-  // 2 creatures × 2 slots = 4 combos (incl. same-target pairs).
+  // Cross-product includes same-target pairs (both slots can hit the same creature).
   check('enumerates the 2-slot cross-product (4 combos)', casts.length === 4, 'combos=' + casts.length);
   const distinct = casts.find(x => x.targets[0].iid !== x.targets[1].iid);
   check('a distinct-target combo exists', !!distinct);
@@ -239,8 +232,8 @@ console.log('\n=== Drain Life: slot 0 = creature, slot 1 = player (mixed-filter 
   readyForCast(G, 'you');
   const youLife = G.you.life, oppLife = G.opp.life;
   const cast = { type: 'castSpell', cardIid: dl.iid, targets: [
-    { kind: 'creature', iid: cr.iid, label: cr.name },   // slot 0 (creature)
-    { kind: 'player', who: 'opp', label: 'Opp' },         // slot 1 (opp player)
+    { kind: 'creature', iid: cr.iid, label: cr.name },
+    { kind: 'player', who: 'opp', label: 'Opp' },
   ] };
   check('mixed-filter multi-target cast is legal', ENGINE.isLegalAction('you', cast));
   ENGINE.executeAction('you', cast);
@@ -263,7 +256,6 @@ console.log('\n=== target_slots survive REAL makeCard instantiation (not just de
       Array.isArray(inst.target_slots) && inst.target_slots.length === (CARDS[id].target_slots || []).length,
       JSON.stringify(inst.target_slots));
   }
-  // End-to-end castability of a real makeCard instance.
   const G = newGame();
   const cr = mk(TOUGH_CREATURE, 'opp'); G.opp.battlefield.push(cr);
   const dl = ENGINE.makeCard('drain_life', [], 0); dl.controller = 'you'; dl.owner = 'you';

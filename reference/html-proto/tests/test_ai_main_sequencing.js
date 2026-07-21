@@ -44,9 +44,9 @@ if (!CARDS['sicken'] || !VANILLA) {
   // No lands in hand, so decideMain goes straight to the spell decision.
   const removal = mk('sicken', 'you');
   const filler = mk(VANILLA, 'you');
-  filler.cost = { C: 6 };           // make the body clearly the most EXPENSIVE option
+  filler.cost = { C: 6 };
   G.you.hand = [removal, filler];
-  // A small opp creature Sicken (-2/-2) cleanly kills → removal is high-value.
+  // Sicken is -2/-2, which cleanly kills a 2/2 creature.
   const victim = mk(VANILLA, 'opp'); victim.power = 2; victim.toughness = 2;
   G.opp.battlefield.push(victim);
   readyForCast(G, 'you');

@@ -458,7 +458,6 @@ for (const file of CATEGORY_A) {
   const result = spawnSync('node', [path.join(TESTS_DIR, file)],
     { encoding: 'utf8', ...(PER_TEST_TIMEOUT_MS ? { timeout: PER_TEST_TIMEOUT_MS } : {}) });
   const out = (result.stdout || '') + (result.stderr || '');
-  // Parse the final "=== TOTAL: N passed, M failed ===" line.
   const m = out.match(/TOTAL:\s*(\d+)\s*passed,\s*(\d+)\s*failed/);
   if (m) {
     const p = parseInt(m[1], 10), f = parseInt(m[2], 10);
@@ -491,7 +490,7 @@ if (failures.length > 0) {
   console.log('\n=== FAILURE DETAILS ===');
   for (const f of failures) {
     console.log('\n--- ' + f.file + ' ---');
-    // Trim to last 30 lines to keep summary readable.
+    // Keep the summary readable.
     const lines = f.output.trim().split('\n');
     console.log(lines.slice(-30).join('\n'));
   }

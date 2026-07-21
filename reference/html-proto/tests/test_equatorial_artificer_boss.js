@@ -163,8 +163,7 @@ console.log('\n=== Artifice Triumphant target shows the activated-ability glow a
 
 console.log('\n=== Equatorial boss deploys Ingenuity Unbounded instead of passing ===');
 (() => {
-  // Static permanents floor above the AI's score<=0 reject gate, so an
-  // effect-less card like Ingenuity still gets cast rather than passed on.
+  // Static permanents floor above the AI's score<=0 reject gate.
   const G = boot();
   G.activePlayer = 'opp'; G.priorityHolder = 'opp';
   G.opp.hand = []; G.opp.battlefield = []; G.opp.graveyard = [];

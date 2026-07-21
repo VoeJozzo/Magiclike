@@ -11,14 +11,6 @@
 // applies only inside that satisfied arm, so a 0-damage recordDamage never
 // falsely stakes a kill claim. ai.js's simulateCombat mirrors the same
 // comparison, keeping AI prediction in lockstep with the engine.
-//
-// This file pins (self-QA scenario + packet controls):
-//   1. Iron Statue (0/5 indestructible) pre-marked 5, blocking a 6/6
-//      trampler → defender takes 6, statue takes 0 extra, statue survives
-//   2. boundary control: statue pre-marked 3 (lethalNeeded 2) → assign 2,
-//      spill 4 — partial marking still respected
-//   3. guard: no trample, fully-marked statue → leftover is wasted, NOT
-//      dumped, and nothing hits the face
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -61,9 +53,6 @@ const VANILLA = (() => {
   return null;
 })();
 
-// Drive one full combat: `you` attacks with a 6/6 (trample optional) into an
-// Iron Statue pre-marked with `preMark` damage; the statue blocks. Returns
-// observations for the assertions.
 function runCombat({ trample, preMark }) {
   const G = newGame();
   const atk = mk(VANILLA, 'you');

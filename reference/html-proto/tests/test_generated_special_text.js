@@ -15,8 +15,6 @@ function r(c) { return describeCardSegments(c, { skipKeywords: false }).map(x =>
 
 console.log('=== boon/boss status alone does not force authored text ===');
 (() => {
-  // vileEdict / symmetricize / bleach / embargo (bosses) and endomorph (boon)
-  // carry NO custom_text → they must generate from their effects.
   for (const id of ['vile_edict', 'symmetricize', 'endomorph', 'bleach', 'embargo']) {
     check(id + ' is undraftable but not custom_text',
       isUndraftable(CARDS[id]) && CARDS[id].custom_text !== true);

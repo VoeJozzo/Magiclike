@@ -1,6 +1,5 @@
-// card_has_subtype(X) does a word-exact match against a card's types[]
-// (js/types.js) — not a substring test — so "Cler" must not match "Cleric"
-// and every entry in a multi-subtype card ("Human Cleric Wall") must match.
+// card_has_subtype(X) matches word-exact against types[] (js/types.js),
+// never by substring.
 //
 // scope:'self' creature effects (pump/affect_creature/grant_keyword) and
 // self-targeted player damage resolve against the already-resolved `target`

@@ -17,8 +17,8 @@ var failures: int = 0
 func _ready() -> void:
 	print("\n=== Phase 4.5a smoke test ===\n")
 
-	# ─── Scenario A: tiny deck (smaller than hand size) ─────────────────────
-	# 7 cards on each side, hand_size = 7 → opening hand drains the library.
+	# ─── Scenario A: tiny deck (deck size == hand_size) ──────────────────────
+	# hand_size defaults to 7 in init_game(); this deck's card count matches it exactly.
 	var tiny_deck := {
 		"mountain": 2,
 		"lightning_bolt": 1,
@@ -73,8 +73,6 @@ func _ready() -> void:
 	_assert_eq(s.opp.library.size(), opp_lib_t1 - 1, "opp drew one card during their turn")
 
 	# ─── Scenario C: deck-out loss ──────────────────────────────────────────
-	# Reinit with a deck that's exactly hand_size cards. Forcing the DRAW
-	# step to fire then ends the game.
 	RulesEngine.init_game(tiny_deck, tiny_deck)
 	s = RulesEngine.state()
 	_assert_eq(s.you.library.size(), 0, "deck-out: you start with empty library")

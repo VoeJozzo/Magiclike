@@ -1,18 +1,6 @@
 extends Node
 
-# One scenario per keyword:
-#   - Defender: can't attack
-#   - Haste: can attack the turn it enters (no summoning sickness gate)
-#   - Vigilance: attacker doesn't tap
-#   - Flying: only flying or reach may block
-#   - Reach: can block flyer
-#   - Unblockable: no blockers legal
-#   - First strike: deals damage in pass 1, kills before retaliation
-#   - Lifelink: controller gains life equal to damage dealt
-#   - Deathtouch: any damage = lethal
-#   - Trample: excess damage spills to face
-#   - Indestructible: SBA ignores lethal damage
-#   - Hexproof: opp can't target with spells
+# Flying/reach: only a flying or reach creature may legally block a flyer.
 #
 # Most scenarios bypass _resolve_combat_damage's full phase-cycle and call it
 # directly after setting up state.attackers and state.blockers. That keeps
@@ -58,15 +46,12 @@ func _test_defender_cant_attack() -> void:
 
 func _test_haste_bypasses_sickness() -> void:
 	var s := _fresh_state()
-	# Place Raging Goblin on battlefield WITHOUT clearing summoning_sick.
-	# A non-haste creature would be locked out.
 	var rg := s.make_instance(CardDatabase.get_card("raging_goblin"), "you")
 	rg.summoning_sick = true
 	s.you.battlefield.append(rg)
 	s.phase_machine.current = PhaseMachine.Phase.COMBAT_ATTACK
 	var action := Action.make_declare_attacker(rg.instance_id)
 	_assert_true(RulesEngine.is_legal_action(action), "haste: Raging Goblin can attack with summoning sickness")
-	# Sanity: same setup but no haste — Bear Cub should fail.
 	var s2 := _fresh_state()
 	var bc := s2.make_instance(CardDatabase.get_card("bear_cub"), "you")
 	bc.summoning_sick = true
@@ -92,7 +77,7 @@ func _test_flying_blocking() -> void:
 	s.attackers.append(drake.instance_id)
 	s.phase_machine.current = PhaseMachine.Phase.COMBAT_BLOCK
 	s.awaiting_block_declaration = true  # MTG 509.1a: block declaration window open
-	# Ground Gray Ogre can't block Wind Drake (which has flying).
+	# Wind Drake has flying.
 	var bad := Action.make_declare_blocker(ogre.instance_id, drake.instance_id)
 	_assert_true(not RulesEngine.is_legal_action(bad), "flying: Gray Ogre can't block Wind Drake")
 
@@ -123,8 +108,6 @@ func _test_unblockable() -> void:
 
 
 func _test_first_strike() -> void:
-	# Synthesize first_strike on a 2/2: it should kill the unbuffed 2/2 in
-	# pass 1 before taking damage.
 	var s := _fresh_state()
 	var atk := _put_creature(s, "you", "grizzly_bears")
 	atk.granted_keywords.append("first_strike")
@@ -139,7 +122,6 @@ func _test_first_strike() -> void:
 func _test_lifelink() -> void:
 	var s := _fresh_state()
 	var nighthawk := _put_creature(s, "you", "vampire_nighthawk")
-	# Unblocked attack — 2 face damage, +2 life from lifelink.
 	var pre_life: int = s.you.life
 	s.attackers.append(nighthawk.instance_id)
 	RulesEngine._resolve_combat_damage()
@@ -148,10 +130,9 @@ func _test_lifelink() -> void:
 
 
 func _test_deathtouch() -> void:
-	# Deathtouch: nonlethal damage still kills the blocker.
 	var s := _fresh_state()
 	var nighthawk := _put_creature(s, "you", "vampire_nighthawk")  # 2/3 with deathtouch
-	# Give opp a Hill Giant (3/3 vanilla) to chump-block with.
+	# Hill Giant (3/3 vanilla).
 	var giant := _put_creature(s, "opp", "hill_giant")
 	s.attackers.append(nighthawk.instance_id)
 	s.blockers[giant.instance_id] = nighthawk.instance_id
@@ -162,7 +143,6 @@ func _test_deathtouch() -> void:
 
 
 func _test_trample() -> void:
-	# Trampling 3/3 into 1/1 chump blocker — 2 damage spills to face.
 	var s := _fresh_state()
 	var armodon := _put_creature(s, "you", "trained_armodon")  # 3/3 trample
 	var cub := _put_creature(s, "opp", "bear_cub")  # 1/1
@@ -174,7 +154,6 @@ func _test_trample() -> void:
 
 
 func _test_indestructible() -> void:
-	# Synthesize indestructible on a 2/2 — it should survive lethal damage.
 	var s := _fresh_state()
 	var bear := _put_creature(s, "you", "grizzly_bears")
 	bear.granted_keywords.append("indestructible")
@@ -184,25 +163,19 @@ func _test_indestructible() -> void:
 
 
 func _test_hexproof() -> void:
-	# Synthesize hexproof on opp's Bear — your Bolt can't target it.
 	var s := _fresh_state()
-	# You: Mountain + Bolt.
 	var mtn := _put_land(s, "you", "mountain")
 	var bolt := s.make_instance(CardDatabase.get_card("lightning_bolt"), "you")
 	s.you.hand.append(bolt)
-	# Opp: Bear with hexproof.
 	var bear := _put_creature(s, "opp", "grizzly_bears")
 	bear.granted_keywords.append("hexproof")
-	# Tap Mountain for R.
 	RulesEngine.execute_action(Action.make_tap_land_for_mana(mtn.instance_id))
-	# Try to cast Bolt at the hexproof Bear — should be illegal.
 	var cast := Action.make_cast_spell(
 		bolt.instance_id,
 		[{"kind": "creature", "iid": bear.instance_id}]
 	)
 	_assert_true(not RulesEngine.is_legal_action(cast), "hexproof: opp's Bear can't be targeted by your Bolt")
-	# Sanity: your own creature with hexproof CAN be targeted by your Bolt
-	# (hexproof only blocks opponents).
+	# Hexproof only blocks opponents' spells, not your own.
 	var your_bear := _put_creature(s, "you", "grizzly_bears")
 	your_bear.granted_keywords.append("hexproof")
 	var cast2 := Action.make_cast_spell(

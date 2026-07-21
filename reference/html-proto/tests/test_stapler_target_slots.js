@@ -89,10 +89,9 @@ console.log('\n=== resolution staples the second target onto the first ===');
 
 console.log('\n=== self-staple rejected at ACTIVATION, costs never paid (MtG 601.2h) ===');
 (() => {
-  // Costs are the LAST part of activation: an illegal activation (here the
-  // same card in both slots — caught by distinct_targets AND the
-  // resolveSplicePair legality check) is rejected by executeAction before any
-  // cost is paid, so there is nothing to refund or reverse.
+  // Same card in both slots is caught by distinct_targets AND the
+  // resolveSplicePair legality check, so executeAction rejects it before
+  // any cost is paid.
   const G = newGame();
   const stapler = mkStapler('you'); G.you.battlefield.push(stapler);
   const c0 = mk(baseTpl, 'you');
@@ -129,9 +128,7 @@ console.log('\n=== already-stapled STACK spell is not a legal staple target ==='
 console.log('\n=== resolution-time fizzle keeps costs paid (MtG 608.2b semantics) ===');
 (() => {
   // The handler re-runs resolveSplicePair as defense-in-depth; reaching a
-  // fizzle there means legality/handler drift. Matching real MtG, where an
-  // ability that fizzles on resolution does NOT refund its costs, the paid
-  // tap/mana stay spent.
+  // fizzle here would mean legality/handler drift.
   const G = newGame();
   const stapler = mkStapler('you'); G.you.battlefield.push(stapler);
   const c0 = mk(baseTpl, 'you');

@@ -1,13 +1,7 @@
 // color/not_color target filters must test the FULL color identity, not
 // just the first colored pip. card.color is derived as colors[0]
 // (cards.js); matchFilter routes color checks through colorsOfCard's full
-// color list instead. This file pins:
-//   1. Doom Blade vs the real {U}{B} Seal-Thief Courier: ILLEGAL at cast
-//      legality;
-//   2. the mono-color pins: illegal vs mono-black, legal vs non-black;
-//   3. matchFilter unit pins for both directions on multicolor cards;
-//   4. the token path: tokens have no cost/colors — color identity falls
-//      back to their printed single color.
+// color list instead.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -81,7 +75,7 @@ console.log('\n=== 3. matchFilter unit pins — both filter directions, full ide
 console.log('\n=== 4. token path: color identity falls back to the printed color ===');
 (() => {
   newGame();
-  const token = ENGINE.makeToken('spirit_w_1_1', 'you');   // white token, no cost/colors
+  const token = ENGINE.makeToken('spirit_w_1_1', 'you');   // white token
   check('data pin: token has color but no cost/colors array',
     token.color === 'W' && token.cost === undefined && !Array.isArray(token.colors));
   check('not_color W rejects the white token', !ENGINE.matchFilter(token, { not_color: 'W' }, 'you', 'you'));

@@ -1,5 +1,5 @@
-// Exercises engine.js's A1-5 step() hang-guard: an unrecognized G.phase in
-// step()'s phase switch would otherwise spin its while(true) loop forever.
+// engine.js's step() runs a while(true) loop switching on G.phase;
+// an unrecognized value would otherwise spin it forever.
 const setup = require('./_setup');
 setup.loadEngine();
 let pass = 0, fail = 0;

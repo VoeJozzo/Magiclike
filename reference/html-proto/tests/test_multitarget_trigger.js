@@ -108,10 +108,9 @@ console.log('\n=== a stapled MULTI-target spell ETB resolves ALL its slots ===')
 console.log('\n=== a human-controlled multi-target ETB prompts for EACH slot ===');
 (() => {
   // The human builds stapled cards (plays the Stapler on their own creature), so
-  // they should CHOOSE the ETB's targets, not have them auto-picked. The trigger
-  // prompt steps through every choosable slot. Distinguishing assertion: the
-  // human picks two DIFFERENT creatures (a, b) — auto-pick would instead stack
-  // both pumps on the single best creature (a.tempPower=2, b=0).
+  // they should CHOOSE the ETB's targets, not have them auto-picked. Distinguishing
+  // assertion: the human picks two DIFFERENT creatures (a, b) — auto-pick would
+  // instead stack both pumps on the single best creature (a.tempPower=2, b=0).
   RUN.clearSave && RUN.clearSave();
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
@@ -199,8 +198,7 @@ console.log('\n=== distinct_targets on the TRIGGER auto-pick path, in isolation 
 (() => {
   // The cross-slot distinct rule on the auto-pick path, where controller can't
   // co-enforce it: re-point a stapled Roots and Branches ETB to TWO self slots and
-  // keep the flag (the "tap/pump two DIFFERENT creatures you control" shape). The
-  // auto-picker must choose a DIFFERENT creature per slot — not valid[0] twice.
+  // keep the flag (the "tap/pump two DIFFERENT creatures you control" shape).
   const G = newGame();
   const staple = ENGINE.makeCard(VANILLA, undefined, 0, undefined, undefined, ['roots_and_branches']);
   staple.iid = iid++; staple.controller = 'opp'; staple.owner = 'opp';

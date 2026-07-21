@@ -42,8 +42,6 @@ console.log('=== whole pool: types[] is present + the accessors are coherent ===
   check('governingType is a real card-type tag for every card', govMiss.length === 0, govMiss.slice(0, 5).join(', '));
   check('hasType hits governing type + every declared tag', hasTypeMiss.length === 0, hasTypeMiss.slice(0, 5).join(', '));
 
-  // typeLine renders the canonical MTG line: basic lands (Basic supertype +
-  // color subtype), City of Brass (single Land), legendary cards.
   const EXPECT = { forest: 'Basic Land — Forest', island: 'Basic Land — Island',
     mountain: 'Basic Land — Mountain', plains: 'Basic Land — Plains',
     swamp: 'Basic Land — Swamp', city_of_brass: 'Land',
@@ -105,13 +103,11 @@ console.log('\n=== multi-type governance + carry-through (the Phase-4 generaliza
   const robot = { types: ['Creature', 'Construct'] };
   check('robot hasType both Creature and Construct', hasType(robot, 'Creature') && hasType(robot, 'Construct'));
 
-  // The Legendary supertype must survive an explicit types[] — else
-  // a legendary multi-type card silently loses the legend rule.
+  // Dropping the Legendary tag here would silently lose the legend rule.
   const legendRobot = { types: ['Artifact', 'Creature'], legendary: true };
   check('legendary + types[]: Legendary tag unioned in, NOT dropped',
     hasType(legendRobot, 'Legendary') && typeLine(legendRobot).startsWith('Legendary '), typeLine(legendRobot));
 
-  // makeCard carries the template types[] onto the runtime instance end-to-end.
   const baseId = Object.keys(CARDS).find(id => hasType(CARDS[id], 'Creature') && !isUndraftable(CARDS[id]) && CARDS[id].cost);
   CARDS.__robotProbe = Object.assign({}, CARDS[baseId], { name: 'Robot Probe', types: ['Artifact', 'Creature'] });
   const inst = ENGINE.makeCard('__robotProbe', [], 0);

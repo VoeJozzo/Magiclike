@@ -3,7 +3,7 @@
 // just the initial click — target/modal slot-resolution helpers (e.g.
 // slotsNeededForPending) must find the card outside G.you.hand too. Drives the
 // real CONTROLLER click handlers (DOM stubbed by _setup), the same harness as
-// test_ui_targeting. Also unit-tests the cross-yard graveyard-picker prompt text.
+// test_ui_targeting.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -72,7 +72,6 @@ console.log('\n=== the same stolen spell can target a creature ===');
 
 console.log('\n=== cross-yard graveyard-picker prompt text (P3) ===');
 (() => {
-  // Seal-Thief Courier shape.
   const stc = graveyardPickerPrompt(
     { not_type: 'Land', graveyards: ['opp'] },
     [{ kind: 'move_card', from_zone: 'graveyard', to_zone: 'exile' }],
@@ -80,7 +79,6 @@ console.log('\n=== cross-yard graveyard-picker prompt text (P3) ===');
   check('Seal-Thief picker title = "Exile a nonland card"', stc.title === 'Exile a nonland card', stc.title);
   check("Seal-Thief picker subtitle names the opponent's graveyard", /opponent's graveyard/.test(stc.subtitle), stc.subtitle);
 
-  // Deepseam Quarry shape.
   const dq = graveyardPickerPrompt(
     { type: 'Creature', graveyards: ['self', 'opp'], select: { by: 'total_mana_cost', extreme: 'greatest' } },
     [{ kind: 'move_card', from_zone: 'graveyard', to_zone: 'battlefield', post: { take_control: true } }],

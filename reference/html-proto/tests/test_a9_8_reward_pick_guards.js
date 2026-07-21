@@ -30,9 +30,8 @@ console.log('\n=== A9-8: ripUp arm rejects an out-of-range slotIdx (negative is 
 (() => {
   freshRun();
   const before = RUN.getSlots().length;
-  // slotIdx -1 is the input where the guard ACTUALLY matters: without it,
-  // splice(-1, 1) silently rips the LAST live slot. (A past-end index is a splice
-  // no-op with or without the guard, so it would fence nothing — green theater.)
+  // A past-end index is a splice no-op with or without the guard, so it
+  // would fence nothing — only a negative index actually exercises it.
   RUN._setPendingRewardForTest(reward([{ kind: 'ripUp', slotIdx: -1 }]));
   let threw = null;
   try { RUN.pickRewardCandidate(0); } catch (e) { threw = e; }

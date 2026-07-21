@@ -5,10 +5,9 @@
 // and claimableKeywords' trophy check read through it. This file pins:
 //   1. intrinsicKeywords on a live copy = the COPIED template's keywords
 //      (+ subtype-implied), not the base's;
-//   2. the real CLEANUP: copy + an EOT haste grant crosses end of turn →
-//      flying kept, flash NOT resurrected, haste correctly dropped;
+//   2. the real CLEANUP: copy + an EOT haste grant crosses end of turn;
 //   3. the leave-play revert contract: a bounced copy re-derives the
-//      false_witness base identity (flash back, flying gone).
+//      false_witness base identity.
 
 const setup = require('./_setup');
 setup.loadEngine();

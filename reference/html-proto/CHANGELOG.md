@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.44`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.45`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -3211,3 +3211,14 @@ orphaned render header), two backlogged as bug candidates
 Archdemon bargain stash uses battlefield-only findCard, so a departed
 source silently drops the count). Suite 151 files / 3004 green; lint
 clean; Godot 12/12.
+
+v2.2.45: comment wave 3 — targeted assert-echo sweep of all 166 test
+files, both engines. A convergence audit (day-one instrument, fresh
+sample) localized the dominant remaining noise as comments duplicated by
+adjacent assertion labels; the doctrine gained that named rule and 134
+files shed 338 comments (+195 trims), reviewers restoring 10
+over-deletions. Flag fixes: ghost-attacker mana comments (floatMana pays,
+not the lands), splice_core subIdx invariant wording, two stale test
+labels (blackKnight→chupacabra; pre-fix-comment reference). One item
+backlogged: test_ai_targeting pins a weaker scenario than its comment
+claims. Suite 151 files / 3004 green; lint clean; Godot 12/12.

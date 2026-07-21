@@ -48,10 +48,9 @@ console.log('\n=== control: cloning a non-charges slot adds NO charges field (gu
 
 console.log('\n=== A5-5 review: a charged clone Stapler SURVIVES the original ripping out of charges ===');
 (() => {
-  // With two Stapler instances on independent slots, the original running out of
-  // charges must rip ONLY its own slot/instance — not purge every card by tplId
-  // (which would also destroy the still-charged clone). Drives a real cross-owner
-  // splice so the charge-accounting rip block fires.
+  // The charge-rip must purge only the out-of-charges instance's own slot, not
+  // every card sharing tplId (which would also destroy the still-charged clone).
+  // Drives a real cross-owner splice so the charge-accounting rip block fires.
   const baseTpl = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceableBase(k));
   const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k], 'Creature') && isSpliceableStaple(k));
 

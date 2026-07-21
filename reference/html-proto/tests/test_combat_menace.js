@@ -42,7 +42,7 @@ else {
   console.log('=== A2-15 guard: a NON-menace attacker accepts a single blocker ===');
   {
     const G = newGame();
-    const A = mk(VANILLA,'you'); A.power=2; A.toughness=2; A.sick=false; // no menace
+    const A = mk(VANILLA,'you'); A.power=2; A.toughness=2; A.sick=false;
     G.you.battlefield.push(A); giveHold(G,'you'); readyMain(G,'you');
     const b = mk(VANILLA,'opp'); b.power=1; b.toughness=1; b.sick=false;
     G.opp.battlefield.push(b); giveHold(G,'opp');

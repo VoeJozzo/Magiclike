@@ -2,15 +2,6 @@ extends Node
 
 # Smoke test for the AI port — both opp's behaviour during
 # normal play and full-game AI-vs-AI completion.
-#
-# Scenarios:
-#   1. AI.decide on a blank/idle state returns pass_priority cleanly.
-#   2. AI.decide picks a target for a Pyromaniac ETB trigger when opp
-#      controls Pyromaniac.
-#   3. simulate_combat returns sensible damage/death numbers for a
-#      2/2 vs 2/2 trade.
-#   4. AI-vs-AI: both sides driven by AI.decide, played from init_phase5_demo
-#      until winner or the action cap. Game must reach a winner.
 
 var failures: int = 0
 
@@ -33,13 +24,10 @@ func _ready() -> void:
 # ─── Tests ────────────────────────────────────────────────────────────────
 
 func _test_decide_idle_pass() -> void:
-	# Fresh state, opp's main phase but opp has nothing to do (empty hand +
-	# battlefield except a Mountain).
 	RulesEngine.init_phase1()
 	var s: EngineState = RulesEngine.state()
 	s.opp.hand.clear()
 	s.opp.battlefield.clear()
-	# Give opp a tapped Mountain (no mana ability available).
 	var mtn := s.make_instance(CardDatabase.get_card("mountain"), "opp")
 	mtn.tapped = true
 	s.opp.battlefield.append(mtn)
@@ -68,7 +56,7 @@ func _test_decide_trigger_target() -> void:
 
 
 func _test_simulate_combat_trade() -> void:
-	# Two 2/2 vanilla bears trade — both should die.
+	# grizzly_bears is vanilla — no keywords affect the trade math.
 	RulesEngine.init_phase1()
 	var s: EngineState = RulesEngine.state()
 	s.you.battlefield.clear()

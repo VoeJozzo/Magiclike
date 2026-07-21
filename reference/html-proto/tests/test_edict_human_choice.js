@@ -64,7 +64,7 @@ function settle(G) {
     ENGINE.executeAction(w, a);
   }
 }
-// A vanilla creature template (no triggers/abilities) for clean board setup.
+// A vanilla creature template for clean board setup.
 const VANILLA = (() => {
   for (const [id, c] of Object.entries(CARDS)) {
     if (hasType(c, 'Creature') && !c.triggers && !c.abilities && !c.static_buffs) return id;
@@ -103,8 +103,6 @@ console.log('=== Opp edicts the human: prompt opens, creature NOT auto-sacrifice
 console.log("\n=== The human's choice is honored (not forced to the AI's lowest-value pick) ===");
 {
   const G = newGame();
-  // Two creatures with distinct sac-values; the AI auto-pick would take the
-  // lowest. The human picks the OTHER — proving the choice is real.
   const a = mk(VANILLA, 'you'); G.you.battlefield.push(a);
   const b = mk(VANILLA, 'you'); G.you.battlefield.push(b);
   // Force a sac-value gap so "lowest" is unambiguous.

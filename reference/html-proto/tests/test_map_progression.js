@@ -1,15 +1,12 @@
 // Roguelike map progression — two guarantees:
 //
-// 1. REGRESSION: advancing into a boss node must not crash. getConstructedDeck
-//    lives inside draft.js's DRAFT IIFE; only DRAFT.getConstructedDeck is
-//    defined — a bare call is undefined and throws when the boss banner builds.
+// 1. REGRESSION: getConstructedDeck lives inside draft.js's DRAFT IIFE, so a
+//    bare (unqualified) call is undefined and throws when the boss banner
+//    builds.
 //
-// 2. CONTRACT for the "always show the minimap" UI: getMapState() must be
-//    non-null at every between-game transition, so the controller can render the
-//    map every time. Any next node — one path OR many — is offered as a
-//    click-the-node pendingChoice (a single successor is a one-option choice,
-//    same UI as a fork). startNextGame keeps a single-successor auto-advance
-//    only as a back-compat fallback for pre-2.0.61 saves with no pendingChoice.
+// 2. CONTRACT for the "always show the minimap" UI: startNextGame keeps a
+//    single-successor auto-advance only as a back-compat fallback for
+//    pre-2.0.61 saves with no pendingChoice.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -60,8 +57,6 @@ console.log('=== walk a full sector (root → boss → next sector) ===');
 
 console.log('\n=== boss node carries a resolvable constructed deck ===');
 (() => {
-  // Every boss node's constructedId must resolve via DRAFT.getConstructedDeck
-  // — the path startNextGame exercises.
   let bossNodes = 0, resolvable = 0;
   for (let i = 0; i < 20; i++) {
     RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);

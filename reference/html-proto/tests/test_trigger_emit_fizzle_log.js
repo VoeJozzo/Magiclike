@@ -3,12 +3,6 @@
 // (pushTriggerOnStack -> tsAutoPick logs "X trigger fizzles — no legal
 // target."). Canon places queueing on event/condition match (§1004) and
 // target choice at the stack moment (§1005).
-//
-// Arms:
-//   1. KEY — the only creature dies; the watcher's damage-a-creature trigger
-//      has no legal target: the fizzle is LOGGED.
-//   2. Guard — with a bystander creature alive, the trigger still queues,
-//      auto-picks it, and resolves (1 damage) with NO fizzle line.
 
 const setup = require('./_setup');
 setup.loadEngine();

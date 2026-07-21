@@ -65,7 +65,6 @@ try {
     check('roll 0.99 reaches the weight-1 tail (Indestructible granted)',
       c.keywords.includes('indestructible'), 'keywords=' + JSON.stringify(c.keywords));
   }
-  // Multi-pick: candidates re-derive between picks, so eligibility updates.
   // Pick 1 at 0.99 → Indestructible; pick 2's pool shrinks to [+1/+1] alone
   // (the keyword sticker no longer applies) → +1/+1.
   {
@@ -99,7 +98,7 @@ console.log('\n=== Pool breadth: the constructed weighted pool stays BROAD ===')
   check('add_type in pool (a land-color sticker)',
     ids.some(id => id.startsWith('land_color_')), 'ids=' + JSON.stringify(ids));
   check('Innate in pool (lands present)', ids.includes('innate'));
-  check('pool covers all the kinds the pre-fix comment omitted',
+  check('pool covers add_type, cost_mod, and remove_keyword',
     kinds.has('add_type') && kinds.has('cost_mod') && kinds.has('remove_keyword'),
     'kinds=' + JSON.stringify([...kinds]));
 
@@ -107,8 +106,7 @@ console.log('\n=== Pool breadth: the constructed weighted pool stays BROAD ===')
   check('subtype (needs rolls) excluded', !ids.includes('subtype'));
   check('empower (needs rolls) excluded', !ids.includes('empower'));
 
-  // The pool carries the REGISTRY weights — the rarity table feeds the draw
-  // (no invented weights, no flattening).
+  // No invented weights, no flattening.
   const byId = {};
   for (const c of candidates) byId[c.sticker.id] = c.sticker;
   check('+1/+1 candidate carries its registry weight (20)',

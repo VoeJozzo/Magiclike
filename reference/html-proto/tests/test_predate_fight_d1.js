@@ -68,8 +68,6 @@ console.log('\n=== D1 hybrid: {from:target_power} reads LIVE while in-zone ===')
 (() => {
   clearBoards();
   const c = place('opp', 'goblin_raider', 3, 3);
-  // A deliberately STALE snapshot (power 3, captured before the pump). The live
-  // read must beat it.
   const staleSnap = { kind: 'creature', iid: c.iid, power: 3, toughness: 3, controller: 'opp' };
   ENGINE.applyEffect({ controller: 'you', sourceName: 'x', sourceIid: -1 },
     { kind: 'pump', power: 2, toughness: 2 }, tgt(c));
@@ -120,7 +118,7 @@ console.log('\n=== Static lord grants its keyword to fellow tribe, clears on lea
   check('lord does not grant haste to itself (already native, no dupe)',
     (chief.keywords || []).filter(k => k === 'haste').length === 1);
   check('non-Goblin gets nothing (' + NON_GOBLIN + ')', !(outsider.keywords || []).includes('haste'));
-  ENGINE.clearRestrictionsFromSource(chief.iid);   // lord leaves play
+  ENGINE.clearRestrictionsFromSource(chief.iid);
   check('granted haste cleared when the lord leaves', !(goblin.keywords || []).includes('haste'));
 })();
 
@@ -130,8 +128,8 @@ console.log('\n=== Predate cast END-TO-END through the real stack (AI resolves) 
 (() => {
   // Real turn machinery (mirrors test_drain_lifeloss's harness) so the cast goes
   // on the stack, the caster passes, and resolution runs the loop that wires
-  // ctx.allTargets + applies pump-before-fight. Stats chosen so both creatures
-  // SURVIVE (no SBA death → .damage isn't reset), letting us read the exchange.
+  // ctx.allTargets + applies pump-before-fight. Stats avoid SBA death so
+  // .damage isn't reset, letting us read the exchange.
   RUN.start({ cards: Array(12).fill('forest'), colors: ['G'] }, null);
   RUN.startNextGame();
   const g = ENGINE.state();
@@ -141,7 +139,7 @@ console.log('\n=== Predate cast END-TO-END through the real stack (AI resolves) 
   g.you.battlefield = []; g.opp.battlefield = [];
   const mk2 = (who, tpl, p, t) => { const c = ENGINE.makeCard(tpl); c.sick = false; if (p != null) c.power = p; if (t != null) c.toughness = t; g[who].battlefield.push(c); return c; };
   const mine   = mk2('you', 'goblin_raider', 2, 2);   // → 3/3 after the pump
-  const theirs = mk2('opp', 'goblin_raider', 1, 5);   // 1/5: survives 3 dmg, deals only 1 back
+  const theirs = mk2('opp', 'goblin_raider', 1, 5);
   const pred = ENGINE.makeCard('predate'); g.you.hand.push(pred);
   ENGINE.executeAction('you', { type: 'castSpell', cardIid: pred.iid,
     targets: [{ kind: 'creature', iid: mine.iid }, { kind: 'creature', iid: theirs.iid }] });

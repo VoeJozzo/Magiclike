@@ -136,7 +136,6 @@ console.log('\n=== A5-3: merging one of your blockers onto another keeps BOTH at
 
 console.log('\n=== A5-1: splicing your BLOCKED attacker onto a non-attacker keeps it BLOCKED ===');
 {
-  // A blocked attacker's blockers must re-point at the merged base when it inherits the attack role.
   const G = newGame();
   const B = mk(baseTpl, 'you');   B.power = 2; B.toughness = 2;
   const S = mk(stapleTpl, 'you'); S.power = 3; S.toughness = 3;

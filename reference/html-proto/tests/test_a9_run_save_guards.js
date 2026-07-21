@@ -53,7 +53,6 @@ function freshDraft() {
 }
 
 (() => {
-  // (a) Start alone is 0; completing the game makes it 1.
   freshDraft();
   RUN.start(DECK, null);
   RUN.startNextGame();
@@ -65,7 +64,6 @@ function freshDraft() {
 })();
 
 (() => {
-  // (b) Crash-restore: start → rollback → replayed start → completion = 1.
   freshDraft();
   RUN.start(DECK, null);
   RUN.startNextGame();
@@ -77,7 +75,6 @@ function freshDraft() {
 })();
 
 (() => {
-  // (c) An abandoned game (started, never completed) counts 0.
   freshDraft();
   RUN.start(DECK, null);
   RUN.startNextGame();
@@ -87,7 +84,6 @@ function freshDraft() {
 })();
 
 (() => {
-  // (d) A LOSS is still a completed game.
   freshDraft();
   RUN.start(DECK, null);
   RUN.startNextGame();

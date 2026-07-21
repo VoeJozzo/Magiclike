@@ -12,8 +12,7 @@ const CREATURE_TPL = (() => {
   for (const [id, c] of Object.entries(CARDS)) if (hasType(c, 'Creature') && !c.triggers && !c.abilities) return id;
   return null;
 })();
-// Reset keywords so a grant is the ONLY source (the vanilla template may carry
-// native keywords, which would pollute the "opp did not gain flying" assertion).
+// Reset keywords so a grant is the sole source -- the vanilla template may already carry native keywords.
 function placeCreature(who){ const c = ENGINE.makeCard(CREATURE_TPL); c.sick = false; c.keywords = []; G[who].battlefield.push(c); return c; }
 
 console.log('=== A4-18: grant_cast_permission dedups for the same card+zone ===');

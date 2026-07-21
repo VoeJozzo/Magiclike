@@ -28,7 +28,6 @@ check('anchor: live table classifies thisEnters',
 check('anchor: live table classifies thisDies',
   ARCHETYPES['card_zone_change | this_card, card_moves(battlefield, graveyard)'] === 'thisDies');
 
-// ── 1. Every archetype present + nothing unclassified ────────────────────
 console.log('=== every known archetype present, no trigger unclassified ===');
 (() => {
   const counts = {};
@@ -46,7 +45,6 @@ console.log('=== every known archetype present, no trigger unclassified ===');
   check('every trigger classifies to a known archetype (0 unclassified)', unclassified === 0, `${unclassified} unclassified`);
 })();
 
-// ── 2. No legacy trigger fields survive ──────────────────────────────────
 console.log('\n=== no legacy cond_id / params / self_only on any trigger ===');
 (() => {
   const offenders = [];
@@ -61,7 +59,6 @@ console.log('\n=== no legacy cond_id / params / self_only on any trigger ===');
   check('no legacy fields remain', offenders.length === 0, offenders.join(', '));
 })();
 
-// ── 3. Representative real cards evaluate correctly ──────────────────────
 console.log('\n=== representative migrated cards fire correctly ===');
 (() => {
   function cardWithSig(sig) {
@@ -78,7 +75,7 @@ console.log('\n=== representative migrated cards fire correctly ===');
   }
   function S() { return { you: { lifeLostThisTurn: 0 }, opp: { lifeLostThisTurn: 0 } }; }
 
-  // Subtype-enters lord (e.g. drakelord/Drake).
+  // e.g. drakelord/Drake.
   const lord = cardWithSig('card_zone_change | another_card, controlled_by(you), card_has_subtype(*), card_moves(anywhere, battlefield)');
   if (lord) {
     const subTerm = lord.trig.condition.find((t) => typeof t === 'string' && t.startsWith('card_has_subtype('));
@@ -97,7 +94,6 @@ console.log('\n=== representative migrated cards fire correctly ===');
     check(`${dies.card.tplId}: silent on own bounce`, evalFor(dies, bounceEvt, 'you') === false);
   } else check('thisDies card present', false);
 
-  // youCastCounterspell.
   const counter = cardWithSig('spell_cast | another_card, controlled_by(you), card_has_effect(counter)');
   if (counter) {
     const yes = { subject_card: { iid: 2, effects: [{ kind: 'counter' }] }, controller: 'you' };
@@ -106,8 +102,7 @@ console.log('\n=== representative migrated cards fire correctly ===');
     check(`${counter.card.tplId}: silent on your damage spell`, evalFor(counter, no, 'you') === false);
   } else check('youCastCounterspell card present', false);
 
-  // anyCardDies (Blood Artist shape): creature-only by design, not all
-  // permanents dying.
+  // Blood Artist shape: creature-only by design, not all permanents dying.
   const anyDies = cardWithSig('card_zone_change | card_is_creature, card_moves(battlefield, graveyard)');
   if (anyDies) {
     const selfDeath = { subject_card: { iid: 1, types: ['Creature'] }, from_zone: 'battlefield', to_zone: 'graveyard' };
@@ -119,9 +114,6 @@ console.log('\n=== representative migrated cards fire correctly ===');
   } else check('anyCardDies card present', false);
 })();
 
-// ── 4. condId consumers recover via triggerArchetype ─────────────────────
-// Card-text preambles and AI trigger-frequency valuation classify via
-// triggerArchetype.
 console.log('\n=== triggerArchetype classification + preamble recovery ===');
 (() => {
   check('classifies composable thisDies',

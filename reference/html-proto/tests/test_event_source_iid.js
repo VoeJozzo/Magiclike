@@ -154,8 +154,6 @@ if (!VANILLA || !CARDS['lightning_bolt'] || !CARDS['mountain']) {
     G.you.battlefield.push(listener);
     readyMain(G, 'you');
     G.pendingTriggers.length = 0;
-    // The listener itself pings the opponent's face (ctx.sourceIid = its iid):
-    // the loss event must carry that iid, so noSelfCascade suppresses.
     ENGINE.applyEffect(
       { controller: 'you', sourceName: listener.name, sourceIid: listener.iid },
       { kind: 'damage', amount: 1 }, { kind: 'player', who: 'opp' });
@@ -180,8 +178,6 @@ if (!VANILLA || !CARDS['lightning_bolt'] || !CARDS['mountain']) {
     G.opp.battlefield.push(victimA, victimB);
     readyMain(G, 'you');
     G.pendingTriggers.length = 0;
-    // The listener bounces a creature (ctx.sourceIid = its iid): the
-    // card_zone_change must carry source_iid, so noSelfCascade suppresses.
     ENGINE.applyEffect(
       { controller: 'you', sourceName: listener.name, sourceIid: listener.iid },
       { kind: 'affect_creature', severity: 'bounce' },

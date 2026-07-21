@@ -16,14 +16,13 @@ function check(label, ok, info) {
   if (ok) pass++; else fail++;
 }
 
-// Two distinct spliceable creatures (same pool the splice-core test uses).
+// Same pool the splice-core test uses.
 const baseTpl = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceableBase(k));
 const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k], 'Creature') && isSpliceableStaple(k));
 
 console.log('=== A5-4: out-of-charges rip fixes up cached slot pointers ===');
 (() => {
-  // Deck lists Stapler LAST so its slot lands at the end — the slot-pointer
-  // fixup case this test exists to pin.
+  // Deck lists Stapler LAST so its slot lands at the end.
   RUN.start({ cards: [...Array(5).fill('plains'), 'stapler'], colors: ['W'] });
   RUN.startNextGame();
   const G = ENGINE.state();
@@ -73,7 +72,7 @@ console.log('=== A5-4: out-of-charges rip fixes up cached slot pointers ===');
   check('slots[merged.slotIdx] IS the merged base card', merged && slots[merged.slotIdx] && slots[merged.slotIdx].tplId === baseTpl,
     merged && slots[merged.slotIdx] ? slots[merged.slotIdx].tplId : 'undefined');
 
-  // The Stapler slot is actually gone (guards against an over-decrement fix).
+  // Guards against an over-decrement fix.
   check('Stapler slot removed', !slots.some(s => s.tplId === 'stapler'));
   check('slots length: +1 mint, -1 stapler rip', slots.length === slotsBefore, 'before=' + slotsBefore + ' after=' + slots.length);
 

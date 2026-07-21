@@ -109,7 +109,7 @@ if (!VANILLA) {
     const c = mk(VANILLA, 'you');
     c.keywords = ['indestructible'];
     c.power = 2; c.toughness = 3;
-    c.damage = 5;   // damage >= toughness, toughness positive
+    c.damage = 5;
     G.you.battlefield.push(c);
     readyMain(G, 'you');
     advanceOnePhase(G);

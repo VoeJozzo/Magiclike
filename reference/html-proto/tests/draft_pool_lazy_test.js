@@ -36,9 +36,9 @@ console.log('=== draftPool: rollTransformPack returns a non-empty pack ===');
 
 console.log('\n=== draftPool: matches the documented filter ===');
 {
-  // Must match draftPool()'s real predicate. Only BASIC lands are excluded —
-  // they're auto-allocated after the draft; every nonbasic land (artifact
-  // lands, utility lands like Deepseam Quarry) drafts like any other pick.
+  // Only BASIC lands are excluded from the draft pool — they're auto-allocated
+  // after the draft; every nonbasic land (artifact lands, utility lands like
+  // Deepseam Quarry) drafts like any other pick.
   const expected = Object.keys(CARDS).filter(id => {
     const c = CARDS[id];
     return !isUndraftable(c) && !hasType(c, 'Basic');
@@ -57,8 +57,7 @@ console.log('\n=== draftPool: matches the documented filter ===');
 
 console.log('\n=== colorless cards are offered every slot (not bucketed away) ===');
 {
-  // Colorless creatures (color:null) belong to no WUBRG bucket; color-rolled
-  // draft slots must still offer them like any other creature.
+  // Colorless creatures store color:null, belonging to no WUBRG bucket.
   const colorlessCreatures = new Set(Object.keys(CARDS).filter(id => {
     const c = CARDS[id];
     return hasType(c, 'Creature') && !isUndraftable(c) && !c.color;

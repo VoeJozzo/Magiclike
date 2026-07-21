@@ -20,10 +20,6 @@ const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k]
 
 console.log('=== mergeSpliceData core: concat + bonus precedence + chain ===');
 (() => {
-  // permaBuffs is retired: permanent buffs are represented as stat_boost /
-  // kw_* stickers, so they merge for free through the stickers concat. Base
-  // carries an inline stat_boost; the staple a kw_ sticker — both must survive
-  // the concat in order.
   const merged = mergeSpliceData(
     { tplId: baseTpl, stickers: ['plus1_plus1', { kind: 'stat_boost', power: 1, toughness: 0 }],
       empowerRolls: [], subtypeRolls: ['Goblin'], bonusTrigger: null, priorStaples: [] },
@@ -49,7 +45,8 @@ console.log('\n=== bonus precedence: base wins when both present ===');
 console.log('\n=== empower-roll remap accounts for prior staple chain ===');
 (() => {
   // A creature base + a prior creature staple with 1 trigger: a staple empower
-  // roll on a trigger must shift its subIdx by the prior staple's trigger count.
+  // roll on a trigger must shift its subIdx by the base card's own trigger
+  // count plus the prior staple's trigger count.
   const priorWithTrigger = Object.keys(CARDS).find(k =>
     hasType(CARDS[k], 'Creature') && isSpliceableStaple(k) && (CARDS[k].triggers || []).length >= 1);
   if (!priorWithTrigger) { check('(skipped: no creature staple with a trigger in pool)', true); return; }
@@ -70,7 +67,6 @@ console.log('\n=== empower-roll remap accounts for prior staple chain ===');
 
 console.log('\n=== the two pathways agree on merged slot data (identical end state) ===');
 (() => {
-  // Reward path: two slots, RUN.applySplice, read the merged base slot.
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   const slots = RUN.getSlots();
   slots.length = 0;
@@ -80,7 +76,6 @@ console.log('\n=== the two pathways agree on merged slot data (identical end sta
   check('reward-path applySplice succeeded', ok === true);
   const rewardSlot = RUN.getSlots()[0];
 
-  // In-game path: same two as battlefield perms with run slots; Stapler staples.
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
   const G = ENGINE.state();

@@ -1,6 +1,3 @@
-// The id-keyed guard only fires when ability_id is present; an id-less
-// grant re-pushes on recast. This test pins that behavior so any change to
-// it is a deliberate ruling, not a silent regression.
 const setup = require('./_setup');
 setup.loadEngine();
 

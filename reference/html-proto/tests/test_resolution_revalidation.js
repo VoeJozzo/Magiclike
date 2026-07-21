@@ -74,10 +74,6 @@ function settled(G) {
 
 console.log('=== A3-1 (a): hexproof gained IN RESPONSE — the waiting trigger fizzles ===');
 (() => {
-  // Opp's Flame Wisp ETB (2 damage to target opp creature) locks your creature;
-  // you respond with a REAL flash cast — Ambush Djinn + Aether Drake, built by
-  // the game's own staple synthesis — whose ETB grants the locked target
-  // hexproof before the wisp trigger resolves.
   const G = newGame();
   const victim = mk('abyss_lurker', 'you');   // the wisp ETB's only legal target
   G.you.battlefield.push(victim);
@@ -104,7 +100,6 @@ console.log('=== A3-1 (a): hexproof gained IN RESPONSE — the waiting trigger f
     && Array.isArray(trig.targets) && trig.targets[0] && trig.targets[0].iid === victim.iid,
     trig && JSON.stringify(trig.targets));
 
-  // THE RESPONSE — a real cast, at flash speed, while the trigger waits.
   check('precondition: flash response is legal with the trigger on the stack',
     ENGINE.isLegalAction('you', { type: 'castSpell', cardIid: synth.iid }));
   G.log.length = 0;
@@ -169,7 +164,6 @@ console.log('\n=== A3-1 (b): multi-target PARTIAL fizzle — drop the illegal sl
     && trig.targets[0] && trig.targets[0].iid === mine.iid,
     trig && JSON.stringify(trig.targets));
 
-  // The response window: slot 0's target gains hexproof while the trigger waits.
   mine.keywords.push('hexproof');
   driveUntil(G, () => settled(G));
 
@@ -184,8 +178,8 @@ console.log('\n=== A3-1 (b): multi-target PARTIAL fizzle — drop the illegal sl
 console.log('\n=== A3-1 (spell twin, §704.1): all targets illegal — the SPELL fizzles whole, riders included ===');
 (() => {
   // Consume Spirit: damage 4 to target creature + its controller gains 4 life
-  // (an untargeted scope:self rider). Hexproof gained in response must fizzle
-  // the WHOLE spell: no damage AND no lifegain.
+  // (an untargeted scope:self rider). The victim gains hexproof in response,
+  // before the spell resolves.
   const G = newGame();
   const victim = mk('abyss_lurker', 'you');
   G.you.battlefield.push(victim);
@@ -198,7 +192,6 @@ console.log('\n=== A3-1 (spell twin, §704.1): all targets illegal — the SPELL
   check('precondition: the spell is on the stack with the victim locked',
     G.stack.length === 1 && G.stack[0].targets && G.stack[0].targets[0].iid === victim.iid);
 
-  // The response window: the locked target gains hexproof.
   victim.keywords.push('hexproof');
   driveUntil(G, () => settled(G));
 

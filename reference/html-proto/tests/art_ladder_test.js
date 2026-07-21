@@ -13,8 +13,7 @@ function check(label, ok, info) {
 
 console.log('=== effectiveArt: card with no art_ladder returns its (resolved) base art ===');
 {
-  // No ladder → no rung logic; the base art is returned, resolved from the bare
-  // stored filename to the card's own folder (the resolveArtPath pass).
+  // Resolved from the bare stored filename to the card's own folder (the resolveArtPath pass).
   const lions = ENGINE.makeCard('savannah_lions');
   check('non-ladder card returns its base art (folder-resolved)',
     effectiveArt(lions) === 'cards/savannah_lions/art.png', 'got=' + effectiveArt(lions));
@@ -31,15 +30,12 @@ console.log('\n=== effectiveArt: Elystra at base p+t=2 -> art-1 ===');
 
 console.log('\n=== effectiveArt: Elystra with p+t in [10, 19] -> art-2 ===');
 {
-  // 5/5 -> sum 10 -> threshold 10 met
   const elystra = ENGINE.makeCard('elystra_the_immortal');
   elystra.modifiers = [{ power: 4, toughness: 4 }];   // 1+4=5, 1+4=5 -> 5/5
-  // ENGINE.getStats walks modifiers; sum should be 10.
   const [p, t] = ENGINE.getStats(elystra);
   console.log('  with +4/+4 modifier:', p, '/', t);
   check('p+t = 10 picks art-2', /art-2\.png$/.test(effectiveArt(elystra)));
 
-  // 9/9 -> sum 18 -> still art-2 (not yet 20)
   elystra.modifiers = [{ power: 8, toughness: 8 }];
   const [p2, t2] = ENGINE.getStats(elystra);
   console.log('  with +8/+8 modifier:', p2, '/', t2);
@@ -48,14 +44,12 @@ console.log('\n=== effectiveArt: Elystra with p+t in [10, 19] -> art-2 ===');
 
 console.log('\n=== effectiveArt: Elystra with p+t >= 20 -> art-3 ===');
 {
-  // 10/10 -> sum 20
   const elystra = ENGINE.makeCard('elystra_the_immortal');
   elystra.modifiers = [{ power: 9, toughness: 9 }];
   const [p, t] = ENGINE.getStats(elystra);
   console.log('  with +9/+9 modifier:', p, '/', t);
   check('p+t = 20 picks art-3 (final form)', /art-3\.png$/.test(effectiveArt(elystra)));
 
-  // 15/15 -> sum 30
   elystra.modifiers = [{ power: 14, toughness: 14 }];
   const [p2, t2] = ENGINE.getStats(elystra);
   console.log('  with +14/+14 modifier:', p2, '/', t2);
@@ -65,11 +59,9 @@ console.log('\n=== effectiveArt: Elystra with p+t >= 20 -> art-3 ===');
 console.log('\n=== effectiveArt: just-below-threshold boundaries ===');
 {
   const elystra = ENGINE.makeCard('elystra_the_immortal');
-  // 4/4 -> sum 9 -> still art-1
   elystra.modifiers = [{ power: 3, toughness: 3 }];
   check('p+t = 9 still picks art-1 (one below threshold)',
     /art-1\.png$/.test(effectiveArt(elystra)));
-  // 9/10 -> sum 19 -> still art-2
   elystra.modifiers = [{ power: 8, toughness: 9 }];
   check('p+t = 19 still picks art-2 (one below threshold)',
     /art-2\.png$/.test(effectiveArt(elystra)));
@@ -91,8 +83,7 @@ console.log("\n=== effectiveArt: template's art_ladder is in the card data ===")
 
 console.log('\n=== effectiveArt: non-Creature with ladder ignored (defensive) ===');
 {
-  // Fake non-creature with a ladder. The helper should return base art
-  // since computing p+t doesn't make sense for non-creatures.
+  // Computing p+t doesn't make sense for non-creatures.
   const fake = { types: ['Instant'], art: 'base.png', art_ladder: [
     { min_pt: 0, art: 'low.png' }, { min_pt: 10, art: 'high.png' }
   ]};
@@ -113,7 +104,6 @@ console.log('\n=== resolveArtPath: bare filename derives from the card\'s own fo
   check('char resolves to its OWN folder (id-derived, not a stored path)',
     effectiveArt(ENGINE.makeCard('char')) === 'cards/char/art.png');
 
-  // No data edit is needed — the new folder resolves purely from the id.
   check('a renamed id auto-resolves to the new folder (rename-proof)',
     effectiveArt({ tplId: 'some_new_id', art: 'art.png' }) === 'cards/some_new_id/art.png');
 

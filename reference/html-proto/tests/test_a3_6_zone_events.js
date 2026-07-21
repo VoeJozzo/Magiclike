@@ -143,10 +143,9 @@ console.log('\n=== "whenever a card is discarded" — AI discard path (hand → 
 
 console.log('\n=== human forced-discard resolution (doDiscard) emits with the forcing card attributed ===');
 (() => {
-  // executeAction's step() resolves the queued triggers immediately, so pin
-  // via life deltas: an unguarded listener (+1) proves the emission; a
-  // noSelfCascade listener (+5) cast as the FORCER proves source_iid is
-  // threaded (it must self-suppress — the test_event_source_iid pattern).
+  // executeAction's step() resolves queued triggers immediately, so this
+  // pins the effect via life deltas instead of reading pendingTriggers
+  // directly (source_iid-threading pattern: test_event_source_iid.js).
   const G = newGame();
   const plain = mk(VANILLA, 'you');
   plain.triggers = [onMove('hand', 'graveyard')];
@@ -248,10 +247,7 @@ console.log('\n=== tutors are library→hand moves — AI search + human searchP
   check('AI tutor payload carries source_iid', G.pendingTriggers[0]
     && G.pendingTriggers[0].event.source_iid === -7);
   G.pendingTriggers = [];
-  // Human path: prompt opens, searchPick resolves it. Same life-delta pin as
-  // the doDiscard block: the searching card is itself a noSelfCascade
-  // library→hand listener (+5) — threaded source_iid must self-suppress it,
-  // while the plain listener above (+1) proves the emission happened.
+  // Human path: same life-delta pin as the doDiscard block above.
   const searcher = mk(VANILLA, 'you');
   searcher.triggers = [Object.assign(onMove('library', 'hand'),
     { effects: [{ kind: 'gain_life', scope: 'self', amount: 5 }], generated: true, noSelfCascade: true })];
@@ -316,8 +312,6 @@ console.log('\n=== full loop: cast emits hand→stack, resolution emits stack→
 
 console.log('\n=== existing-pool isolation (structural pin): every shipped/generated card_zone_change trigger is battlefield-touching ===');
 (() => {
-  // If this ever fails, a pool trigger became matchable by a
-  // non-battlefield event — re-audit pool behavior before shipping it.
   const movesArgs = (cond) => {
     const out = [];
     const walk = (t) => {
@@ -405,7 +399,6 @@ console.log('\n=== a draw-triggered draw cannot loop unboundedly — the per-epi
   readyMain(G, 'you');
   G.pendingTriggers = [];
   const hand0 = G.you.hand.length;
-  // Seed draw (foreign source), then let the real priority loop chew the chain.
   ENGINE.applyEffect({ controller: 'you', sourceName: 'Seed', sourceIid: -11 },
     { kind: 'draw', amount: 1 }, null);
   const settled = passUntil(G, () => G.stack.length === 0 && G.pendingTriggers.length === 0

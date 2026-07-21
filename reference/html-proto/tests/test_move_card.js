@@ -107,7 +107,6 @@ console.log('\n=== reanimate: graveyard → battlefield (iid-mint §3.7) ===');
   ENGINE.applyEffect(CTX, { kind: 'move_card', from_zone: 'graveyard', to_zone: 'battlefield', selector: 'target', amount: 1 },
     { kind: 'creature', iid: oldIid });
   check('off graveyard', !has(G.you.graveyard, oldIid));
-  // After iid-mint, the card carries a NEW iid — find it on the battlefield.
   const arrived = G.you.battlefield.find(x => x !== undefined && x.tplId === CREATURE_TPL && x.iid !== oldIid);
   check('on battlefield with a FRESH iid (old iid is gone)',
     !!arrived && !has(G.you.battlefield, oldIid), 'oldIid=' + oldIid);
@@ -213,7 +212,7 @@ console.log('\n=== search: string creature filter constrains human picks and leg
 
 console.log('\n=== discard: hand → graveyard, AI auto-picks (targeted-player discard, e.g. Duress) ===');
 (() => {
-  // An opponent-targeted discard makes the AI discard one (auto-picks cheapest).
+  // AI auto-pick discards its cheapest card (optimizes for self, per MTG).
   G.opp.hand = [ENGINE.makeCard(CREATURE_TPL), ENGINE.makeCard(CREATURE_TPL)];
   const h0 = G.opp.hand.length;
   ENGINE.applyEffect({ controller: 'you', sourceName: 'Duress', sourceIid: -1 },

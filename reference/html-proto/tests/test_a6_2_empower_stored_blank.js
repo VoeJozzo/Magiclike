@@ -24,8 +24,6 @@ const SPELL = 'lava_spike';  // damage 3 spell staple (its damage is the only ta
 
 console.log('=== A6-2: a stored-blank empower roll stays blank (no wandering re-roll) ===');
 (() => {
-  // Base had nothing to empower at roll time -> slot stored null. After a staple
-  // adds an empowerable field, a rebuild must NOT start empowering it.
   const c1 = ENGINE.makeCard(LAND, ['empower'], 0, [null], null, [SPELL], []);
   check('stored-null empower does NOT bump the staple damage (stays 3)', trigDamage(c1) === 3, 'dmg=' + trigDamage(c1));
   const c2 = ENGINE.makeCard(LAND, ['empower'], 0, [null], null, [SPELL], []);
@@ -45,7 +43,7 @@ console.log('\n=== A6-2: cloning preserves a stored-null roll as null (no {...nu
   RUN.start({ cards: Array(5).fill('mountain'), colors: ['R'] }, null);
   const slots = RUN.getSlots();
   slots[0].stickers = ['empower'];
-  slots[0].empowerRolls = [null];   // a stored blank
+  slots[0].empowerRolls = [null];
   RUN.recordResult('you', [], []);
   const reward = RUN.getReward();
   reward.candidates = [{ kind: 'clone', slotIdx: 0 }];

@@ -34,7 +34,7 @@ func _ready() -> void:
 	var bolt: CardInstance = _find_in_hand(s.you, "lightning_bolt")
 	assert(pyro != null and berserker != null and bolt != null)
 
-	# Tap 2 Mountains for RR (Pyromaniac costs 1R)
+	# Pyromaniac costs 1R.
 	_tap_for_color(s, "you", "mountain", "R")
 	_tap_for_color(s, "you", "mountain", "R")
 	_assert_eq(s.you.mana.pool["R"], 2, "have RR to cast Pyromaniac")
@@ -47,9 +47,7 @@ func _ready() -> void:
 	# fires ETB trigger which queues and drains onto stack.
 	ok = RulesEngine.execute_action(Action.make_pass_priority())
 	_assert_true(ok, "you pass priority")
-	# Pyromaniac's ETB ability needs a target (any target). After resolution +
-	# ETB drain, the engine halts at awaiting_target_for_trigger. The trigger
-	# is in pending_triggers but NOT yet on stack.
+	# Pyromaniac's ETB ability needs a target (any target).
 	_assert_eq(s.pending_triggers.size(), 1, "Pyromaniac ETB trigger pending a target")
 	_assert_true(not s.awaiting_target_for_trigger.is_empty(), "engine awaits target pick")
 	_assert_eq(s.stack.size(), 0, "stack empty until target is picked")
@@ -76,8 +74,7 @@ func _ready() -> void:
 	_assert_eq(s.opp.life_lost_this_turn, 1, "opp.life_lost_this_turn = 1")
 
 	# ─── Scenario B: Bloodlust Berserker death trigger (predicate TRUE) ─────
-	# Cast Bloodlust Berserker (cost {R:2, C:1} = 3 mana total). We tapped 2
-	# Mountains for Pyromaniac (cost {R:1, C:1} = 2 mana total); 0 mana left.
+	# Bloodlust Berserker costs {R:2, C:1} (3 mana); Pyromaniac cost {R:1, C:1} (2 mana).
 	_assert_eq(s.you.mana.pool.get("R", 0), 0, "mana pool empty after casting Pyromaniac")
 	# Tap the last untapped Mountain (1 R available). For Berserker (3) + a
 	# follow-up Bolt (1), need 4 R total. Inject 3 more.
@@ -91,7 +88,6 @@ func _ready() -> void:
 
 	ok = RulesEngine.execute_action(Action.make_pass_priority())
 	_assert_true(ok, "you pass priority — Berserker resolves")
-	# Berserker has no ETB triggers; stack should be empty after resolution.
 	_assert_eq(s.stack.size(), 0, "stack empty after Berserker resolves (no ETB trigger)")
 	_assert_eq(s.pending_triggers.size(), 0, "no pending triggers from Berserker ETB")
 
@@ -102,7 +98,7 @@ func _ready() -> void:
 			break
 	_assert_true(berserker_in_play != null, "Berserker is on the battlefield as a 3/2")
 
-	# Cost is R; mana pool has R left (3 - 2 paid for Berserker = 1 R).
+	# Berserker's total cost (3, incl. generic) paid from the pool's 4 R: 4 - 3 = 1 R left.
 	_assert_eq(s.you.mana.pool["R"], 1, "have R for Bolt")
 	var target = {"kind": "creature", "iid": berserker_in_play.instance_id}
 	ok = RulesEngine.execute_action(Action.make_cast_spell(bolt.instance_id, [target]))
@@ -110,9 +106,8 @@ func _ready() -> void:
 	_assert_eq(s.stack.size(), 1, "stack has Bolt")
 
 	# Opp won't respond (the AI only responds to Bolts on opp creatures).
-	# Bolt resolves → 3 damage to Berserker (toughness 2) → SBA kills
-	# Berserker → death trigger queues (predicate: opp_lost_life_this_turn is
-	# TRUE because Pyromaniac dealt 1 earlier) → drain → trigger on stack.
+	# Bolt deals 3 to Berserker (toughness 2); predicate opp_lost_life_this_turn
+	# is true because Pyromaniac dealt damage earlier this turn.
 	ok = RulesEngine.execute_action(Action.make_pass_priority())
 	_assert_true(ok, "you pass priority — Bolt resolves, Berserker dies, death trigger queues")
 	_assert_eq(s.stack.size(), 1, "death trigger on stack")
@@ -129,8 +124,6 @@ func _ready() -> void:
 	_assert_eq(s.opp.life, 17, "opp took 2 more damage from Berserker death trigger (19 → 17)")
 
 	# ─── Scenario C: Predicate negative case ────────────────────────────────
-	# Fresh state, Berserker dies BEFORE opp has lost life → trigger should
-	# NOT queue (predicate returns false).
 	RulesEngine.init_phase4()
 	s = RulesEngine.state()
 	var fresh_berserker := s.make_instance(CardDatabase.get_card("bloodlust_berserker"), "you")

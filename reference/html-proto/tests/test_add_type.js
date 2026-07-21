@@ -37,10 +37,6 @@ console.log('\n=== addType: missing / empty inputs ===');
 
 console.log('\n=== addType stores to the PERMANENT base, not the effective set ===');
 (() => {
-  // A temporary add_type grant makes the card effectively a Goblin while the base
-  // does not carry it. A subtype-roll addType must STILL store Goblin — otherwise
-  // it would vanish when the grant clears. (An effective-set/hasType dedup would
-  // wrongly skip it; this pins the correct base-dedup behavior.)
   const c = { types: ['Creature'], typeGrants: [{ tags: ['Goblin'], op: 'add', eot: true }] };
   check('granted Goblin is effective but absent from the base',
     hasType(c, 'Goblin') && !c.types.includes('Goblin'));

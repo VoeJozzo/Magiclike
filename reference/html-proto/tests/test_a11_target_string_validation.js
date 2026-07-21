@@ -19,17 +19,12 @@ const quiet = (fn) => {
 console.log('=== A11-1: unknown slot/effect-level target strings flagged at boot ===');
 (() => {
   const r = quiet(() => ENGINE.validateAllCardEffects([
-    // effect-level e.target typo
     { tplId: 'effBad', effects: [{ kind: 'damage', amount: 2, target: 'creatrue' }] },
-    // card-level target_slots[i].target typo
     { tplId: 'slotBad', target_slots: [{ target: 'permanant' }], effects: [{ kind: 'damage', amount: 2 }] },
-    // ability-level slot typo
     { tplId: 'abSlotBad', abilities: [{ cost: { tap: true }, target_slots: [{ target: 'nope' }],
         effects: [{ kind: 'pump', power: 1, toughness: 1 }] }] },
-    // trigger-level slot typo
     { tplId: 'trigSlotBad', triggers: [{ event: 'card_zone_change', target_slots: [{ target: 'whoops' }],
         effects: [{ kind: 'pump', power: 1, toughness: 1 }] }] },
-    // a fully-valid targeted card — must NOT be flagged
     { tplId: 'topOk', target: 'creature', effects: [{ kind: 'damage', amount: 2 }] },
   ]));
   check('returns a targetErrors list', Array.isArray(r.targetErrors), JSON.stringify(r.targetErrors));

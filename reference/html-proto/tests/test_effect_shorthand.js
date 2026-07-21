@@ -56,7 +56,6 @@ console.log('\n=== normalizeCardEffects: strings → dicts; dicts pass through =
   check('shorthand entry normalized', eq(card.effects[0], { kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'controller_top', amount: 1 }));
   check('dict entry untouched (same reference identity)', card.effects[1].kind === 'damage' && card.effects[1].amount === 2);
 
-  // dict-only card is a no-op (idempotent for the current pool)
   const dictCard = { effects: [{ kind: 'gain_life', amount: 3 }] };
   const before = JSON.stringify(dictCard);
   normalizeCardEffects(dictCard);
@@ -71,7 +70,6 @@ console.log('\n=== normalizeCardEffects: strings → dicts; dicts pass through =
 
 console.log('\n=== execution: a shorthand effect resolves through the real engine ===');
 (() => {
-  // Proves the desugar is executable, not just shape-correct.
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
   const G = ENGINE.state();

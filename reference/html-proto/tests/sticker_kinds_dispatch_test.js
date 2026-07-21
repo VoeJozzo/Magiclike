@@ -59,12 +59,11 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 }
 
 {
-  // remove_keyword: lose_defender strips a Wall's (subtype-derived) defender so it can attack.
   // The precondition rides an UNSTICKERED card: applySubtypeKeywords honors
   // remove_keyword stickers, so a stickered Wall never passes through a state
   // where it has defender — there is no intermediate to observe.
   const bare = freshCard('wall_of_omens', []);
-  ENGINE.applySubtypeKeywords(bare);   // Wall→defender is derived, not printed on the card
+  ENGINE.applySubtypeKeywords(bare);
   check('lose_defender precondition: wall_of_omens has defender via its Wall subtype',
     bare.keywords.includes('defender'));
   const card = freshCard('wall_of_omens', ['lose_defender']);
@@ -94,7 +93,7 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 {
   const card = freshCard('plains', ['land_color_w']);
   applyStickersToCard(card);
-  // Adding the native color is a no-op — still just W (no duplicate / no choose).
+  // No duplicate color added, and no promotion to a choose-type mana ability.
   check("landColor: native 'W' stays single-color", JSON.stringify(ENGINE.landProducibleColors(card)) === JSON.stringify(['W']));
 }
 
@@ -225,7 +224,6 @@ console.log('\n=== stickerBadgesHtml: only non-redundant kinds render (Q2) ===')
   check('lose_defender (remove_keyword) badge still renders', html.includes('Loses Defender'));
 }
 
-// DROPPED — already shown in oracle text / type line / P-T box / cost box.
 {
   check('statBoost badge suppressed (shown in P/T box)', stickerBadgesHtml(['plus1_plus1']) === '');
   check('keyword badge suppressed (shown in oracle text)', stickerBadgesHtml(['kw_flying']) === '');
@@ -252,7 +250,7 @@ console.log('\n=== Q1: sticker-granted text is flagged for coloring ===');
   check('sticker-granted keyword segment flagged sticker:true', !!flyingSeg && flyingSeg.sticker === true);
 }
 {
-  const card = freshCard('air_elemental', []);  // 4/4 with intrinsic flying
+  const card = freshCard('air_elemental', []);  // intrinsic flying, not sticker-granted
   applyStickersToCard(card);
   const segs = describeCardSegments(card, { skipKeywords: false });
   const flyingSeg = segs.find(s => s.text === 'Flying');
@@ -276,8 +274,6 @@ console.log('\n=== Q1: sticker-granted text is flagged for coloring ===');
 console.log('\n=== Q3: land-color stickers add a land type (mana autogranted) ===');
 
 {
-  // 'Also a Mountain' adds the Mountain subtype to a Plains; the §305.6 autogrant
-  // then yields red mana. The native white production is preserved.
   const card = freshCard('plains', ['land_color_r']);
   applyStickersToCard(card);
   check('land_color_r adds the Mountain land type', hasType(card, 'Mountain'));

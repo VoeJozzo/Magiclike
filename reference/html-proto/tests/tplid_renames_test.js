@@ -1,8 +1,5 @@
 // tplId renames: four cards had legacy tplIds that didn't match their
-// display names. This test verifies:
-//   1. The new tplIds are in CARDS and the manifest; the old ones are gone.
-//   2. TPLID_RENAMES maps every old id to the right new id.
-//   3. The v1->v2 save migration translates every persisted tplId field.
+// display names.
 //
 // If a future Claude reverts a rename or adds a 5th legacy mismatch, this
 // test fails loudly.
@@ -74,7 +71,7 @@ console.log('\n=== v1->v2 save migration translates every PERSISTED tplId carrie
         phase: 'mixed',
         candidates: [
           { kind: 'transform', slotIdx: 1, replacementPack: ['fireImp', 'merfolk'] },
-          { kind: 'sticker', slotIdx: 0, sticker_id: 'empower' },   // sticker id, never renamed
+          { kind: 'sticker', slotIdx: 0, sticker_id: 'empower' },
         ],
       },
     },
@@ -98,13 +95,13 @@ console.log('\n=== v1->v2 save migration translates every PERSISTED tplId carrie
   check('no phantom currentPack field invented', !('currentPack' in migrated.runState));
   check('no phantom youPicks field invented', !('youPicks' in migrated.runState));
   check('no phantom oppDecks field invented', !('oppDecks' in migrated.runState));
-  // Every migrated id resolves in CARDS (no "Unknown card" on next deck build).
+  // Unmigrated ids throw "Unknown card" (js/engine.js) on next deck build.
   const allIds = [...migrated.runState.slots, ...migrated.runState.midGameSlotsSnapshot].map(s => s.tplId);
   check('every migrated slot/snapshot tplId resolves in CARDS (no run-destruction)',
     allIds.every(id => !!CARDS[id]), allIds.filter(id => !CARDS[id]).join(','));
 }
 
-// Second sub-case: Shape B ('transformPick' phase) — a top-level replacementPack.
+// Shape B: replacementPack is top-level on pendingReward, not nested under a candidate (contrast Shape A above).
 console.log('\n=== A9-1: transformPick-phase reward replacementPack (Shape B) ===');
 {
   const v1Blob = {

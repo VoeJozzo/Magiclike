@@ -6,14 +6,7 @@
 // highest-power unused creature for {select:...} computed operands ("your
 // strongest creature fights..."). Pass 2 must never backfill a {slot} operand
 // whose chosen creature died in response — that would draft the caster's
-// next-biggest creature into the fight instead of fizzling it. This file
-// pins:
-//   1. Prey Upon shape ({slot},{slot}): the enemy target dies in response →
-//      the fight fizzles, NO friendly fire on the caster's other creature;
-//   2. same with the CASTER's chosen creature dead → fizzle (no substitute);
-//   3. Beast's Fury shape ({select},{slot}): dead slot target → fizzle, no
-//      second friendly recruited as the punching bag;
-//   4. the {select} auto-pick itself still works when the slot target is live.
+// next-biggest creature into the fight instead of fizzling it.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -48,12 +41,12 @@ function kill(who, c) {
 console.log('=== 1. Prey Upon: enemy target dies in response → fizzle, no friendly fire ===');
 (() => {
   clearBoards();
-  const fighter  = place('you', 'goblin_raider', 2, 2);  // chosen slot-0 fighter
-  const innocent = place('you', 'goblin_raider', 4, 4);  // bystander pass 2 must not conscript
-  const victim   = place('opp', 'goblin_raider', 3, 2);  // chosen slot-1 target
+  const fighter  = place('you', 'goblin_raider', 2, 2);
+  const innocent = place('you', 'goblin_raider', 4, 4);
+  const victim   = place('opp', 'goblin_raider', 3, 2);
   const ctx = { controller: 'you', sourceName: 'Prey Upon', sourceIid: -1,
                 allTargets: [tgt(fighter), tgt(victim)] };
-  kill('opp', victim);  // dies in response, before the fight resolves
+  kill('opp', victim);
   ENGINE.applyEffect(ctx, { kind: 'fight', operands: [{ slot: 0 }, { slot: 1 }] }, null);
   check('chosen fighter took NO damage', fighter.damage === 0, 'damage=' + fighter.damage);
   check('innocent bystander took NO damage (was: conscripted as replacement)',
@@ -70,7 +63,7 @@ console.log('\n=== 2. caster\'s chosen creature dead → fizzle (no substitute f
   const victim   = place('opp', 'goblin_raider', 3, 2);
   const ctx = { controller: 'you', sourceName: 'Prey Upon', sourceIid: -1,
                 allTargets: [tgt(fighter), tgt(victim)] };
-  kill('you', fighter);  // our own pick is gone instead
+  kill('you', fighter);
   ENGINE.applyEffect(ctx, { kind: 'fight', operands: [{ slot: 0 }, { slot: 1 }] }, null);
   check('enemy target took NO damage (no substitute stepped in)',
     victim.damage === 0, 'damage=' + victim.damage);

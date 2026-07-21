@@ -1,9 +1,7 @@
 // target() draws from a closed taxonomy of target kinds, plus an optional
-// `target_filter` so cards like Doom Blade ("non-black creature"), Ravenous
-// Plague ("toughness 3 or less"), Smite ("tapped"), and Vine Strangle
-// ("flying creature an opponent controls") express their restriction on the
-// unified target() step instead of a per-effect filter. The restriction is
-// enforced at cast legality + highlights, not just rendered in text.
+// `target_filter` expressing a card's restriction on the unified target()
+// step instead of a per-effect filter. The restriction is enforced at cast
+// legality + highlights, not just rendered in text.
 
 const setup = require('./_setup');
 setup.loadEngine();

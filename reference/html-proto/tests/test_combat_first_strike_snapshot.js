@@ -96,8 +96,6 @@ if (!VANILLA || !CARDS['skyfire_drakelord'] || !CARDS['goblin_raider'] || !CARDS
     check('raider survives, grant revoked by the lord\'s death',
       !!raiderNow && !raiderNow.keywords.includes('first_strike'),
       raiderNow ? 'keywords=' + JSON.stringify(raiderNow.keywords) : 'raider dead');
-    // Pin: raider deals its buffed 3 in pass 1 (granted FS) only — it must
-    // not deal again in pass 2 after the grant is revoked.
     check('A2-1: face damage is the pass-1 hit only (3, not 5)',
       oppLifeAtStart - G.opp.life === 3,
       'face damage=' + (oppLifeAtStart - G.opp.life));
@@ -158,8 +156,6 @@ if (!VANILLA || !CARDS['skyfire_drakelord'] || !CARDS['goblin_raider'] || !CARDS
     check('X survives and GAINED first strike between passes (vigilance revoked)',
       !!xNow && xNow.keywords.includes('first_strike'),
       xNow ? 'keywords=' + JSON.stringify(xNow.keywords) : 'X dead');
-    // Pin: X had no first strike when damage started, so the snapshot
-    // assigns it pass 2 — it deals its (now unbuffed) 2 there.
     check('A2-1: X deals its single pass-2 hit (2, not 0)',
       oppLifeAtStart - G.opp.life === 2,
       'face damage=' + (oppLifeAtStart - G.opp.life));

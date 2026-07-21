@@ -29,7 +29,6 @@ func _ready() -> void:
 		_assert_true(any_card.card_id != "" and any_card.display_name != "",
 			"loaded card has card_id + display_name")
 
-	# Type string → resource subclass.
 	_assert_true(_pick(all_cards, func(c): return c is SpellResource) != null,
 		"a Sorcery/Instant loads as SpellResource")
 	_assert_true(_pick(all_cards, func(c): return c is CreatureResource) != null,
@@ -37,8 +36,7 @@ func _ready() -> void:
 	_assert_true(_pick(all_cards, func(c): return c is LandResource) != null,
 		"a Land loads as LandResource")
 
-	# 1. Targeted spell → requires_target + a target_filter, inferred from the
-	#    card-root "target" (bolt-shaped).
+	# target_filter is inferred from the card-root "target" field (bolt-shaped).
 	var targeted: CardResource = _pick(all_cards,
 		func(c): return c is SpellResource and (c as SpellResource).requires_target)
 	if _assert_true(targeted != null, "found a targeted spell"):
@@ -48,7 +46,6 @@ func _ready() -> void:
 		_assert_true(s.card_types.size() == 1 and s.card_types[0] == s.card_types[0].to_lower(),
 			"spell card_types is one lowercased type (%s)" % str(s.card_types))
 
-	# 2. Burn spell (damage effect) → cost + effect fields translate.
 	var burn: CardResource = _pick(all_cards, func(c):
 		if not (c is SpellResource):
 			return false
@@ -62,8 +59,8 @@ func _ready() -> void:
 		var dmg: Dictionary = _first_effect(burn.on_cast_effects, "damage")
 		_assert_true(int(dmg.get("amount", 0)) > 0, "damage effect carries a positive amount")
 
-	# 3. Effect kinds load as canonical snake_case. Card data is authored
-	#    snake_case; a camelCase leak here would mean the wire format drifted.
+	# Card data is authored snake_case; a camelCase leak here would mean the
+	# wire format drifted.
 	var with_eff: CardResource = _pick(all_cards,
 		func(c): return not (c as CardResource).on_cast_effects.is_empty())
 	if _assert_true(with_eff != null, "found a card with on_cast_effects"):
@@ -74,14 +71,13 @@ func _ready() -> void:
 				all_snake = false
 		_assert_true(all_snake, "effect kinds are snake_case (no camelCase leak)")
 
-	# 4. Creature keyword passthrough — first_strike (a canonical multi-word kw).
+	# first_strike is a canonical multi-word keyword.
 	var fs_creature: CardResource = _pick(all_cards,
 		func(c): return c is CreatureResource and "first_strike" in (c as CreatureResource).keywords)
 	if _assert_true(fs_creature != null, "found a first_strike creature"):
 		_assert_true("first_strike" in (fs_creature as CreatureResource).keywords,
 			"keyword loads as snake_case first_strike")
 
-	# 5. Trigger passthrough — event + nested effects survive the load.
 	var trig_card: CardResource = _pick(all_cards,
 		func(c): return (c as CardResource).triggers.size() >= 1)
 	if _assert_true(trig_card != null, "found a card with a trigger"):
@@ -90,8 +86,7 @@ func _ready() -> void:
 			"trigger has an event (%s)" % str(t.get("event", "")))
 		_assert_true(t.get("effects", []) is Array, "trigger carries an effects array")
 
-	# 6. Land mana — mana_produced comes from the `mana` shorthand; entries are
-	#    valid single-letter color codes.
+	# mana_produced comes from the card's `mana` shorthand field.
 	var land: CardResource = _pick(all_cards,
 		func(c): return c is LandResource and not (c as LandResource).mana_produced.is_empty())
 	if _assert_true(land != null, "found a mana-producing land"):
@@ -102,7 +97,6 @@ func _ready() -> void:
 		_assert_true(valid,
 			"land mana_produced are WUBRGC codes (%s)" % str((land as LandResource).mana_produced))
 
-	# 7. Supportability scan over the whole manifest.
 	print("\n--- Supportability report over the full manifest ---")
 	var report: Dictionary = JsonCardLoader.supportability_report(all_cards, true)
 	_assert_eq(report.total, all_cards.size(), "report.total matches load count")
@@ -115,7 +109,6 @@ func _ready() -> void:
 	_assert_true(report.missing_effects.has("affect_creature"),
 		"affect_creature is in missing_effects")
 
-	# ─── Final report ────────────────────────────────────────────────────
 	print("")
 	if failures == 0:
 		print("=== JsonCardLoader smoke test: ALL ASSERTIONS PASSED ✓ ===\n")

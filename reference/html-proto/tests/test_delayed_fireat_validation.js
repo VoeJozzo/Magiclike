@@ -3,14 +3,6 @@
 // would sit in G.delayedTriggers forever, re-checked on every cleanup.
 // EFFECT_SCHEMA rejects the same shape at boot. Sibling leak (unknown
 // effect kind silently dropped in the same drain) is A1-6.
-//
-// Arms:
-//   1. KEY — scheduling with when:'eot' is refused (nothing enqueued) and
-//      console.warn fires.
-//   2. Guard — when:'end_step' still enqueues fireAt:'endStep'.
-//   3. KEY — EFFECT_SCHEMA flags a schedule_delayed with a bad `when` at
-//      boot validation.
-//   4. Guard — the well-formed shape (otherworldly_journey's) stays clean.
 
 const setup = require('./_setup');
 setup.loadEngine();

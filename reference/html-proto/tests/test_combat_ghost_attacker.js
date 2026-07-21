@@ -8,15 +8,6 @@
 // crosses a creature off the attacker list and retires its block entries
 // the moment it leaves the battlefield.
 //
-// This file pins:
-//   1. the ghost-attack line, end-to-end through real actions:
-//      declare attacker -> opp declares no blocks -> bounce the attacker
-//      (Unsummon) -> flash-re-cast it -> pass to damage -> NO damage dealt
-//   2. structural: the bounced creature is pruned from G.attackers
-//   3. guard (green before AND after): a BLOCKER killed in the block window
-//      does not un-block its attacker — the attacker stays blocked and
-//      deals no face damage (MTG 510.1c "blocked stays blocked")
-//
 // Note: 'you' keeps untapped lands on the battlefield so the engine's
 // auto-pass fast-path (hasNoAction) doesn't fast-forward the combat's
 // priority rounds before the test can act in them.
@@ -84,13 +75,10 @@ if (!VANILLA || !CARDS['unsummon'] || !CARDS['lightning_bolt'] || !CARDS['plains
     const A = mk(VANILLA, 'you');
     A.keywords = ['flash']; A.power = 2; A.toughness = 2; A.sick = false;
     G.you.battlefield.push(A);
-    // Afford Unsummon ({U}) and the re-cast ({B}{B}{3}) from real lands.
     giveLands(G, 'you', ['island', 'island', 'swamp', 'swamp', 'swamp', 'swamp', 'swamp']);
     const bounce = mk('unsummon', 'you');
     G.you.hand.push(bounce);
     readyMain(G, 'you');
-    // Anchor the defender's life BEFORE combat: with no blocks and the
-    // attacker bounced mid-combat, NOTHING may hit the face this turn.
     const oppLifeAtStart = G.opp.life;
 
     passUntil(G, () => G.phase === 'COMBAT_ATTACK');
@@ -127,7 +115,6 @@ if (!VANILLA || !CARDS['unsummon'] || !CARDS['lightning_bolt'] || !CARDS['plains
     check('A2-3: the re-cast creature is NOT in G.attackers',
       !G.attackers.includes(A.iid), 'attackers=' + JSON.stringify(G.attackers));
 
-    // A was never (re-)declared: no damage.
     passUntil(G, () => G.phase === 'MAIN2' || G.gameOver, 40);
     check('combat completed (reached MAIN2)', G.phase === 'MAIN2', 'phase=' + G.phase);
     check('A2-3: NO ghost combat damage was dealt',
@@ -141,7 +128,7 @@ if (!VANILLA || !CARDS['unsummon'] || !CARDS['lightning_bolt'] || !CARDS['plains
     const atk = mk(VANILLA, 'you');
     atk.power = 2; atk.toughness = 2; atk.sick = false;
     G.you.battlefield.push(atk);
-    giveLands(G, 'you', ['mountain', 'mountain']);   // afford the bolt ({R})
+    giveLands(G, 'you', ['mountain', 'mountain']);
     const blk = mk(VANILLA, 'opp');
     blk.power = 1; blk.toughness = 1; blk.sick = false;
     G.opp.battlefield.push(blk);

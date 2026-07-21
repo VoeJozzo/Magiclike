@@ -58,8 +58,7 @@ check('cloudshift still cast on OWN creature (flicker, shares bf→exile)', tria
 
 console.log('\n=== string-severity scoring (regression: severity read via _sevNum, not numeric) ===');
 (() => {
-  // A tap-severity spell must NOT fire when the only enemy creature is already
-  // tapped (the sev===1 → -50 guard). If severity were read as a raw string the
+  // Guarded by sev===1 → -50; if severity were read as a raw string, the
   // branch would fall through to the exile path and the AI would wrongly cast.
   const tapSpell = Object.keys(CARDS).find(k => {
     const e = (CARDS[k].effects || [])[0];
@@ -85,8 +84,7 @@ console.log('\n=== string-severity scoring (regression: severity read via _sevNu
 
 console.log('\n=== negative: do NOT bleach/embargo your own creature ===');
 (() => {
-  // targetSide=opp puts the only creature on the caster's side — removal must
-  // not fire on it (no opp-controlled target). AI should pass / not cast it.
+  // targetSide=opp puts the only creature on the caster's own side, not an opponent's.
   check('bleach does not target own creature', !trial('bleach', 'opp'));
   check('embargo does not target own creature', !trial('embargo', 'opp'));
 })();

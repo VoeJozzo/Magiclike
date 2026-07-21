@@ -41,8 +41,8 @@ console.log('=== deckColorsForSide unions the side\'s live cards across zones ==
 console.log('\n=== Bargain candidates honor deck colors (the fix) ===');
 {
   const st = bwState();
-  const swamp = st.you.battlefield[0];            // produces B; deck is B/W
-  const dc = deckColorsForSide(st, 'you');         // ['B','W']
+  const swamp = st.you.battlefield[0];
+  const dc = deckColorsForSide(st, 'you');
   const ids = bargainStickerCandidates([swamp], dc).map(c => c.sticker.id);
 
   check('ON-color land sticker allowed (W in deck, swamp lacks W) -> Also a Plains',
@@ -59,8 +59,7 @@ console.log('\n=== Bargain candidates honor deck colors (the fix) ===');
 
 console.log('\n=== Backward-compat: no deckColors arg -> unfiltered broad pool ===');
 {
-  // bargainStickerCandidates called with one arg (as test_bargain_weighted_pool
-  // does) returns every appliesTo-eligible land sticker, unfiltered.
+  // Caller contract: test_bargain_weighted_pool also relies on this one-arg form.
   const swamp = ENGINE.makeCard('swamp');
   const ids = bargainStickerCandidates([swamp]).map(c => c.sticker.id);
   check('without deckColors, off-color sticker still offered (old broad behavior)',
@@ -69,10 +68,8 @@ console.log('\n=== Backward-compat: no deckColors arg -> unfiltered broad pool =
 
 console.log('\n=== End-to-end: applyRandomStickersToSide never splashes off-color ===');
 {
-  // Mono-black side (a lone Swamp). The gate makes any off-color land subtype
-  // IMPOSSIBLE, so after a burst of bargain picks the Swamp must never gain
-  // Plains/Island/Mountain/Forest. (slotIdx is null on a bare makeCard, so the
-  // player-side RUN.applyStickerToSlot mirror is skipped.)
+  // slotIdx is null on a bare makeCard, so the player-side
+  // RUN.applyStickerToSlot mirror is skipped.
   const swamp = ENGINE.makeCard('swamp');
   const st = { you: { battlefield: [swamp], library: [], hand: [], graveyard: [], exile: [] } };
   applyRandomStickersToSide(st, 'you', 5, 'Archdemon Test', null);

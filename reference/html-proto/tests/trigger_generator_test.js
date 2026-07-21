@@ -97,7 +97,7 @@ console.log('\n=== three-step build flow output shape (200 rolls) ===');
     'missingText=' + missingText);
   console.log('  effect kinds observed:', [...VALID_KIND].join(', '));
   check('multiple effect kinds rolled (not stuck on one)', VALID_KIND.size >= 4);
-  // Every production-built trigger carries the anti-cascade-loop guard.
+  // noSelfCascade prevents a generated trigger from retriggering itself in a cascade.
   check('all 200 rolls carry noSelfCascade', missingGuard === 0,
     'missing=' + missingGuard);
 }
@@ -117,9 +117,7 @@ console.log('\n=== Hard-break filter: needsLiveSource never pairs with !sourceLi
     JSON.stringify(deadCondIds) === JSON.stringify(['anyCardDies', 'thisDies']),
     JSON.stringify(deadCondIds));
 
-  // Behavioral pin: a dead-source condition is NEVER offered a live-source effect
-  // (the hard-break guard in generateEffectOptions). Hardcode the dead cond so
-  // the assertion doesn't ride the flag under test.
+  // Hardcode the dead cond so the assertion doesn't ride the flag under test.
   const DEAD = { id: 'literalDead', sourceLive: false, event: 'card_zone_change',
                  condition: ['this_card', 'card_moves(battlefield, graveyard)'], text: 'x' };
   let leaked = 0;
@@ -185,9 +183,7 @@ console.log('\n=== Two-step build flow: assembleTrigger output ===');
     Array.isArray(trig.effects) && trig.effects.length > 0);
   check('assembled trigger marked generated', trig.generated === true);
   check('assembled trigger has noSelfCascade guard', trig.noSelfCascade === true);
-  // The effects in the assembled trigger should be FRESH COPIES — mutating
-  // them must not affect the chosenEffect's original array (otherwise the
-  // condition-pick view could see post-resolution state).
+  // Otherwise the condition-pick view could see post-resolution mutations.
   trig.effects[0].amount = 999;
   const stillOriginal = effOpts[0].effects[0].amount !== 999;
   check('assembled trigger effects are copies (not shared refs)', stillOriginal);
@@ -204,8 +200,6 @@ console.log('\n=== Mercurial Adept template + deck-build integration ===');
     check("Adept marked with trigger_pool_seed='mercurial'",
       tpl.trigger_pool_seed === 'mercurial');
 
-    // Deck-build integration: construct a game with Adept in the deck
-    // and verify the resulting card has a bonusTrigger.
     RUN.start({cards:['mercurial_adept','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['U']}, null);
     RUN.load();
     ENGINE.init(RUN.getSlots(), ['mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain']);

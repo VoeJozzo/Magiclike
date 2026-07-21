@@ -51,7 +51,7 @@ console.log('\n=== embargo persists across a fresh makeCard (next-game rebuild) 
 console.log('\n=== bleach: apply_sticker(set_color C, folds cost) + move_card(bf→exile) ===');
 (() => {
   const { G, inst } = bootWithCreature();
-  inst.cost = { W: 1, B: 2, C: 1 };   // force a colored cost so the fold is exercised
+  inst.cost = { W: 1, B: 2, C: 1 };
   const tgt = { kind: 'creature', iid: inst.iid };
   ENGINE.applyEffect(CTX('Bleach'), { kind: 'apply_sticker', sticker: { kind: 'set_color', color: 'C' } }, tgt);
   check('runtime color set to C', inst.color === 'C', 'color=' + inst.color);
@@ -80,7 +80,6 @@ console.log('\n=== embargo/bleach card.json are decomposed (no bespoke kinds) ==
 
 console.log('\n=== stale-sticker prune: unknown/legacy sticker ids are dropped on load ===');
 (() => {
-  // The prune is the standing safety net — any id the registry doesn't know is dropped.
   const blob = {
     version: SAVE_VERSION,
     runState: {
@@ -98,9 +97,8 @@ console.log('\n=== stale-sticker prune: unknown/legacy sticker ids are dropped o
 
 console.log('\n=== scarification (#18): apply_sticker(scarified by id) + affect_creature(destroy) ===');
 (() => {
-  // Sticker-FIRST so the run-slot scar lands while the creature is still
-  // reachable; then destroy. Exercises apply_sticker's registry-id shape
-  // (sticker_id → STICKERS lookup).
+  // Sticker-first: the run-slot scar must land before the creature is
+  // destroyed and no longer targetable.
   const { G, inst } = bootWithCreature();
   const tgt = { kind: 'creature', iid: inst.iid };
   ENGINE.applyEffect(CTX('Scarification'), { kind: 'apply_sticker', sticker_id: 'scarified' }, tgt);
@@ -112,11 +110,10 @@ console.log('\n=== scarification (#18): apply_sticker(scarified by id) + affect_
 
 console.log('\n=== vileEdict (#27): chooses(permanent) → annihilate → rip (zone-agnostic slot strip) ===');
 (() => {
-  // The targeted player's chosen permanent ceases to exist (annihilate — NO
-  // death triggers, NOT graveyard) AND its deck-slot is stripped from the run.
+  // Annihilate skips death triggers (unlike destroy).
   const { G, inst } = bootWithCreature();
   const slotsBefore = RUN.getSlots().length;
-  // ctx-style: target is the player (you, the edict victim); chooses auto-picks.
+  // chooses() auto-picks a permanent for the edict target.
   const ctx = { controller: 'opp', sourceName: 'Vile Edict', sourceIid: -1, allTargets: [{ kind: 'player', who: 'you' }] };
   ENGINE.applyEffect(ctx, { kind: 'chooses', filter: 'permanent' }, { kind: 'player', who: 'you' });
   ENGINE.applyEffect(ctx, { kind: 'annihilate' }, null);

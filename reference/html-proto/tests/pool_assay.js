@@ -4,19 +4,15 @@
 //   node tests/pool_assay.js
 //
 // Reports, in order:
-//   1. HUB SHARE      — % of offered buckets containing any top-5 hub card,
-//                       per committed archetype deck. The perceptual-sameness
-//                       proxy: players read a bucket by its marquee card, so
-//                       clumpiness = the same connector recurring, NOT card-set
-//                       overlap (measured Jaccard of same-theme buckets is only
-//                       ~0.17-0.24 — contents already vary).
-//   2. PLANS PER PAIR — distinct bucket seed cards seen across 75 offered buckets
-//                       for each color pair. Target: >= 12 everywhere (the
-//                       level of the pairs that don't feel clumpy).
-//   3. HOOK HISTOGRAM — strong synergy edges (weight >= 2) per pool card.
-//                       The "vanilla ocean" count: cards with zero strong
+//   1. HUB SHARE      — the perceptual-sameness proxy: players read a bucket
+//                       by its marquee card, so clumpiness = the same
+//                       connector recurring, NOT card-set overlap (measured
+//                       Jaccard of same-theme buckets is only ~0.17-0.24 —
+//                       contents already vary).
+//   2. PLANS PER PAIR — >= 12 is the level of the pairs that don't feel
+//                       clumpy.
+//   3. HOOK HISTOGRAM — the "vanilla ocean" count: cards with zero strong
 //                       edges can never connect anything.
-//   4. TRIBE CENSUS   — members / payoffs per tribe.
 //
 // History: docs/plans/plan-bucket-draft.md; the measured findings behind the
 // metric choices are in the Depth Assay session notes (2026-07-07): member
@@ -36,7 +32,6 @@ const pool = Object.keys(CARDS).filter(id => {
   return true;
 });
 
-// ---- 1. Hub share ----------------------------------------------------------
 const DECKS = {
   'goblin (R)':   ['goblin_chieftain', 'goblin_rabble', 'goblin_piercer', 'raging_goblin', 'mountain', 'mountain', 'mountain'],
   'wizard (U)':   ['archmage_patriarch', 'wizard_adept', 'scrying_wizard', 'island', 'island', 'island'],
@@ -62,7 +57,6 @@ for (const [label, deck] of Object.entries(DECKS)) {
   console.log(`  ${label.padEnd(13)} hub share ${(100 * hubBuckets / buckets2).toFixed(0).padStart(3)}%   hubs: ${top5.map(([id, n]) => `${id}(${(100 * n / buckets).toFixed(0)}%)`).join(', ')}`);
 }
 
-// ---- 2. Plans per pair ------------------------------------------------------
 console.log('\n=== 2 · PLANS PER COLOR PAIR (distinct seed cards in 75 buckets; target >= 12) ===');
 // A bucket's identity is its seed card + why[], not a name field, so plan
 // diversity below counts distinct seed cards (audit R58/R59).
@@ -79,7 +73,6 @@ for (const r of pairResults) {
   console.log(`  ${r.pair}  ${String(r.plans).padStart(2)} ${r.plans < 12 ? ' — PLAN-POOR' : ''}`);
 }
 
-// ---- 3. Hook histogram ------------------------------------------------------
 console.log('\n=== 3 · HOOK HISTOGRAM (strong edges, weight >= 2, per pool card) ===');
 const bins = { '0': 0, '1-2': 0, '3-5': 0, '6-10': 0, '11-20': 0, '21+': 0 };
 for (const id of pool) {
@@ -97,7 +90,6 @@ for (const [k, v] of Object.entries(bins)) {
 }
 console.log(`  zero-hook share: ${(100 * bins['0'] / pool.length).toFixed(0)}% of ${pool.length} (target < 25%)`);
 
-// ---- 4. Tribe census --------------------------------------------------------
 console.log('\n=== 4 · TRIBE CENSUS (members / payoffs; themes need payoffs to exist) ===');
 const tribes = {};
 for (const id of pool) {

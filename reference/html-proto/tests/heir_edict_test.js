@@ -2,11 +2,6 @@
 // sacrifice a LAND. chooses()'s filter is type-symmetric: 'creature' /
 // 'permanent' / 'land' all narrow the same way (a chooses filter IS a
 // type), so Land needs no bespoke construction.
-//
-// Asserts: (1) the 'land' filter is a recognized chooses filter (no boot
-// warning); (2) oracle text renders "sacrifices a land" (not "a creature");
-// (3) existing creature/permanent edicts are unchanged; (4) end-to-end, when
-// the Heir dies the opponent sacrifices a LAND, never a creature.
 
 const warns = [];
 const origWarn = console.warn;
@@ -83,8 +78,7 @@ console.log('\n=== end-to-end: the Heir dies → opponent sacrifices a LAND ==='
   const oppCreature = mk(VANILLA, 'opp'); G.opp.battlefield.push(oppCreature);
   const bolt = mk('lightning_bolt', 'you'); G.you.hand.push(bolt);
 
-  // targetsForFilter must back 'land' (the §3.5 invariant: a filter in
-  // TARGET_FILTERS resolves here too) — narrows to lands only, never the creature.
+  // §3.5 invariant: a filter in TARGET_FILTERS must resolve in targetsForFilter too.
   const landTargets = ENGINE.targetsForFilter('land', 'you');
   check("targetsForFilter('land') resolves the land", landTargets.some(t => t.iid === oppLand.iid));
   check("targetsForFilter('land') excludes the creature", !landTargets.some(t => t.iid === oppCreature.iid));
