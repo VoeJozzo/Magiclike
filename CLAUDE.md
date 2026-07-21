@@ -50,7 +50,7 @@ Port the **behavior**, not the implementation shape — the prototype's engine h
 
 ## Comments
 
-A comment must state something the code cannot: a constraint, invariant, rule citation, caller contract, or external data shape. Write in the eternal present — no diff narration ("removed", "the old X", version stamps), no port-phase labels, no "verified"-style claims (pin those with a test), no features that don't exist. Shortest true form; when editing code, update or delete the comments it touches. *(Why + the failure taxonomy: [`docs/wiki/comment-doctrine.md`](docs/wiki/comment-doctrine.md).)*
+A comment must state something the code cannot: a constraint, invariant, rule citation, caller contract, or external data shape. Write in the eternal present — no diff narration ("removed", "the old X", version stamps), no port-phase labels, no "verified"-style claims (pin those with a test), no features that don't exist. In test files, assertion labels are the spec: a comment dominated by an adjacent check/assert label is noise. Shortest true form; when editing code, update or delete the comments it touches. *(Why + the failure taxonomy: [`docs/wiki/comment-doctrine.md`](docs/wiki/comment-doctrine.md).)*
 
 ## Risks and gotchas
 
