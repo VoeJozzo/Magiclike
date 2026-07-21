@@ -11,16 +11,6 @@ extends RefCounted
 #   load_card(folder_id)   — single card by manifest folder name
 #   load_all()             — full manifest, returns {card_id: CardResource}
 #
-# Plus supportability_report(cards) which counts how many cards' effect kinds,
-# event kinds, and predicate ids are recognized by this Godot build. The
-# engine autoload calls it at boot and prints a one-line summary.
-#
-# Resource subclass selection by JSON `type` field:
-#   "Creature"               → CreatureResource
-#   "Land"                   → LandResource
-#   "Sorcery"                → SpellResource (requires_target inferred from effects)
-#   "Artifact" / anything else → base CardResource
-#
 # Cards whose effects/triggers/predicates aren't implemented yet still LOAD —
 # they're just flagged as unsupported in the report. No silent breakage; calling
 # CardDatabase.get_json_card() on an unsupported card returns the resource (so
@@ -30,8 +20,7 @@ const _MANIFEST_PATH := "res://reference/html-proto/cards/_manifest.json"
 const _CARDS_DIR := "res://reference/html-proto/cards/"
 
 # Card data is authored in canonical snake_case (docs/PROTOCOL.md §2), so the
-# loader passes effect kinds, event names, and keywords through verbatim. The
-# old camelCase→snake_case remap tables were dead and have been removed.
+# loader passes effect kinds, event names, and keywords through verbatim.
 
 # Target string values that mean "caster picks at cast time" — used to decide
 # whether SpellResource.requires_target is true. These are the snake_case target
@@ -54,10 +43,9 @@ const _FIRED_EVENT_KINDS := [
 	"card_discarded",
 ]
 
-# types[] tag classification (v2.0.70 cutover: types[] is the sole type source —
-# the legacy `type`/`sub` fields are gone). Mirrors proto js/types.js: a tag is a
-# card-type, a supertype, or (by default) a subtype. Governing precedence drives
-# the resource subclass — a permanent type beats a spell; Creature > Land >
+# types[] is the sole type source for classification. Mirrors proto js/types.js: a
+# tag is a card-type, a supertype, or (by default) a subtype. Governing precedence
+# drives the resource subclass — a permanent type beats a spell; Creature > Land >
 # Artifact among permanents.
 const _CARD_TYPE_TAGS := ["Creature", "Land", "Artifact", "Sorcery", "Instant"]
 const _SUPERTYPE_TAGS := ["Basic", "Legendary"]

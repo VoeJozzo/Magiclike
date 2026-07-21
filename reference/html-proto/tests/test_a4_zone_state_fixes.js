@@ -1,20 +1,11 @@
-// Audit A4 batch — zone-routing + arrival-state fixes:
+// A countered spell goes to its OWNER's graveyard (§706), not its controller's.
 //
-//   A4-19: a countered spell goes to its OWNER's graveyard (§706), not its
-//          controller's — counter was the lone controller-routed outlier
-//          among ~7 sibling graveyard-routing sites (live via Seal-Thief
-//          Courier's cast-permission flow: countering an opp-owned card you
-//          cast filed THEIR card in YOUR graveyard forever).
-//   A4-22: reanimation (move_card graveyard/exile → battlefield) resets via
-//          resetInPlayState — the old hand-rolled 6-field list missed
-//          killedBy, so a revived creature carried its original killer's
-//          trophy credit into its next death.
-//   A4-20: fetchLibraryToBattlefield routes arrivals through
-//          placeCardOnBattlefield — the one battlefield door (§3.7 fresh
-//          iid, summoning sickness, post handling, sourced ETB emit). The
-//          old bespoke push skipped all of it; fine for the five land-only
-//          users, but a fetched creature arrived attack-ready with a stale
-//          iid.
+// Reanimation (move_card graveyard/exile → battlefield) resets via
+// resetInPlayState.
+//
+// fetchLibraryToBattlefield routes arrivals through placeCardOnBattlefield,
+// the one battlefield door (§3.7: fresh iid, summoning sickness, post
+// handling, sourced ETB emit).
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -85,8 +76,8 @@ console.log('\n=== A4-22: reanimation clears killedBy (full resetInPlayState) ==
 (() => {
   const G = newGame();
   const corpse = mk('gray_ogre', 'you');
-  corpse.killedBy = 'opp';              // it died once; the killer was credited
-  corpse.dealtDeathtouch = true;        // sibling stale-state field
+  corpse.killedBy = 'opp';
+  corpse.dealtDeathtouch = true;
   const deadIid = corpse.iid;
   G.you.graveyard.push(corpse);
   const ctx = { controller: 'you', sourceName: 'Reanimate', sourceIid: null };
@@ -109,8 +100,8 @@ console.log('\n=== A4-20: creature fetched library→battlefield gets the full a
 (() => {
   const G = newGame();
   const creature = mk('gray_ogre', 'you');
-  creature.sick = false;                 // library cards aren't sick; the old
-  const oldIid = creature.iid;           // bespoke push preserved both fields
+  creature.sick = false;                 // library cards aren't sick
+  const oldIid = creature.iid;
   G.you.library.unshift(creature);
   const ctx = { controller: 'you', sourceName: 'Fetch Test', sourceIid: null };
   ENGINE.applyEffect(ctx,

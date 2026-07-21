@@ -1,10 +1,9 @@
-// Guards the v2.0.55 cleanup: a card's displayed oracle text is GENERATED from
-// its effects/triggers/abilities, so a hand-written top-level `text` field is
-// dead weight on a procedural card — it never renders and silently rots out of
-// sync. We stripped 245 such fields. This test stops them creeping back: a
-// top-level `text` is allowed ONLY when it actually affects the rendered output
-// (i.e. custom_text authored cards, or a vanilla card with nothing to generate
-// where the text is its only content — genuine flavor).
+// A card's displayed oracle text is GENERATED from its effects/triggers/abilities,
+// so a hand-written top-level `text` field is dead weight on a procedural card —
+// it never renders and silently rots out of sync. A top-level `text` is allowed
+// ONLY when it actually affects the rendered output (i.e. custom_text authored
+// cards, or a vanilla card with nothing to generate where the text is its only
+// content — genuine flavor).
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -22,9 +21,8 @@ console.log('=== no card carries a DEAD top-level text field (render-identical w
   const dead = [];
   for (const id of Object.keys(CARDS)) {
     const c = CARDS[id];
-    if (typeof c.text !== 'string') continue;     // no field — fine
-    if (c.custom_text === true) continue;          // authored — the field IS the text
-    // Does the stored text change what renders? If not, it's dead.
+    if (typeof c.text !== 'string') continue;
+    if (c.custom_text === true) continue;
     const withText = render(c);
     const saved = c.text;
     delete c.text;

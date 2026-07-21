@@ -1,8 +1,7 @@
-// §3.5 browser targeting (controller/render UI): the targeting migration moved
-// single-target spells/abilities to a top-level target() step. The human cast
-// flow must enter target-picking for those — clickHand/ability previously only
-// checked per-effect eff.target, so 38 migrated cards would have cast with no
-// target. Drives the real CONTROLLER click handlers (DOM stubbed by _setup).
+// §3.5 browser targeting (controller/render UI): the human cast flow must
+// enter target-picking whenever a spell/ability has a top-level target()
+// step, not only when per-effect eff.target is set. Drives the real
+// CONTROLLER click handlers (DOM stubbed by _setup).
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -59,10 +58,8 @@ console.log('\n=== the same spell can target a player (face click) ===');
 
 console.log('\n=== getValidTargets accepts the taxonomy spelling (drives the player-target button) ===');
 (() => {
-  // render.js shows the "→ Target <player>" button when getValidTargets(eff)
-  // lists a player target. Before the §3.5 sweep getValidTargets only knew the
-  // legacy "any"; the canonical "creature_or_player" returned [] → no button →
-  // "any target" spells couldn't hit a face. Lock the enumeration both ways.
+  // render.js shows the "→ Target <player>" button when
+  // getValidTargets(eff) lists a player target.
   game();
   const anyT = ENGINE.getValidTargets({ target: 'creature_or_player' }, 'you');
   check('creature_or_player includes YOUR face', anyT.some(v => v.kind === 'player' && v.who === 'you'));
@@ -84,10 +81,6 @@ console.log('\n=== an untargeted spell still casts immediately (no false targeti
 
 console.log('\n=== blocker UI delegates attacker-specific legality to the engine ===');
 (() => {
-  // A2-14: behavioral replacement for the former source-text regex. The old check
-  // matched variable names (blkCard, card) in controller source — zero behavioral
-  // protection (stayed green if the flying gate were deleted) and false-red on a
-  // rename. Assert the actual gate in ENGINE.canCreatureBlock instead.
   const flier  = { iid: 7001, types: ['Creature'], keywords: ['flying'] };
   const ground = { iid: 7002, types: ['Creature'], keywords: [] };
   const reach  = { iid: 7003, types: ['Creature'], keywords: ['reach'] };

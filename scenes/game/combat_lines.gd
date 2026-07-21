@@ -70,9 +70,9 @@ func _draw_combat_lines(s: EngineState) -> void:
 
 func _draw_stack_target_lines(s: EngineState) -> void:
 	var iid_to_visual: Dictionary = game_board._iid_to_visual
-	var line_color := Color(0.95, 0.45, 0.90, 0.85)         # magenta
-	var source_dot := Color(0.95, 0.85, 0.40, 0.95)         # gold (source = caster)
-	var target_dot := Color(0.95, 0.45, 0.90, 0.95)         # magenta (target)
+	var line_color := Color(0.95, 0.45, 0.90, 0.85)
+	var source_dot := Color(0.95, 0.85, 0.40, 0.95)         # source = caster
+	var target_dot := Color(0.95, 0.45, 0.90, 0.95)
 	for entry in s.stack.entries:
 		var targets: Array = entry.get("targets", [])
 		if targets.is_empty():
@@ -110,7 +110,6 @@ func _resolve_target_pos(target: Dictionary, iid_to_visual: Dictionary):
 			var panel = game_board._you_panel if who == "you" else game_board._opp_panel
 			if panel == null:
 				return null
-			# Center of panel rect.
 			var c: Vector2 = panel.global_position + panel.size * 0.5
 			return c - global_position
 	return null

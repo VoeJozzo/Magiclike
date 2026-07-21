@@ -1,22 +1,13 @@
-// Audit A4-5 — a copy's keywords are part of the copied identity and must
-// persist like template keywords (Joe's ruling PR #98: "That is very sad and
-// we should fix it. :(").
-//
-// become_copy_of materializes the copied template's keywords onto the
-// instance, but every RE-DERIVE path flows through intrinsicKeywords(), which
-// used to read CARDS[card.tplId] — the ORIGINAL printed card — and never
-// card.copyOf. So the first EOT keyword grant that touched a live copy made
-// the CLEANUP rebuild erase the copied keywords and resurrect the base
-// template's (a False Witness copying a flying demon landed and regained
-// flash), and a dying copy offered the BASE template's keywords to trophy
-// claims (claimableKeywords). One copy-aware branch in intrinsicKeywords
-// fixes all the symptom sites. This file pins:
+// A copy's keywords are part of the copied identity and persist like
+// template keywords. become_copy_of materializes the copied template's
+// keywords onto the instance; intrinsicKeywords() must resolve them through
+// card.copyOf (not CARDS[card.tplId]), since both the CLEANUP keyword rebuild
+// and claimableKeywords' trophy check read through it. This file pins:
 //   1. intrinsicKeywords on a live copy = the COPIED template's keywords
 //      (+ subtype-implied), not the base's;
-//   2. the real CLEANUP: copy + an EOT haste grant crosses end of turn →
-//      flying kept, flash NOT resurrected, haste correctly dropped;
-//   3. the leave-play revert contract is UNCHANGED: a bounced copy re-derives
-//      the false_witness base identity (flash back, flying gone).
+//   2. the real CLEANUP: copy + an EOT haste grant crosses end of turn;
+//   3. the leave-play revert contract: a bounced copy re-derives the
+//      false_witness base identity.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -54,7 +45,7 @@ function endTurn(G) {
   }
   return safety > 0;
 }
-// Build a live False Witness copy of an opp Abyss Lurker (flying demon).
+// Abyss Lurker is a flying demon.
 function makeCopy(G) {
   const witness = place('you', 'false_witness');
   const lurker = place('opp', 'abyss_lurker');
@@ -84,8 +75,7 @@ console.log('\n=== 2. real CLEANUP: EOT grant on a live copy → copied keywords
 (() => {
   const G = newGame();
   const { witness } = makeCopy(G);
-  // Any EOT keyword grant arms the cleanup rebuild (the AI did this to itself
-  // in the audit repro by casting Predator's Speed on the copy).
+  // Any EOT keyword grant arms the cleanup rebuild.
   ENGINE.applyEffect({ controller: 'you', sourceName: "Predator's Speed", sourceIid: -11 },
     { kind: 'grant_keyword', keyword: 'haste', duration: 'eot' },
     { kind: 'creature', iid: witness.iid });

@@ -1,12 +1,9 @@
 // Human cast-from-exile (Seal-Thief Courier grant): the controller must treat a
-// permitted exile card exactly like a hand card through the WHOLE cast flow, not
-// just the initial click. Regression for the target/modal slot-resolution helpers
-// that looked only in G.you.hand — a targeted stolen spell (Lightning Bolt)
-// entered targeting, but the target click built an EMPTY targets array
-// (slotsNeededForPending found no card → [] slots), so isLegalAction rejected the
-// cast and the stack stayed empty. Drives the real CONTROLLER click handlers (DOM
-// stubbed by _setup), the same harness as test_ui_targeting. Also unit-tests the
-// cross-yard graveyard-picker prompt text (P3).
+// permitted exile card exactly like a hand card through the whole cast flow, not
+// just the initial click — target/modal slot-resolution helpers (e.g.
+// slotsNeededForPending) must find the card outside G.you.hand too. Drives the
+// real CONTROLLER click handlers (DOM stubbed by _setup), the same harness as
+// test_ui_targeting.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -32,8 +29,7 @@ function game() {
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   return G;
 }
-// Mirror a Seal-Thief Courier grant: an opponent-owned card sits in exile and
-// 'you' may cast it this turn, spending mana as though any color.
+// Mirrors a Seal-Thief Courier grant.
 function grantExileCast(G, tplId) {
   const card = mk(tplId, 'opp');
   G.opp.exile.push(card);
@@ -76,7 +72,6 @@ console.log('\n=== the same stolen spell can target a creature ===');
 
 console.log('\n=== cross-yard graveyard-picker prompt text (P3) ===');
 (() => {
-  // Seal-Thief Courier shape: exile a nonland card from an opponent's graveyard.
   const stc = graveyardPickerPrompt(
     { not_type: 'Land', graveyards: ['opp'] },
     [{ kind: 'move_card', from_zone: 'graveyard', to_zone: 'exile' }],
@@ -84,7 +79,6 @@ console.log('\n=== cross-yard graveyard-picker prompt text (P3) ===');
   check('Seal-Thief picker title = "Exile a nonland card"', stc.title === 'Exile a nonland card', stc.title);
   check("Seal-Thief picker subtitle names the opponent's graveyard", /opponent's graveyard/.test(stc.subtitle), stc.subtitle);
 
-  // Deepseam Quarry shape: return a creature card to the battlefield from any yard.
   const dq = graveyardPickerPrompt(
     { type: 'Creature', graveyards: ['self', 'opp'], select: { by: 'total_mana_cost', extreme: 'greatest' } },
     [{ kind: 'move_card', from_zone: 'graveyard', to_zone: 'battlefield', post: { take_control: true } }],

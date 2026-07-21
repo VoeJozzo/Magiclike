@@ -1,22 +1,12 @@
-// Audit fix A3-1 — stack entries re-validate their locked targets at
-// RESOLUTION (§1006.1 for triggers, §704.1 for spells).
+// Stack entries re-validate their locked targets at RESOLUTION (§1006.1 for
+// triggers, §704.1 for spells).
 //
-// Pre-fix, target legality was checked at queue time and stack-push time and
-// never again: a target that became illegal while the entry waited on the
-// stack (hexproof gained in response, target left play) was still affected,
-// and a dead sole target still let untargeted rider effects resolve instead
-// of fizzling the whole entry. The fix (tsRevalidateTargets) re-runs the SAME
-// per-slot legality sets used at cast/queue time once, at resolution start:
-// illegal slots are dropped (multi-target entries proceed on the remaining
-// legal targets), and if no slot survives the entry fizzles whole with a log
-// line — riders included, costs stay paid. Mana abilities never touch the
-// stack, so their fast path is untouched.
-//
-// Case 1 reproduces the audit packet's 100%-real-actions route: the pool's
-// only hexproof granter (Aether Drake) stapled onto a flash base (Ambush
-// Djinn) via the game's own synthesis, cast in response to a trigger on the
-// stack — the grant resolves first (LIFO), and the waiting trigger must
-// fizzle instead of hitting the now-hexproofed target.
+// tsRevalidateTargets re-runs the SAME per-slot legality sets used at
+// cast/queue time once, at resolution start: illegal slots are dropped
+// (multi-target entries proceed on the remaining legal targets), and if no
+// slot survives the entry fizzles whole with a log line — riders included,
+// costs stay paid. Mana abilities never touch the stack, so their fast path
+// is untouched.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -43,7 +33,7 @@ function mk(tplId, controller) {
 // whole scenario: with a live response available, the engine's auto-pass
 // PAUSES at every priority window instead of churning through resolutions and
 // turns inside a single executeAction call — the response window each case
-// needs is only observable this way (same mechanism as the audit repro).
+// needs is only observable this way.
 function newGame() {
   RUN.clearSave && RUN.clearSave();
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
@@ -59,8 +49,8 @@ function newGame() {
 }
 
 // Pass priority until a predicate on G holds (or the machine quiesces).
-// pickFor: map of controller -> iid to pick when that side's trigger prompt
-// opens (the synth's grant target).
+// pickIid: iid to pick when a trigger-target prompt opens for 'you' (falls
+// back to the first valid option if omitted or not among the valid choices).
 function driveUntil(G, pred, pickIid) {
   let guard = 0;
   while (guard++ < 60) {
@@ -84,10 +74,6 @@ function settled(G) {
 
 console.log('=== A3-1 (a): hexproof gained IN RESPONSE — the waiting trigger fizzles ===');
 (() => {
-  // Opp's Flame Wisp ETB (2 damage to target opp creature) locks your creature;
-  // you respond with a REAL flash cast — Ambush Djinn + Aether Drake, built by
-  // the game's own staple synthesis — whose ETB grants the locked target
-  // hexproof before the wisp trigger resolves.
   const G = newGame();
   const victim = mk('abyss_lurker', 'you');   // the wisp ETB's only legal target
   G.you.battlefield.push(victim);
@@ -114,7 +100,6 @@ console.log('=== A3-1 (a): hexproof gained IN RESPONSE — the waiting trigger f
     && Array.isArray(trig.targets) && trig.targets[0] && trig.targets[0].iid === victim.iid,
     trig && JSON.stringify(trig.targets));
 
-  // THE RESPONSE — a real cast, at flash speed, while the trigger waits.
   check('precondition: flash response is legal with the trigger on the stack',
     ENGINE.isLegalAction('you', { type: 'castSpell', cardIid: synth.iid }));
   G.log.length = 0;
@@ -179,7 +164,6 @@ console.log('\n=== A3-1 (b): multi-target PARTIAL fizzle — drop the illegal sl
     && trig.targets[0] && trig.targets[0].iid === mine.iid,
     trig && JSON.stringify(trig.targets));
 
-  // The response window: slot 0's target gains hexproof while the trigger waits.
   mine.keywords.push('hexproof');
   driveUntil(G, () => settled(G));
 
@@ -194,9 +178,8 @@ console.log('\n=== A3-1 (b): multi-target PARTIAL fizzle — drop the illegal sl
 console.log('\n=== A3-1 (spell twin, §704.1): all targets illegal — the SPELL fizzles whole, riders included ===');
 (() => {
   // Consume Spirit: damage 4 to target creature + its controller gains 4 life
-  // (an untargeted scope:self rider). Hexproof gained in response must fizzle
-  // the WHOLE spell: no damage AND no lifegain — pre-fix the damage landed and
-  // the rider ran.
+  // (an untargeted scope:self rider). The victim gains hexproof in response,
+  // before the spell resolves.
   const G = newGame();
   const victim = mk('abyss_lurker', 'you');
   G.you.battlefield.push(victim);
@@ -209,7 +192,6 @@ console.log('\n=== A3-1 (spell twin, §704.1): all targets illegal — the SPELL
   check('precondition: the spell is on the stack with the victim locked',
     G.stack.length === 1 && G.stack[0].targets && G.stack[0].targets[0].iid === victim.iid);
 
-  // The response window: the locked target gains hexproof.
   victim.keywords.push('hexproof');
   driveUntil(G, () => settled(G));
 

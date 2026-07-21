@@ -64,10 +64,7 @@ func _update_target_positions() -> void:
 			lands.append(card)
 		else:
 			creatures.append(card)
-	# Group lands by color in WUBRG order.
 	lands.sort_custom(_compare_lands_by_color)
-	# Apply remembered display order, then apply any combat-driven reorder
-	# on top. Save the final order so post-combat layouts don't snap back.
 	creatures = _apply_persistent_order(creatures)
 	creatures = _combat_sorted_creatures(creatures)
 	_save_creature_order(creatures)
@@ -78,18 +75,14 @@ func _update_target_positions() -> void:
 	_layout_lands_with_color_groups(lands, Vector2(0.0, land_y))
 
 
-# Lands: tight intra-color spacing + a fixed gap between color groups, so
-# "4 Plains + 4 Islands" reads as two visible clumps. Falls back to plain
-# adaptive spacing when there's only one color (no group boundaries).
+# Falls back to plain adaptive spacing when there's only one color (no group boundaries).
 func _layout_lands_with_color_groups(lands: Array, offset_from_zone: Vector2) -> void:
 	if lands.is_empty():
 		return
-	# Count color-group transitions (boundaries between WUBRG groups).
 	var num_transitions: int = 0
 	for i in range(1, lands.size()):
 		if _land_color_key(lands[i]) != _land_color_key(lands[i - 1]):
 			num_transitions += 1
-	# Reserve room for inter-group gaps, then spread cards across the rest.
 	var gap_budget: float = float(num_transitions) * _LAND_COLOR_GROUP_GAP
 	var spacing_budget: float = max(0.0, _AVAILABLE_WIDTH - gap_budget)
 	var card_spacing: float = _MAX_LAND_SPACING
@@ -102,7 +95,7 @@ func _layout_lands_with_color_groups(lands: Array, offset_from_zone: Vector2) ->
 	var x: float = 0.0
 	for i in range(lands.size()):
 		if i > 0 and _land_color_key(lands[i]) != _land_color_key(lands[i - 1]):
-			x += _LAND_COLOR_GROUP_GAP  # visible separator before this group
+			x += _LAND_COLOR_GROUP_GAP
 		var card: Card = lands[i]
 		var target_pos: Vector2 = position + offset_from_zone + Vector2(x, 0.0)
 		card.move(target_pos, _tap_rotation(card))
@@ -128,7 +121,6 @@ func _apply_persistent_order(creatures: Array) -> Array:
 		if by_iid.has(iid):
 			result.append(by_iid[iid])
 			placed[iid] = true
-	# New creatures (ETBs since last layout) join at the end.
 	for card in creatures:
 		var iid: int = card.card_info.get("instance_id", -1)
 		if iid != -1 and not placed.has(iid):
@@ -153,15 +145,12 @@ func _save_creature_order(creatures: Array) -> void:
 #   3. Place sorted combatants back into those original slots.
 #
 # So [C1 C2 C3 C4 C5] with s.attackers=[C4 C2] becomes [C1 C4 C3 C2 C5] —
-# only C2 and C4 swapped, three cards stayed put. The old version moved all
-# combatants to the front, which Joe correctly called out as unnecessarily
-# disruptive ("always moves stuff to the left").
+# only C2 and C4 swapped, three cards stayed put.
 func _combat_sorted_creatures(creatures: Array) -> Array:
 	var s = RulesEngine.state()
 	if s == null or s.attackers.is_empty() or player_key == "":
 		return creatures
 	var iam_attacker_side: bool = (player_key == s.active_player_key)
-	# Collect combatants with their original slot indices.
 	var combatant_slots: Array[int] = []
 	var combatants: Array = []
 	for i in range(creatures.size()):
@@ -180,7 +169,6 @@ func _combat_sorted_creatures(creatures: Array) -> Array:
 	if combatants.size() < 2:
 		# 0 or 1 combatant on this side — no reordering possible.
 		return creatures
-	# Sort combatants by combat order (which attacker comes first).
 	if iam_attacker_side:
 		combatants.sort_custom(func(a, b):
 			return s.attackers.find(a.card_info["instance_id"]) < s.attackers.find(b.card_info["instance_id"]))
@@ -189,7 +177,6 @@ func _combat_sorted_creatures(creatures: Array) -> Array:
 			var aiid_a: int = s.blockers.get(a.card_info["instance_id"], -1)
 			var aiid_b: int = s.blockers.get(b.card_info["instance_id"], -1)
 			return s.attackers.find(aiid_a) < s.attackers.find(aiid_b))
-	# Place sorted combatants back into their original slots.
 	var result: Array = creatures.duplicate()
 	for k in range(combatants.size()):
 		result[combatant_slots[k]] = combatants[k]
@@ -217,9 +204,7 @@ static func _compare_lands_by_color(a: Card, b: Card) -> bool:
 	return _land_color_key(a) < _land_color_key(b)
 
 
-# Spread cards across _AVAILABLE_WIDTH if they fit at max_spacing; compress
-# toward min_spacing (cascade overlap) when they don't. count <= 1 always
-# uses max (single card has no neighbor to space from).
+# count <= 1 always uses max_spacing (single card has no neighbor to space from).
 func _adaptive_spacing(count: int, max_spacing: float, min_spacing: float) -> float:
 	if count <= 1:
 		return max_spacing

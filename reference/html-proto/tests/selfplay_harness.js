@@ -20,7 +20,6 @@
 //
 // Usage: node selfplay_harness.js [numGames] [mode]
 //
-// Adapted from the prior-session bundle.
 // =============================================================================
 
 const setup = require('./_setup');

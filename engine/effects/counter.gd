@@ -1,8 +1,7 @@
 extends RefCounted
 
 # {"kind": "counter", "target": "chosen"} — target must be {"kind": "stack", "iid": int}.
-# Routes to RulesEngine.counter_stack_entry (touches the autoload-only _stack_held_cards buffer).
-# Fizzles cleanly if target spell left the stack.
+# counter_stack_entry touches the autoload-only _stack_held_cards buffer.
 
 static func execute(effect: Dictionary, ctx: Dictionary) -> void:
 	var target_spec: String = effect.get("target", "chosen")

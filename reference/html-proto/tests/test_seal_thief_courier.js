@@ -129,10 +129,7 @@ console.log('\n=== combat damage trigger exiles and permits the stolen card ==='
 
 console.log('\n=== AI casts a spell it holds cast-permission for ===');
 (() => {
-  // Regression: the AI's decision paths resolved castSpell actions hand-only,
-  // so a card it exiled with its own Courier was never cast (the legal action
-  // existed but mapped to no card). findCastableCard now resolves permission
-  // zones too. Decide for 'you' — the AI logic is side-symmetric.
+  // Decide for 'you' — the AI logic is side-symmetric.
   const G = newGame();
   G.phase = 'MAIN2';
   G.priority = { passes: new Set() }; G.priorityHolder = 'you';

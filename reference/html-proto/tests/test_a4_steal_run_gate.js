@@ -1,14 +1,10 @@
-// Audit A4-15 — the steal handler wrote the HUMAN's persisted run state for
-// ANY controller: RUN.appendSlot was the lone RUN-writing call without the
-// 'you' gate every sibling handler has (endomorph_absorb, apply_sticker,
-// rip). An opp-controlled Steal (latent today — steal is a boon and no
-// opp deck carries it, but test_boss_removal_ai pins that the AI CAN cast
-// it) appended the stolen slot to the VICTIM's run deck: a duplicate of your
-// own card, persisted into your save.
-//
-// Fix: slot mint gated on ctx.controller === 'you'. An opp thief keeps the
-// theft in-game only (fresh instance into its in-game library, slotIdx
-// null); the victim's slot is deliberately untouched (in-game-only theft).
+// Audit A4-15 — this steal handler gates its slot mint on
+// ctx.controller === 'you', the same you-side gate every sibling
+// RUN-writing call has (endomorph_absorb, apply_sticker, rip). Steal is a
+// boon that no opp deck carries today, but test_boss_removal_ai pins that
+// the AI CAN cast it, so an opp-controlled steal must still be exercised:
+// it mints a fresh instance into the thief's in-game library only
+// (slotIdx null), never touching the victim's persisted run deck.
 
 const setup = require('./_setup');
 setup.loadEngine();

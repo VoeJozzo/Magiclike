@@ -59,8 +59,8 @@ console.log('=== data pin: exactly these lords grant keywords via static_buffs =
     (CARDS[id].static_buffs || []).some(b => b.keywords && b.keywords.length)).sort();
   const expected = ['apex_elder', 'field_marshal', 'goblin_chieftain',
     'knight_commander', 'rootbound_sentinel', 'skyfire_drakelord', 'spirit_shepherd'];
-  // rootbound_sentinel (Wave 2): "Land creatures you control have vigilance"
-  // — the first non-tribal keyword-granting lord (behavior coverage in
+  // rootbound_sentinel: "Land creatures you control have vigilance" — the
+  // first non-tribal keyword-granting lord (behavior coverage in
   // wave2_cards_test.js).
   check('keyword-granting lords are exactly the known seven',
     JSON.stringify(granters) === JSON.stringify(expected), granters.join(','));

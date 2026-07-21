@@ -1,10 +1,6 @@
-// Audit A1-6 — the CLEANUP end-step delayed-trigger drain handled only
-// effect:'deferredEffects'; an endStep entry with any OTHER effect kind fell
-// through and was dropped SILENTLY (no log) while the comment claimed "fired,
-// don't keep". Behavior-neutral fix (the sole producer, schedule_delayed,
-// hardcodes 'deferredEffects', so the path is unreachable today): WARN loudly
-// on the unhandled kind instead of dropping it silently. Ships under Joe's
-// standing rule (diagnostics that can't change game behavior).
+// schedule_delayed is the sole producer of delayedTriggers and hardcodes
+// effect:'deferredEffects'; an entry with any other kind is unreachable in
+// real play, so this test synthesizes one directly.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -38,8 +34,6 @@ console.log('=== A1-6: an unhandled endStep delayed-trigger kind WARNS (not sile
 (() => {
   const G = newGame();
   const before = G.you.life;
-  // Synthetic endStep delayed trigger with an UNRECOGNIZED effect kind + a real
-  // (gain_life) effects payload that must NOT fire.
   G.delayedTriggers = [{ fireAt: 'endStep', fireFor: 'either', effect: '__bogus_kind__',
     effects: [{ kind: 'gain_life', amount: 5 }], controller: 'you', sourceName: 'Test', sourceIid: null, target: { kind: 'player', who: 'you' } }];
   const warns = withWarn(() => endTurn(G));

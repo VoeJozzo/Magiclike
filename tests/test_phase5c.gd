@@ -1,16 +1,7 @@
 extends Node
 
-# Phase 5c smoke test. Validates the AI port — both opp's behaviour during
+# Smoke test for the AI port — both opp's behaviour during
 # normal play and full-game AI-vs-AI completion.
-#
-# Scenarios:
-#   1. AI.decide on a blank/idle state returns pass_priority cleanly.
-#   2. AI.decide picks a target for a Pyromaniac ETB trigger when opp
-#      controls Pyromaniac.
-#   3. simulate_combat returns sensible damage/death numbers for a
-#      2/2 vs 2/2 trade.
-#   4. AI-vs-AI: both sides driven by AI.decide, played from init_phase5_demo
-#      until winner or 200-turn cap. Game must reach a winner.
 
 var failures: int = 0
 
@@ -22,7 +13,6 @@ func _ready() -> void:
 	_test_simulate_combat_trade()
 	_test_ai_vs_ai_completes()
 
-	# Final report
 	print("")
 	if failures == 0:
 		print("=== Phase 5c smoke test: ALL ASSERTIONS PASSED ✓ ===\n")
@@ -34,13 +24,10 @@ func _ready() -> void:
 # ─── Tests ────────────────────────────────────────────────────────────────
 
 func _test_decide_idle_pass() -> void:
-	# Fresh state, opp's main phase but opp has nothing to do (empty hand +
-	# battlefield except a Mountain). AI should pass priority.
 	RulesEngine.init_phase1()
 	var s: EngineState = RulesEngine.state()
 	s.opp.hand.clear()
 	s.opp.battlefield.clear()
-	# Give opp a tapped Mountain (no mana ability available).
 	var mtn := s.make_instance(CardDatabase.get_card("mountain"), "opp")
 	mtn.tapped = true
 	s.opp.battlefield.append(mtn)
@@ -56,7 +43,6 @@ func _test_decide_trigger_target() -> void:
 	var pyro := s.make_instance(CardDatabase.get_card("pyromaniac"), "opp")
 	pyro.summoning_sick = false
 	s.opp.battlefield.append(pyro)
-	# Manually set the awaiting state.
 	s.awaiting_target_for_trigger = {
 		"source_iid": pyro.instance_id,
 		"controller_key": "opp",
@@ -70,7 +56,7 @@ func _test_decide_trigger_target() -> void:
 
 
 func _test_simulate_combat_trade() -> void:
-	# Two 2/2 vanilla bears trade — both should die.
+	# grizzly_bears is vanilla — no keywords affect the trade math.
 	RulesEngine.init_phase1()
 	var s: EngineState = RulesEngine.state()
 	s.you.battlefield.clear()
@@ -90,7 +76,7 @@ func _test_simulate_combat_trade() -> void:
 
 
 func _test_ai_vs_ai_completes() -> void:
-	# AI-vs-AI from the Phase 5 showcase deck. Play until winner or hard cap.
+	# AI-vs-AI from the Phase 5 showcase deck.
 	RulesEngine.init_phase5_demo()
 	var s: EngineState = RulesEngine.state()
 	# Drive both sides via AI. We loop over execute_action, alternating
@@ -98,15 +84,13 @@ func _test_ai_vs_ai_completes() -> void:
 	var action_count: int = 0
 	var max_actions: int = 5000  # generous — 40-card decks, AI takes many small actions
 	while s.winner == "" and action_count < max_actions:
-		# When _current_actor would be "you", drive you via AI too (this is
-		# the AI-vs-AI mode).
 		var actor: String = _current_actor(s)
 		var action: Dictionary = AI.decide(s, actor)
 		if action.is_empty():
 			action = Action.make_pass_priority()
 		var ok = RulesEngine.execute_action(action)
 		if not ok:
-			# Action was rejected. Log and force a pass to avoid livelock.
+			# Action was rejected; force a pass to avoid livelock.
 			RulesEngine.execute_action(Action.make_pass_priority())
 		action_count += 1
 	_assert_true(s.winner != "", "AI vs AI reached a winner (took %d actions)" % action_count)

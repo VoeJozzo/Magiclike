@@ -1,24 +1,8 @@
-// Audit fix A3-10 — a targeted trigger with no legal target is not silently
-// eaten at EMIT time; it queues and fizzles LOUDLY at the stack-push moment.
-//
-// Pre-fix, emit() ran a redundant per-trigger legality gate
-// (`triggerHasAnyValidTarget`) at event time, BEFORE queueing: a "when a
-// creature dies -> deal damage to target creature" permanent watching the
-// only creature die was suppressed inside emit() — pendingTriggers stayed
-// empty and NO log line appeared. The proper gate already exists at the
-// go-on-stack moment (pushTriggerOnStack -> tsAutoPick), where the fizzle is
-// logged ("X trigger fizzles — no legal target."), and canon places queueing
-// on event/condition match (§1004) with target choice at the stack moment
-// (§1005). The fix deletes the emit-time gate; today's silent vanishes
-// become logged fizzles, and the emit->drain wrong-suppression window
-// (target appearing between event and drain) closes.
-//
-// Arms:
-//   1. KEY — the only creature dies; the watcher's damage-a-creature trigger
-//      has no legal target: the fizzle is LOGGED (red pre-fix: silence).
-//   2. Guard — with a bystander creature alive, the trigger still queues,
-//      auto-picks it, and resolves (1 damage) with NO fizzle line — pins
-//      that removing the emit gate didn't over-fire or break the happy path.
+// A targeted trigger with no legal target is not silently eaten at EMIT
+// time; it queues and fizzles LOUDLY at the stack-push moment
+// (pushTriggerOnStack -> tsAutoPick logs "X trigger fizzles — no legal
+// target."). Canon places queueing on event/condition match (§1004) and
+// target choice at the stack moment (§1005).
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -63,8 +47,7 @@ const VANILLA = (() => {
   }
   return null;
 })();
-// The watcher trigger lives on a LAND so it is never itself a damage target:
-// "Whenever a creature dies, deal 1 damage to target creature."
+// The watcher trigger lives on a LAND so it is never itself a damage target.
 const diesWatcher = () => ({
   event: 'card_zone_change',
   condition: ['another_card', 'card_is_creature', 'card_moves(battlefield, graveyard)'],

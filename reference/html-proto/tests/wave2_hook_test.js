@@ -1,4 +1,4 @@
-// Wave 2 static spell riders ("Spells you cast also …" — applySpellRiders).
+// Static spell riders ("Spells you cast also …" — applySpellRiders).
 // The settled semantics under test (docs/plans/plan-pool-waves.md):
 //   - riders apply AFTER the spell's own effects (resolution-time: the pump
 //     lands before the rider reads the board — no cast-time timing trap)
@@ -6,7 +6,7 @@
 //   - targets that died during resolution are skipped
 //   - fizzled spells apply no riders; creature casts never do
 //   - spell_filter.has_effect gates riders to matching spells
-// Synthetic rider cards mirror the four Wave 2 customers' exact shapes.
+// Synthetic rider cards mirror the four shipping customers' exact shapes.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -49,7 +49,6 @@ function freshGame() {
   return G;
 }
 
-// Synthetic rider bodies (the four customers' shapes)
 const SAPLING = { tplId: 'test_sapling', name: 'Test Sapling', cost: { G: 1, C: 1 }, types: ['Creature', 'Elf', 'Druid'], power: 1, toughness: 2,
   spell_riders: [{ rider_scope: 'your_creature_targets', effects: [{ kind: 'pump', duration: 'permanent', power: 1, toughness: 1 }] }] };
 const METAMAGUS = { tplId: 'test_metamagus', name: 'Test Metamagus', cost: { R: 1, G: 1, C: 1 }, types: ['Creature', 'Elemental', 'Shaman'], power: 2, toughness: 2,
@@ -108,7 +107,6 @@ console.log('\n=== all_targets scope: player targets get pinged too; dead target
   const oppLife = G.opp.life;
   cast(G, 'lightning_bolt', [{ kind: 'player', who: 'opp' }]);
   check('bolt at face: 3 + 1 rider = opp lost 4', G.opp.life === oppLife - 4, oppLife + ' -> ' + G.opp.life);
-  // Dead-target skip: bolt kills a 2/1; the rider must not throw or double-kill.
   const chump = mk('goblin_raider', 'opp');
   G.opp.battlefield.push(chump);
   const r = cast(G, 'lightning_bolt', [{ kind: 'creature', iid: chump.iid }]);

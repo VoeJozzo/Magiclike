@@ -1,35 +1,10 @@
-// Audit fix A2-7 — deathtouch lethal dose vs indestructible + lifelink
-// overkill full-gain. Design ruling (PR #98, 2026-06-10):
-//   "1 point of deathtouch damage is lethal. Indestructible creatures
-//    survive lethal damage."
-//   "Lifelink should always gain its full power, even when that damage is
-//    overkill."
+// Ruling: 1 point of deathtouch damage is lethal; indestructible creatures
+// survive lethal damage. Lifelink always gains its full power, even when
+// that damage is overkill.
 //
-// Pre-fix, dealCombatDamage's lethal-threshold ternary carved indestructible
-// blockers OUT of deathtouch's 1-damage dose (`atkDeathtouch &&
-// !indestructible`): a deathtouch trampler had to assign the indestructible
-// blocker's FULL remaining toughness before anything spilled — a 3-power
-// deathtouch+trample attacker vs Iron Statue (0/5 indestructible) trampled
-// 0 instead of 2. The ruling removes the carve-out: the dose is 1 vs every
-// blocker; indestructibles are lethal-marked but survive (the immunity
-// lives in checkDeaths). ai.js's simulateCombat mirrored the identical
-// carve-out and changes in lockstep.
-//
-// Lifelink: the "all blockers satisfied + no trample" leftover arm wasted
-// the remainder with NO lifelink — a 6/6 lifelink attacker over a 2/2
-// blocker gained 2, not 6. Per the ruling it now gains its full power.
-//
-// This file pins:
-//   1. deathtouch+trample vs Iron Statue: dose 1, spill 2 to the defender,
-//      statue lethal-marked but alive
-//   2. deathtouch+lifelink (no trample) vs Iron Statue: dose 1 satisfies,
-//      overkill wasted but lifelink gains full power (3)
-//   3. lifelink overkill full-gain: 6/6 lifelink vs 2/2 blocker, no
-//      trample -> gains 6 (2 assigned + 4 wasted)
-//   4. guard (green before AND after): lifelink+trample 6/6 vs 2/2 ->
-//      gains 6 (2 + 4 spill), defender takes 4
-//   5. guard (green before AND after): deathtouch vs a KILLABLE blocker —
-//      dose 1, blocker dies at the SBA sweep
+// dealCombatDamage assigns dose 1 to every blocker, including indestructible
+// ones — lethal-marked but immune to death (checkDeaths enforces the
+// survival). ai.js's simulateCombat mirrors this dose-of-1 rule.
 
 const setup = require('./_setup');
 setup.loadEngine();

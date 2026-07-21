@@ -1,14 +1,8 @@
-// Card data registry + async loader.
-//
-// Card templates used to live inline in this file as one giant CARDS = {...}
-// object literal. They now live in cards/<tplId>/card.json — one folder per
-// card. This file:
-//   - declares CARDS as an empty object at module-load time
-//   - exposes loadCards() which fetches cards/_manifest.json + each
-//     card.json in parallel and populates CARDS
-//   - keeps the supporting registries that don't fit the per-card model
-//     (TOKENS, KEYWORDS, STICKERS, EMPOWER_FIELDS, KEYWORD_DISPLAY,
-//     KEYWORD_STICKER_WEIGHTS) inline below
+// Card data registry + async loader. Card templates live in
+// cards/<tplId>/card.json — one folder per card; this file declares CARDS as
+// an empty object, exposes loadCards() to populate it from the manifest, and
+// holds the supporting registries that don't fit the per-card model (TOKENS,
+// KEYWORDS, STICKERS, EMPOWER_FIELDS, KEYWORD_DISPLAY, KEYWORD_STICKER_WEIGHTS).
 //
 // CARDS starts empty. Every consumer reads it via `CARDS[tplId]` at runtime
 // (never at module-load), so the empty-initial state is fine — by the time
@@ -27,7 +21,7 @@ const CARDS = {};
 //
 // Wire    →  JS-internal
 //   card_id  →  tplId
-//   (derived) →  color, colors (computed from cost; not stored in JSON)
+//   (derived) →  color, colors (from cost; authored values are kept but discouraged — see cards/CLAUDE.md)
 function ingestCard(card) {
   if (card == null || typeof card !== 'object') return card;
   if (Object.prototype.hasOwnProperty.call(card, 'card_id')) {
@@ -46,7 +40,7 @@ function ingestCard(card) {
     if (!Object.prototype.hasOwnProperty.call(card, 'colors')) card.colors = colors;
   }
   // Normalize any function-call-shorthand effects to canonical dicts (§5.1/§5.2).
-  // No-op for dict-form effects, so the current all-dict pool is unaffected.
+  // No-op for dict-form effects.
   if (typeof normalizeCardEffects === 'function') normalizeCardEffects(card);
   grantBasicLandMana(card);
   return card;
@@ -208,17 +202,15 @@ STICKERS['cost_minus_1'] = {
   },
   stackable: true,
   weight: 1,
-  // §3.8: unified onto the signed cost_mod kind (−1 reward / +1 embargo).
+  // cost_mod: signed amount (−1 reward, +1 embargo).
   kind: 'cost_mod',
   amount: -1,
 };
 
-// Empower bumps one buffable field per application. Roll recorded on slot.empowerRolls.
-// Single source of truth for empowerable params, post-collapse (§3.5/§3.8):
-// the mass kinds (damageAll/pumpAllYours/removeAll) folded into damage/pump/
-// affect_creature + scope; weaken/add_counter into signed/permanent pump; draw
-// into move_card(library→hand). `move_card` is empowerable ONLY in its draw
-// shape (gated in isEmpowerableField).
+// Empower bumps one buffable field per application. Roll recorded on
+// slot.empowerRolls. Single source of truth for empowerable params.
+// `move_card` is empowerable only in its draw shape (gated in
+// isEmpowerableField).
 const EMPOWER_FIELDS = {
   damage:         ['amount'],
   pump:           ['power', 'toughness'],
@@ -291,10 +283,7 @@ STICKERS['empower'] = {
   text: 'A single number on this card is increased by 1 — rolled when applied. Stack for more rolls.',
   appliesTo: (c) => hasEmpowerableEffect(c),
   stackable: true,
-  weight: 10,                  // baseline. Was 50 during early playtest to
-                               // pump Empower into nearly every offer pool;
-                               // dropped to baseline now that the mechanic
-                               // is shipped and stable.
+  weight: 10,
   kind: 'empower',
   amount: 1,
 };
@@ -333,7 +322,6 @@ const KEYWORD_REMINDER = {
   innate: 'It starts in your opening hand.',
 };
 // Per-keyword sticker offer weight. Higher = more common in pair offers.
-// Keeping it minimal for now — tune as we get playtest signal.
 //   1 = rare/strong (game-warping when stuck)
 //   10 = baseline (everything else)
 const KEYWORD_STICKER_WEIGHTS = {
@@ -364,15 +352,10 @@ for (const kw of KEYWORDS) {
       // Don't offer a keyword the card already has (native or stickered).
       if ((c.keywords || []).includes(kw)) return false;
       if ((c.stickers || []).some(sId => STICKERS[sId] && STICKERS[sId].keyword === kw)) return false;
-      // Type-based eligibility:
-      //   - Lifelink/Deathtouch/Trample: creatures, OR damaging spells.
-      //   - Flash: creatures, OR sorceries (gives a sorcery instant speed).
-      //   - All other keywords: creatures only.
+      // Flash is also offered on sorceries (gives them instant speed).
       if (kw === 'lifelink' || kw === 'deathtouch' || kw === 'trample') {
         if (hasType(c, 'Creature')) {
-          // OK
         } else if (hasType(c, 'Sorcery') && spellDealsDamage(c)) {
-          // OK
         } else {
           return false;
         }
@@ -433,7 +416,7 @@ STICKERS['scarified'] = {
   text: 'When this enters the battlefield, its controller loses 1 life.',
   appliesTo: (c) => hasType(c, 'Creature'),
   stackable: true,         // multiple scarifications stack — each fires on ETB
-  weight: 0,               // not in random pools
+  weight: 0,
   kind: 'trigger',
   trigger: {
     event: 'card_zone_change',

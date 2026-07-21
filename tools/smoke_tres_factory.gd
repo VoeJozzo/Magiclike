@@ -4,10 +4,6 @@ extends Node
 # scenes/card.tscn visual scaffolding still spawn together. Engine tests
 # never exercise the factory; this script does.
 #
-# Iterates every card_id in CardDatabase, instantiates a Card via the factory
-# into a throwaway Hand, verifies the Card is non-null and its card_info has
-# the expected keys.
-#
 # Headless: godot --headless --path <repo> res://tools/smoke_tres_factory.tscn
 
 const _FACTORY_SCENE: PackedScene = preload("res://scenes/tres_card_factory.tscn")

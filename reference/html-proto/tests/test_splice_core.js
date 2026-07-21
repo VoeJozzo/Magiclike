@@ -1,7 +1,6 @@
-// Splice harmonization (plan-effects-refactor §7, steps 0+11): the merge math
-// that was duplicated between RUN.applySplice (reward-time, slot data) and
-// EFFECTS.apply_in_game_splice (in-game Stapler, runtime cards) is now one shared
-// `mergeSpliceData(base, staple)` core. This test:
+// RUN.applySplice (reward-time, slot data) and EFFECTS.apply_in_game_splice
+// (in-game Stapler, runtime cards) share one `mergeSpliceData(base, staple)`
+// core. This test:
 //   1. unit-checks the core (concat + empower-roll remap + bonus precedence), and
 //   2. proves the two pathways agree — splice the SAME two cards via the reward
 //      path and the in-game path, assert the resulting merged slot data matches.
@@ -16,17 +15,11 @@ function check(label, ok, info) {
 }
 function eqArr(a, b) { return JSON.stringify(a || []) === JSON.stringify(b || []); }
 
-// Two vanilla spliceable creatures (creature+creature merge).
 const baseTpl = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceableBase(k));
 const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k], 'Creature') && isSpliceableStaple(k));
 
 console.log('=== mergeSpliceData core: concat + bonus precedence + chain ===');
 (() => {
-  // A5-6/A5-7: permaBuffs is retired — Elystra-style permanent buffs are now
-  // stat_boost / kw_* STICKERS, so they merge for free through the stickers
-  // concat (the old test fed array-shaped permaBuffs the merge wrongly expected,
-  // certifying a shape nothing produced). Base carries an inline stat_boost; the
-  // staple a kw_ sticker — both must survive the concat in order.
   const merged = mergeSpliceData(
     { tplId: baseTpl, stickers: ['plus1_plus1', { kind: 'stat_boost', power: 1, toughness: 0 }],
       empowerRolls: [], subtypeRolls: ['Goblin'], bonusTrigger: null, priorStaples: [] },
@@ -52,7 +45,8 @@ console.log('\n=== bonus precedence: base wins when both present ===');
 console.log('\n=== empower-roll remap accounts for prior staple chain ===');
 (() => {
   // A creature base + a prior creature staple with 1 trigger: a staple empower
-  // roll on a trigger must shift its subIdx by the prior staple's trigger count.
+  // roll on a trigger must shift its subIdx by the base card's own trigger
+  // count plus the prior staple's trigger count.
   const priorWithTrigger = Object.keys(CARDS).find(k =>
     hasType(CARDS[k], 'Creature') && isSpliceableStaple(k) && (CARDS[k].triggers || []).length >= 1);
   if (!priorWithTrigger) { check('(skipped: no creature staple with a trigger in pool)', true); return; }
@@ -62,7 +56,6 @@ console.log('\n=== empower-roll remap accounts for prior staple chain ===');
   const merged = mergeSpliceData(
     { tplId: baseTpl, empowerRolls: [], priorStaples: [priorWithTrigger] },
     { tplId: stapleTpl, empowerRolls: [roll] });
-  // Only meaningful when both base and staple are creatures (trigger-merge case).
   if (hasType(CARDS[baseTpl], 'Creature') && hasType(CARDS[stapleTpl], 'Creature')) {
     const expected = baseTriggers + priorTriggers;
     check('staple trigger-roll subIdx shifted past base + prior triggers',
@@ -74,7 +67,6 @@ console.log('\n=== empower-roll remap accounts for prior staple chain ===');
 
 console.log('\n=== the two pathways agree on merged slot data (identical end state) ===');
 (() => {
-  // Reward path: two slots, RUN.applySplice, read the merged base slot.
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   const slots = RUN.getSlots();
   slots.length = 0;
@@ -84,7 +76,6 @@ console.log('\n=== the two pathways agree on merged slot data (identical end sta
   check('reward-path applySplice succeeded', ok === true);
   const rewardSlot = RUN.getSlots()[0];
 
-  // In-game path: same two as battlefield perms with run slots; Stapler staples.
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
   const G = ENGINE.state();

@@ -1,10 +1,6 @@
-// Regression: player-controlled triggers with a top-level target() step must
-// PROMPT the player to choose, not silently auto-pick. The §3.5 migration moved
-// trigger targets from per-effect `eff.target` to the top-level `trig.target`
-// (bare effects), but triggerNeedsPlayerChoice only inspected per-effect targets
-// — so every migrated targeted trigger auto-selected its target when the human
-// cast the creature ("targets auto-selected when I cast spells"). The AI still
-// auto-picks (no prompt).
+// A trigger's top-level target() step (trig.target on a bare effect, not
+// per-effect eff.target) must prompt the player to choose; objectNeedsTarget
+// must inspect trig.target too. The AI still auto-picks (no prompt).
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -46,8 +42,7 @@ function castETB(tplId, caster) {
 
 console.log('=== migrated targeted trigger PROMPTS the human (not auto-picked) ===');
 (() => {
-  // aether_drake: ETB → target(your_creature) gains hexproof. With 2+ own
-  // creatures the player must choose which.
+  // aether_drake: ETB → target(your_creature) gains hexproof (ambiguous with 2+ own creatures).
   const G = castETB('aether_drake', 'you');
   check('player prompted for aetherDrake ETB target',
     !!G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you',
@@ -56,7 +51,7 @@ console.log('=== migrated targeted trigger PROMPTS the human (not auto-picked) =
 (() => {
   // ravenous_chupacabra: ETB → destroy target(creature) — multiple legal creatures.
   const G = castETB('ravenous_chupacabra', 'you');
-  check('player prompted for blackKnight ETB target',
+  check('player prompted for chupacabra ETB target',
     !!G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you');
 })();
 
@@ -68,15 +63,12 @@ console.log('\n=== the AI (opp) still auto-picks — no prompt ===');
 
 console.log('\n=== a single legal target still auto-picks (no needless prompt) ===');
 (() => {
-  // your_creature trigger with only ONE of your creatures (the source itself
-  // hasn't entered yet for a non-creature... use otherworldlyJourney? simpler:
-  // give the human exactly one own creature so your_creature has 1 option).
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
   const G = setup.startMainPhase('you');
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
-  // aetherDrake's your_creature trigger: with NO other own creature, only the
-  // drake itself is a legal target → exactly 1 → auto-pick, no prompt.
+  // aetherDrake's your_creature trigger: with no other own creature on the
+  // battlefield, the drake itself is the only legal target.
   const spell = mk('aether_drake', 'you'); G.you.hand.push(spell);
   ENGINE.executeAction('you', { type: 'castSpell', cardIid: spell.iid });
   let safety = 20;

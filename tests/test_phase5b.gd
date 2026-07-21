@@ -1,14 +1,5 @@
 extends Node
 
-# Phase 5b smoke test. Validates the engine introspection API for the
-# upcoming AI port:
-#   - get_legal_actions(player_key) enumerates the right action set on a
-#     known Phase 4.5 starting position
-#   - card_value scores known cards sensibly (Serra Angel > Bear Cub,
-#     Lightning Bolt > vanilla 1-drop)
-#   - EngineState.duplicate_deep() produces a separable copy — mutations
-#     on the copy don't leak into the original
-
 var failures: int = 0
 
 
@@ -19,7 +10,6 @@ func _ready() -> void:
 	_test_card_value_orderings()
 	_test_duplicate_deep_separation()
 
-	# Final report
 	print("")
 	if failures == 0:
 		print("=== Phase 5b smoke test: ALL ASSERTIONS PASSED ✓ ===\n")
@@ -28,23 +18,17 @@ func _ready() -> void:
 	get_tree().quit(0 if failures == 0 else 1)
 
 
-# ─── get_legal_actions on a Phase-4 demo position ─────────────────────────
+# ─── get_legal_actions on a demo position ─────────────────────────
 
 func _test_get_legal_actions_main_phase() -> void:
 	RulesEngine.init_phase4()
 	var s: EngineState = RulesEngine.state()
-	# Phase 4 init gives you 3 untapped Mountains + 3 cards in hand
-	# (Pyromaniac, Bloodlust Berserker, Lightning Bolt). At MAIN1 with no
-	# mana yet, legal actions should be:
-	#   - pass priority (1)
-	#   - end turn (1, active player on an empty stack)
-	#   - tap each Mountain (3 mana abilities)
-	#   - Pyromaniac, Berserker = sorcery-speed, but no mana yet → not legal
-	#   - Lightning Bolt = needs target AND no R → not legal yet
-	# So the count is exactly 5.
+	# init_phase4() gives you 3 untapped Mountains + 3 cards in hand
+	# (Pyromaniac, Bloodlust Berserker, Lightning Bolt).
+	# Pyromaniac and Berserker are sorcery-speed with no mana yet; Lightning
+	# Bolt needs a target and R — none of the three are legal yet.
 	var actions := RulesEngine.get_legal_actions("you")
 	_assert_eq(actions.size(), 5, "MAIN1 with no mana: 1 pass + 1 end-turn + 3 land taps")
-	# Check pass is present
 	var has_pass := false
 	for a in actions:
 		if a.kind == Action.KIND_PASS_PRIORITY:
@@ -55,30 +39,21 @@ func _test_get_legal_actions_main_phase() -> void:
 	for c in s.you.battlefield:
 		if c.template.card_id == "mountain":
 			RulesEngine.execute_action(Action.make_tap_land_for_mana(c.instance_id))
-	# Now: pass + Pyromaniac cast (no target) + Berserker cast (no target)
-	# + Lightning Bolt fan-out across legal targets.
-	# Berserker costs {R:2, C:1} = 3 mana total, and RRR is enough since the
-	# generic pip can be paid with red. So Berserker IS castable.
-	# Legal Bolt targets: you, opp, plus opp's Grizzly Bears = 3 targets.
-	# Final: 1 pass + 1 end-turn + 1 Pyromaniac + 1 Berserker + 3 Bolt targets = 7.
+	# Berserker costs {R:2, C:1}; RRR covers it since the generic pip can be
+	# paid with red. Legal Bolt targets: you, opp, and opp's Grizzly Bears.
 	actions = RulesEngine.get_legal_actions("you")
 	_assert_eq(actions.size(), 7, "MAIN1 with RRR: 1 pass + 1 end-turn + 1 Pyromaniac + 1 Berserker + 3 Bolt targets")
 
 
 func _test_get_legal_actions_combat_attack() -> void:
-	# Set up a state with one attacker available and verify
-	# declare_attacker shows up.
 	RulesEngine.init_phase4()
 	var s: EngineState = RulesEngine.state()
-	# Drop a battle-ready bear on your battlefield
 	var bear := s.make_instance(CardDatabase.get_card("grizzly_bears"), "you")
 	bear.summoning_sick = false
 	s.you.battlefield.append(bear)
-	# Force phase to COMBAT_ATTACK
 	s.phase_machine.current = PhaseMachine.Phase.COMBAT_ATTACK
 	s.priority_player_key = "you"
 	var actions := RulesEngine.get_legal_actions("you")
-	# Should include declare_attacker for the bear (plus pass + maybe mana abilities)
 	var has_attack := false
 	for a in actions:
 		if a.kind == Action.KIND_DECLARE_ATTACKER and a.source_iid == bear.instance_id:
@@ -122,8 +97,7 @@ func _test_card_value_orderings() -> void:
 		RulesEngine.card_value(bolt) > 0.0,
 		"card_value: Lightning Bolt has positive value"
 	)
-	# Walking Wall (defender) should be penalised — score lower than Bear Cub
-	# despite better stats, because defender = -3.
+	# Heuristic: defender = -3.
 	_assert_true(
 		RulesEngine.card_value(wall) < RulesEngine.card_value(bears),
 		"card_value: Walking Wall (defender 0/4) < Grizzly Bears (2/2 vanilla)"
@@ -136,12 +110,10 @@ func _test_duplicate_deep_separation() -> void:
 	RulesEngine.init_phase4()
 	var s: EngineState = RulesEngine.state()
 	var copy := s.duplicate_deep()
-	# Mutate the copy — original should be unchanged.
 	copy.you.life = 1
 	copy.opp.life = 1
 	_assert_eq(s.you.life, 20, "duplicate_deep: original you.life untouched after copy mutation")
 	_assert_eq(s.opp.life, 20, "duplicate_deep: original opp.life untouched")
-	# Mutate a card on the copy's battlefield.
 	if not copy.you.battlefield.is_empty():
 		var copy_card: CardInstance = copy.you.battlefield[0]
 		copy_card.tapped = true
@@ -149,7 +121,6 @@ func _test_duplicate_deep_separation() -> void:
 		var orig_card: CardInstance = s.you.battlefield[0]
 		_assert_eq(orig_card.tapped, false, "duplicate_deep: original card not tapped after copy mutation")
 		_assert_eq(orig_card.damage_marked, 0, "duplicate_deep: original damage_marked untouched")
-	# Mutate the copy's stack.
 	copy.stack.push({"kind": "spell", "source_iid": -1, "controller_key": "you", "targets": []})
 	_assert_eq(s.stack.size(), 0, "duplicate_deep: original stack untouched")
 

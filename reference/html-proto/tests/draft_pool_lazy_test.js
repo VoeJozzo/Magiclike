@@ -1,11 +1,6 @@
-// Regression: draftPool() / oppPool() must be lazy. The card-data
-// refactor (v1.0.134) made CARDS empty at module-load time; if these
-// pools were computed at module-load (the old DRAFT_POOL const), they'd
-// freeze to an empty array and the draft screen would offer no cards.
-//
-// This test verifies the pools have content AFTER the engine + cards
-// have loaded. If a future refactor accidentally restores eager
-// evaluation against an empty CARDS, this test fails immediately.
+// draftPool() / oppPool() must be lazy: CARDS is empty at module-load time,
+// so a pool computed eagerly would freeze to an empty array and the draft
+// screen would offer no cards.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -41,17 +36,13 @@ console.log('=== draftPool: rollTransformPack returns a non-empty pack ===');
 
 console.log('\n=== draftPool: matches the documented filter ===');
 {
-  // Re-derive the expected pool here and compare counts. Must match draftPool()'s
-  // real predicate: draftable (not a boon/boss), and either non-land OR a
-  // NONBASIC land. Only BASIC lands are excluded — they're auto-allocated after
-  // the draft; every nonbasic land (artifact lands, utility lands like Deepseam
-  // Quarry) drafts like any other pick.
+  // Only BASIC lands are excluded from the draft pool — they're auto-allocated
+  // after the draft; every nonbasic land (artifact lands, utility lands like
+  // Deepseam Quarry) drafts like any other pick.
   const expected = Object.keys(CARDS).filter(id => {
     const c = CARDS[id];
     return !isUndraftable(c) && !hasType(c, 'Basic');
   });
-  // Pull pack multiple times and union the unique tplIds — should be a
-  // subset of expected, and over many rolls should cover most of it.
   const seen = new Set();
   for (let i = 0; i < 200; i++) {
     for (const id of DRAFT.rollTransformPack([])) seen.add(id);
@@ -66,9 +57,7 @@ console.log('\n=== draftPool: matches the documented filter ===');
 
 console.log('\n=== colorless cards are offered every slot (not bucketed away) ===');
 {
-  // Regression (v2.0.60): colorless cards (color:null) landed in no WUBRG color
-  // bucket, so the color-rolled slots never offered them — colorless creatures
-  // appeared in 0% of packs. They now compete in every slot.
+  // Colorless creatures store color:null, belonging to no WUBRG bucket.
   const colorlessCreatures = new Set(Object.keys(CARDS).filter(id => {
     const c = CARDS[id];
     return hasType(c, 'Creature') && !isUndraftable(c) && !c.color;

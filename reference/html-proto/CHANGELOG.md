@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.39`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.45`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -3151,3 +3151,74 @@ blind spot. Stale special/RUN_MODIFIERS references swept from comments
 (engine, draft, steal-gate, buckets, CLAUDE.md registry list, _setup
 globals); CLAUDE.md's "3 bucket picks" corrected to 5. Suite 151 files /
 3003 green; lint clean.
+v2.2.40: repo-wide comment sweep under the comment doctrine (root
+CLAUDE.md → Comments; docs/wiki/comment-doctrine.md). Comments-only, no
+behavior change: 218 files audited across both engines by per-file editor
+agents, each edited file re-checked by an adversarial reviewer; 205 edited —
+361 comments deleted (changelog narration, version stamps, dev-phase labels,
+verified-claims, speculative futures, restatements), 518 trimmed to shortest
+true form, 72 reviewer restorations of over-deletions. Comments contradicting
+code were flagged and left in place — see BACKLOG "Stale-comment flags"
+(js/draft.js:581 needs a design call on the splash-penalty curve).
+(js/draft.js:581 needs a design call on the splash-penalty curve). Suite 150
+files / 2997 green; lint clean.
+
+v2.2.41: flag-review resolution (F1–F14 from the sweep's review sheet).
+Joe's F1 call: trust the code — the splash-penalty comment's wrong curve
+enumeration is deleted, formula unchanged. Truth-fixes: misplaced doc lines
+rehomed onto describeTrigger and describeStaticBuff; two misplaced test
+dividers rehomed; the Architect's Codex build flow is no longer credited to
+Mercurial Adept; a rotted engine.js line-number pointer dropped. Label
+fixes: 'terror'→'murder' in castable-highlight; '(was: vanished)' narration
+dropped from the fizzle label. New assertion: targetless giant_growth cast
+is rejected (wave2, +1 assertion). Verified in passing: every move_card
+battlefield arrival emits ETB via placeCardOnBattlefield (F4); no card
+emits the retired params.sub shape (F2).
+
+v2.2.42: comment-doctrine pass over the 29 js files PR #148 added or
+edited (per-file editor + adversarial reviewer agents, as the v2.2.40
+sweep). 19 files edited — 8 comments deleted, 32 trimmed; reviewers found
+zero over-deletions and zero code drift. Five comment-vs-code
+contradictions were verified code-right/comment-wrong and truth-fixed:
+card-text.js "sole ENGINE dependency" (three deps exist), an orphaned
+target-noun comment above STAT_PHRASE, cards.js color/colors "not stored
+in JSON" (authored values are kept but discouraged per cards/CLAUDE.md),
+card_text_test token count-wording claim (1 renders "a"), and
+pool_assay's "bucket names" metric header (names died v2.2.22; it counts
+seed cards). Suite 151 files / 2984 green; lint clean.
+
+v2.2.43: comment-doctrine pass over the 35 code files PR #150 added or
+edited (incl. tools/pixel-lint.js and the Python tile baker; same
+editor+adversarial-reviewer machinery as v2.2.40/42). 21 files edited —
+16 comments deleted, 32 trimmed; zero over-deletions, zero code drift.
+Three contradictions verified code-right and truth-fixed: pixel-lint's
+"Not done" claim about slice-spec checking (sliceSpecMatch does it),
+types.js's hasType doc stranded above isUndraftable (rehomed), and
+pool_assay's "top-card recurrence" census claim (never implemented — the
+string only ever existed in the header). Suite 151 files / 3004 green;
+lint clean.
+
+v2.2.44: comment wave 2 — chunked deep sweep of the ten 700+ line files
+(both engines; fresh editor per ~450-line segment to counter the measured
+within-file attention decay of the whole-file passes, whole-file
+adversarial reviewer per edited file). 48/57 segments edited: 65 comments
+deleted, 89 trimmed; reviewers found zero code drift and themselves fixed
+two sweep-introduced rewrite errors in engine.js. Nine comment-vs-code
+contradictions: seven truth-fixed (four by the wave's own agents, three
+after — schema no-cards claim, misattributed graveyard-recursion label,
+orphaned render header), two backlogged as bug candidates
+(effectiveCastCost returns the live cost object on no-bump paths;
+Archdemon bargain stash uses battlefield-only findCard, so a departed
+source silently drops the count). Suite 151 files / 3004 green; lint
+clean; Godot 12/12.
+
+v2.2.45: comment wave 3 — targeted assert-echo sweep of all 166 test
+files, both engines. A convergence audit (day-one instrument, fresh
+sample) localized the dominant remaining noise as comments duplicated by
+adjacent assertion labels; the doctrine gained that named rule and 134
+files shed 338 comments (+195 trims), reviewers restoring 10
+over-deletions. Flag fixes: ghost-attacker mana comments (floatMana pays,
+not the lands), splice_core subIdx invariant wording, two stale test
+labels (blackKnight→chupacabra; pre-fix-comment reference). One item
+backlogged: test_ai_targeting pins a weaker scenario than its comment
+claims. Suite 151 files / 3004 green; lint clean; Godot 12/12.

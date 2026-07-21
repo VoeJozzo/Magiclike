@@ -1,9 +1,3 @@
-// Audit A2-15 — menace enforcement (a lone blocker is illegal; 2+ required) had
-// ZERO regression coverage, at a site whose own comment records a prior silent
-// failure (Object.entries string-key coercion). A future refactor reintroducing
-// string keys would land green and repeat the bite. This pins the lone-block
-// rejection. Tests only; the menace check (engine.js declareBlockers legality)
-// is correct.
 const setup = require('./_setup');
 setup.loadEngine();
 
@@ -48,7 +42,7 @@ else {
   console.log('=== A2-15 guard: a NON-menace attacker accepts a single blocker ===');
   {
     const G = newGame();
-    const A = mk(VANILLA,'you'); A.power=2; A.toughness=2; A.sick=false; // no menace
+    const A = mk(VANILLA,'you'); A.power=2; A.toughness=2; A.sick=false;
     G.you.battlefield.push(A); giveHold(G,'you'); readyMain(G,'you');
     const b = mk(VANILLA,'opp'); b.power=1; b.toughness=1; b.sick=false;
     G.opp.battlefield.push(b); giveHold(G,'opp');

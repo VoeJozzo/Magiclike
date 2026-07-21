@@ -1,8 +1,3 @@
-// Sticker subtype system: there's exactly one 'subtype' sticker that
-// rolls a subtype from the deck at apply time, persists via subtypeRolls,
-// stacks for multiple subtypes, and migrates legacy subtype_<tribe>
-// saves. Adapted from the prior-session test bundle.
-
 const setup = require('./_setup');
 setup.loadEngine();
 

@@ -1,21 +1,15 @@
-// Audit A4-8 + A4-14 — targeting-layer filter holes:
+// js/engine.js::targetsForFilter's per-kind target_filter scope (PROTOCOL
+// §3.5):
 //
-//   A4-8: getValidTargets silently DROPPED the optional `target_filter`
-//         restriction for the creature_or_player and spell kinds (while the
-//         function's own header and PROTOCOL §3.5 claimed it was honored).
-//         Latent — no shipped card pairs a restriction with those kinds —
-//         but "deal 3 to any target with flying" would have shipped silently
-//         unrestricted. Now: the creature HALF of creature_or_player is
-//         filtered (players are always legal — matchFilter's vocabulary is
-//         card axes); the spell arm filters through matchFilterSpell (spell
-//         axes: spliceable_*/not_token). player/opp + target_filter is
-//         boot-rejected (see test_a4_validation_guards).
-//   A4-14: getStats ↔ matchFilter mutual recursion — a stat-bounded filter
-//         (max/min power/toughness) inside a lord's static_buff re-entered
-//         getStats per lord and hard-crashed with RangeError. Lord-buff
-//         evaluation now goes through a stats-free view (the four bound axes
-//         are skipped until stat-bounded lord buffs are designed; boot
-//         validation rejects them loudly).
+//   creature_or_player: the creature half is filtered through matchFilter
+//         (card axes only) — players are always legal, matchFilter has no
+//         player vocabulary.
+//   spell: filtered through matchFilterSpell (axes: spliceable_*/not_token).
+//   player/opp + a target_filter restriction is boot-rejected
+//         (see test_a4_validation_guards).
+//   Lord static_buffs: stat-bound filter axes (max/min power/toughness)
+//         evaluate through matchFilterNoStats to avoid recursing back into
+//         getStats; boot validation rejects stat-bound lord buff filters.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -85,9 +79,8 @@ console.log('\n=== A4-8: the spell arm honors target_filter (matchFilterSpell ax
 console.log('\n=== A4-14: a stat-bounded lord static_buff must not stack-overflow ===');
 (() => {
   const G = newGame();
-  // The exact shape the A2-1 builder hit: an ordinary-looking card.json edit —
-  // "creatures with power 2 or less get +1/+1" — closing the
-  // getStats → lordBuffApplies → matchFilter → getStats cycle.
+  // A stat-bound filter (max/min power/toughness) in a lord's static_buff
+  // recurses: getStats → lordBuffApplies → matchFilter → getStats.
   const lord = mk('gray_ogre', 'you');
   lord.static_buffs = [{ power: 1, toughness: 1, filter: { max_power: 2 } }];
   const cub = mk('bear_cub', 'you');   // 1/1
@@ -99,7 +92,7 @@ console.log('\n=== A4-14: a stat-bounded lord static_buff must not stack-overflo
   check('buff applies through the stats-free view (1/1 → 2/2)',
     !!stats && stats[0] === 2 && stats[1] === 2, JSON.stringify(stats));
 
-  // Second crash entry point: the keyword half fires from emit() pre-trigger.
+  // The keyword half fires from emit() pre-trigger.
   lord.static_buffs = [{ keywords: ['haste'], filter: { max_power: 2 } }];
   let threw2 = null;
   try { ENGINE.applyStaticKeywordGrants(); } catch (e) { threw2 = e; }

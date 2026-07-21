@@ -1,9 +1,8 @@
 // keywordIconsHtml — the compact keyword icon row shown on the small in-play
 // frame (in place of the keyword text line; the blow-up popup keeps the words).
 // Covers: inline coin SVG emission + reminder tooltip, the per-source recolor
-// class (native/sticker/granted), the unblockable text fallback, the
-// creature-vs-spell keyword selection, the no_block exclusion, and innate
-// inclusion (its coin shows on lands, gold when sticker-granted).
+// class (native/sticker/granted), the creature-vs-spell keyword selection,
+// and innate inclusion (its coin shows on lands, gold when sticker-granted).
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -34,9 +33,9 @@ console.log('=== keywordIconsHtml: inline coins + source colors + tooltips ===')
 }
 
 {
-  // Source coloring: native (template) = blue, sticker (kw_*) = gold,
-  // permanent-granted (grantedBy) = teal.
-  global.CARDS.__kwtest = { keywords: ['flying'] };  // template has flying natively
+  // Source coloring: native (template) takes the card's own frame color
+  // (inline style), sticker (kw_*) = gold, permanent-granted (grantedBy) = teal.
+  global.CARDS.__kwtest = { keywords: ['flying'] };
   const grantedBy = new Map([['trample', new Set([999])]]);
   const card = {
     tplId: '__kwtest', types: ['Creature'],
@@ -55,7 +54,7 @@ console.log('=== keywordIconsHtml: inline coins + source colors + tooltips ===')
 }
 
 {
-  // Native coin color follows the card's frame color (red here -> red ink).
+  // Native coin color follows the card's frame color.
   global.CARDS.__redkw = { keywords: ['flying'], colors: ['R'] };
   const card = { tplId: '__redkw', types: ['Creature'], keywords: ['flying'], colors: ['R'] };
   const html = keywordIconsHtml(card);
@@ -64,7 +63,6 @@ console.log('=== keywordIconsHtml: inline coins + source colors + tooltips ===')
 }
 
 {
-  // unblockable now has coin art — renders an inline coin like the others.
   const card = { tplId: 'x', types: ['Creature'], keywords: ['unblockable'] };
   const html = keywordIconsHtml(card);
   check('unblockable renders a coin (no text fallback)',
@@ -72,7 +70,6 @@ console.log('=== keywordIconsHtml: inline coins + source colors + tooltips ===')
 }
 
 {
-  // innate now surfaces its own coin alongside other keywords (flying + innate = 2).
   const card = { tplId: 'x', types: ['Creature'], keywords: ['flying', 'innate'] };
   const html = keywordIconsHtml(card);
   const svgCount = (html.match(/<svg/g) || []).length;
@@ -80,9 +77,7 @@ console.log('=== keywordIconsHtml: inline coins + source colors + tooltips ===')
 }
 
 {
-  // Real case: a basic land with the innate sticker shows just the innate coin,
-  // styled gold (sticker source — the sticker is stored under the bare id 'innate',
-  // not 'kw_innate').
+  // innate's sticker id is the bare 'innate', not 'kw_innate' like other keyword stickers.
   const card = { tplId: 'forest', types: ['Land', 'Basic'], keywords: ['innate'], stickers: ['innate'] };
   const html = keywordIconsHtml(card, 'C');
   check('innate land shows a coin', html.includes('<svg') && html.includes('class="frame-keywords"'));
@@ -90,7 +85,6 @@ console.log('=== keywordIconsHtml: inline coins + source colors + tooltips ===')
 }
 
 {
-  // Non-creature: only spell-legal keywords (flash) show; combat ones don't.
   const card = { tplId: 'x', types: ['Instant'], keywords: ['flash', 'trample'] };
   const html = keywordIconsHtml(card);
   const svgCount = (html.match(/<svg/g) || []).length;

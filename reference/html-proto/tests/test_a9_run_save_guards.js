@@ -3,15 +3,13 @@
 // A9-4 (defensive guard, standing rule): RUN.load() must REFUSE a save blob
 // whose version is newer than this build's SAVE_VERSION (warn + return false)
 // — and must NOT clear it: a newer build can still read that save; clearing
-// would destroy it. Before the fix, the migration loop was upward-only
-// (`while (blob.version < SAVE_VERSION)`), so a future-version blob sailed
-// through as-is and the run proceeded on whatever shape it carried.
+// would destroy it.
 //
-// A9-5 (analytics-only): picklog's per-draft gamesPlayed counter must count
-// game COMPLETIONS (recordResult), not game starts. Before the fix it was
-// incremented in startNextGame, which (a) double-counted crash-restores —
-// the resume path replays startNextGame after rollbackForMidGameRestore —
-// and (b) counted abandoned games that were never finished.
+// A9-5 (analytics-only): picklog's per-draft gamesPlayed counter counts game
+// COMPLETIONS (recordResult), not starts — the resume path replays
+// startNextGame after rollbackForMidGameRestore, so counting at start would
+// double-count a crash-restore; an abandoned game (started, never finished)
+// must not count either.
 //
 // All localStorage traffic here hits the scratch shim from _setup.js,
 // never real storage.
@@ -55,7 +53,6 @@ function freshDraft() {
 }
 
 (() => {
-  // (a) Start alone is 0; completing the game makes it 1.
   freshDraft();
   RUN.start(DECK, null);
   RUN.startNextGame();
@@ -67,7 +64,6 @@ function freshDraft() {
 })();
 
 (() => {
-  // (b) Crash-restore: start → rollback → replayed start → completion = 1.
   freshDraft();
   RUN.start(DECK, null);
   RUN.startNextGame();
@@ -79,7 +75,6 @@ function freshDraft() {
 })();
 
 (() => {
-  // (c) An abandoned game (started, never completed) counts 0.
   freshDraft();
   RUN.start(DECK, null);
   RUN.startNextGame();
@@ -89,7 +84,6 @@ function freshDraft() {
 })();
 
 (() => {
-  // (d) A LOSS is still a completed game.
   freshDraft();
   RUN.start(DECK, null);
   RUN.startNextGame();

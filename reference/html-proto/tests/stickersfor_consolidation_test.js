@@ -1,7 +1,7 @@
 // stickersForSlot and deckColorsFromSlots — the shared sticker-offer
 // computation used by both the in-game reward path and the AI. Refactor
 // protection: verify behavior across creature/land slots, claim gates,
-// and stapling. Adapted from the prior-session bundle.
+// and stapling.
 
 const setup = require('./_setup');
 setup.loadEngine();

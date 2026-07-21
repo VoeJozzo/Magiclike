@@ -1,11 +1,7 @@
-// Audit chunk 11 — A11-1: slot- and effect-level target STRINGS
-// (target_slots[i].target, e.target) resolve through getValidTargets directly
-// — NOT the matchFilter taxonomy — and getValidTargets' default arm returns []
-// (console.warn). So a typo'd target name boots clean and the card is silently
-// uncastable forever. Boot validation now sweeps these strings against
-// GETVALIDTARGETS_TARGETS at card-, ability-, and trigger-level slots plus
-// effect-level e.target. The live 297-card pool was conformance-clean; this
-// pins the guard so a future typo goes RED at boot instead of shipping mute.
+// target_slots[i].target and e.target resolve through getValidTargets
+// directly, not the matchFilter taxonomy, and its default arm silently
+// returns [] (console.warn) — so a typo'd target name boots clean and
+// the card is uncastable forever. Checked against GETVALIDTARGETS_TARGETS.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -23,17 +19,12 @@ const quiet = (fn) => {
 console.log('=== A11-1: unknown slot/effect-level target strings flagged at boot ===');
 (() => {
   const r = quiet(() => ENGINE.validateAllCardEffects([
-    // effect-level e.target typo
     { tplId: 'effBad', effects: [{ kind: 'damage', amount: 2, target: 'creatrue' }] },
-    // card-level target_slots[i].target typo
     { tplId: 'slotBad', target_slots: [{ target: 'permanant' }], effects: [{ kind: 'damage', amount: 2 }] },
-    // ability-level slot typo
     { tplId: 'abSlotBad', abilities: [{ cost: { tap: true }, target_slots: [{ target: 'nope' }],
         effects: [{ kind: 'pump', power: 1, toughness: 1 }] }] },
-    // trigger-level slot typo
     { tplId: 'trigSlotBad', triggers: [{ event: 'card_zone_change', target_slots: [{ target: 'whoops' }],
         effects: [{ kind: 'pump', power: 1, toughness: 1 }] }] },
-    // a fully-valid targeted card — must NOT be flagged
     { tplId: 'topOk', target: 'creature', effects: [{ kind: 'damage', amount: 2 }] },
   ]));
   check('returns a targetErrors list', Array.isArray(r.targetErrors), JSON.stringify(r.targetErrors));

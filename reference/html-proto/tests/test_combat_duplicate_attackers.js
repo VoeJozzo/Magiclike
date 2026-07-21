@@ -1,24 +1,9 @@
-// Audit fix A2-4 — declareAttackers legality must reject duplicate iids.
-//
-// isLegalAction('declareBlockers') has always carried a `usedBlockers` Set
-// rejecting a blocker used twice; the sibling `declareAttackers` case looped
-// per-iid with pure reads and NO uniqueness check, so the raw engine command
-// "attack with [X, X, X]" was accepted: one creature dealt N× combat damage
-// and emitted N× 'attacks' triggers (§801 step 505: attackers are declared
-// by tapping each — set membership, one attack role per creature). No UI
-// path produces this; executeAction is the public protocol surface (tests,
-// console, imported actions, future callers), and the do* handlers document
-// that they assume isLegalAction-validated input.
-//
-// Fix: mirror the blockers guard — a seen-Set rejecting re-use (reject, not
-// dedupe, matching the sibling's semantics).
-//
-// This file pins:
-//   1. a duplicate declaration [A, A] is rejected: executeAction returns
-//      false, nothing is declared, and NO damage lands
-//   2. after the rejection the player can still declare legally
-//   3. guard (green before AND after): a normal multi-attacker declaration
-//      [A, B] is accepted and deals each attacker's damage exactly once
+// declareAttackers legality rejects duplicate iids via a seen-Set that
+// rejects re-use rather than deduping, mirroring declareBlockers' usedBlockers
+// Set. §801 step 505: attackers are declared by tapping each — set
+// membership, one attack role per creature. executeAction is the public
+// protocol surface (tests, console, imported actions, future callers); do*
+// handlers assume isLegalAction-validated input.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -77,11 +62,10 @@ if (!VANILLA || !CARDS['plains']) {
     passUntil(G, () => G.phase === 'COMBAT_ATTACK');
     check('reached COMBAT_ATTACK', G.phase === 'COMBAT_ATTACK', 'phase=' + G.phase);
 
-    // The raw protocol surface: one creature declared twice. (Note: a
-    // successful declareAttackers fast-forwards through the whole combat
+    // A successful declareAttackers fast-forwards through the whole combat
     // inside this call — the empty-board defender auto-declares no blocks
     // and auto-passes drive to MAIN2 — so the assertions read executeAction's
-    // return, the phase, and the final life total, not mid-combat lists.)
+    // return, the phase, and the final life total, not mid-combat lists.
     const okDup = ENGINE.executeAction('you', {
       type: 'declareAttackers', cardIids: [A.iid, A.iid],
     });
@@ -91,8 +75,6 @@ if (!VANILLA || !CARDS['plains']) {
       G.phase === 'COMBAT_ATTACK' && !G.attackersDeclared,
       'phase=' + G.phase + ' declared=' + G.attackersDeclared);
 
-    // The player isn't locked out: a legal single declaration still works
-    // (and fast-forwards through combat damage to MAIN2).
     const okSingle = ENGINE.executeAction('you', {
       type: 'declareAttackers', cardIids: [A.iid],
     });

@@ -1,9 +1,6 @@
-// Wave 1 cards (docs/plans/plan-pool-waves.md — Joe's verdicts 2026-07-07):
-// gloomfang_leech, bloodtithe_collector, toll_of_secrets, grim_ferryman,
-// ironbrand_marshal, rakdos_underboss, toll_of_silence, tideglass_broker.
-// Plus the two primitives that shipped with them: the `another: true`
-// source-exclusion target filter (ts* layer) and the life_changed DIRECTION
-// SPLIT in the buckets extractor (is_life_loss → self_pain/opp_loss).
+// Exercises two shared primitives: the `another: true` source-exclusion
+// target filter (ts* layer) and the buckets extractor's life_changed
+// direction split (is_life_loss → self_pain/opp_loss).
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -98,7 +95,7 @@ console.log('\n=== toll_of_secrets: YOUR discard drains; opp discard does not ==
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: looter.iid, abilityIdx: 0 });
   drain(G);
   check('your loot-discard -> opp loses 1', G.opp.life === oppLife - 1, oppLife + ' -> ' + G.opp.life);
-  // Opp-side discards auto-resolve (no prompt) and must NOT trigger your Toll.
+  // Opp-side discards auto-resolve without a prompt (contrast the human-side forcedDiscard above).
   G.opp.hand.push(mk('mountain', 'opp'));
   ENGINE.applyEffect({ controller: 'opp', sourceName: 'Test', sourceIid: 99005 },
     { kind: 'move_card', from_zone: 'hand', to_zone: 'graveyard', amount: 1, scope: 'self' }, null);
@@ -153,8 +150,6 @@ console.log('\n=== rakdos_underboss: +1/-1 anthem kills 1-toughness demons INTO 
   check('2/1 imp died to the +1/-1 anthem (SBA)', G.you.graveyard.some(c => c.iid === imp.iid));
   const fs = ENGINE.getStats(G.you.battlefield.find(c => c.iid === fiend.iid));
   check('pit_fiend survives as 6/3', fs[0] === 6 && fs[1] === 3, fs.join('/'));
-  // opp -2: the boss's drain (-1) AND the imp's own death rattle (-1) — the
-  // imp's printed trigger, not a bug. you +1 from the drain alone.
   check('the imp death fed the drain (+ the imp own death rattle): opp -2, you +1',
     G.opp.life === oppLife - 2 && G.you.life === youLife + 1,
     'opp ' + oppLife + '->' + G.opp.life + ', you ' + youLife + '->' + G.you.life);
@@ -218,7 +213,7 @@ console.log('\n=== tideglass_broker: ETB blinks ANOTHER creature you control; al
   check('broker itself was never blinked (no self-loop)',
     G.you.battlefield.filter(c => c.tplId === 'tideglass_broker').length === 1);
 
-  // Alone: the trigger must fizzle without crashing (the source is excluded).
+  // The source is excluded from its own ETB target (the `another: true` filter).
   const G2 = freshGame();
   const solo = mk('tideglass_broker', 'you');
   G2.you.hand.push(solo);
@@ -254,9 +249,6 @@ console.log('\n=== buckets extraction: Wave 1 vocabulary + the life_changed dire
   const e2 = BUCKETS.edgeBetween('gloomfang_leech', 'lightning_bolt');
   check('leech <-> bolt is a STRONG edge (recruit-grade)', e2.w >= 2, e2.w.toFixed(2));
 })();
-
-
-// ── Wave 1 HOLDS, un-parked by Joe (v2.2.13): all four ship ──────────────
 
 console.log('\n=== goldens: the four un-parked holds ===');
 (() => {

@@ -1,23 +1,9 @@
-// Audit A4-16 — the move_card battlefield-leave path never flushed Elystra's
-// "last forever" buffs: `post.keep_buffs` was a dead parameter (the refactor
-// plan specified the flag for flicker; no card ever got it), so
-// Cloudshift/Otherworldly Journey/Oblation silently discarded her pending
-// permanent_eot buffs while every OTHER leave path (death, sacrifice, the
-// affect_creature bounce/exile arms, cleanup) flushed.
-//
-// BEHAVIOR CHANGE (deliberate, per Elystra's printed text "End-of-turn
-// effects on Elystra last forever"): her current-turn temp buffs + EOT
-// keyword grants now survive flicker/exile/bounce routed through move_card.
-//
-// Fix shape: the battlefield-leave branch calls leavesPlayPreservingBuffs
-// (flush → clearRestrictions → reset) unconditionally —
-// flushPermanentEotToStickers self-gates on tpl.permanent_eot, so it is a
-// no-op for every other card. The dead keep_buffs fork is deleted.
-//
-// A5-6/A5-7 update: the flush now banks the buffs as SLOT STICKERS (a stat_boost
-// sticker for the P/T delta + a kw_<keyword> sticker per grant) instead of the
-// retired permaBuffs object. The behavioral guarantee is unchanged (the buffs
-// survive flicker); only the storage channel changed.
+// Elystra's "last forever" buffs (her printed text: "End-of-turn effects on
+// Elystra last forever") survive flicker/exile/bounce routed through move_card:
+// the battlefield-leave branch calls leavesPlayPreservingBuffs unconditionally,
+// and flushPermanentEotToStickers self-gates on tpl.permanent_eot, so it is a
+// no-op for every other card. The flush banks the buffs as slot stickers — a
+// stat_boost sticker for the P/T delta plus a kw_<keyword> sticker per grant.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -56,13 +42,11 @@ console.log('=== A4-16: flicker (move_card bf→exile) banks Elystra\'s pending 
   ely.sick = false;
   G.you.battlefield.push(ely);
   const ctx = { controller: 'you', sourceName: 'Test Pump', sourceIid: null };
-  // This turn's pending gains: +2/+2 EOT and an EOT keyword grant.
   ENGINE.applyEffect(ctx, { kind: 'pump', power: 2, toughness: 2 },
     { kind: 'creature', iid: ely.iid });
   ENGINE.applyEffect(ctx, { kind: 'grant_keyword', keyword: 'flying', duration: 'eot' },
     { kind: 'creature', iid: ely.iid });
   check('pump landed as temp (pre-flicker)', ely.tempPower === 2 && ely.tempTou === 2);
-  // Cloudshift's first half: move_card battlefield → exile.
   ENGINE.applyEffect({ controller: 'you', sourceName: 'Cloudshift', sourceIid: null },
     { kind: 'move_card', from_zone: 'battlefield', to_zone: 'exile', selector: 'target' },
     { kind: 'creature', iid: ely.iid });
@@ -76,9 +60,8 @@ console.log('=== A4-16: flicker (move_card bf→exile) banks Elystra\'s pending 
     (slot.stickers || []).includes('kw_flying'),
     'stickers=' + JSON.stringify(slot && slot.stickers));
 
-  // Cloudshift's second half: return from exile — the banked buffs re-apply
-  // (the stat_boost modifier survives resetInPlayState and the kw_flying sticker
-  // is re-derived by intrinsicKeywords on permanent_eot arrivals).
+  // The stat_boost modifier survives resetInPlayState; the kw_flying sticker
+  // is re-derived by intrinsicKeywords on permanent_eot arrivals.
   ENGINE.applyEffect({ controller: 'you', sourceName: 'Cloudshift', sourceIid: null },
     { kind: 'move_card', from_zone: 'exile', to_zone: 'battlefield', selector: 'target' },
     { kind: 'graveyard_card', iid: ely.iid });

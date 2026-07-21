@@ -1,7 +1,6 @@
 // §3.8 empower system: EMPOWER_FIELDS is the single source of empowerable params,
-// aligned to the post-collapse effect set (§3.5). Notably the draw→move_card
-// collapse must NOT have dropped draw-empowerability — a cantrip's draw is still
-// a valid empower target via the move_card(library→hand) shape.
+// aligned to the effect set in §3.5. A cantrip's draw is empowerable via the
+// move_card(library→hand) shape, not a `draw` kind.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -34,7 +33,7 @@ console.log('\n=== move_card draw is empowerable; other move_card shapes are not
 
 console.log('\n=== a real cantrip exposes its draw as an empower target (regression: draw collapse) ===');
 (() => {
-  // divination: on-cast draw 2 (now move_card library→hand). Must be enumerable.
+  // divination draws 2 via move_card(library→hand).
   const targets = enumerateEmpowerTargets(CARDS.divination);
   const drawTarget = targets.find(t => t.field === 'amount');
   check('divin has an empowerable amount target (draw not silently dropped)', !!drawTarget, JSON.stringify(targets));
@@ -42,7 +41,6 @@ console.log('\n=== a real cantrip exposes its draw as an empower target (regress
 
 console.log('\n=== mass effects empower on the collapsed shape (damage+scope / affect_creature+scope) ===');
 (() => {
-  // A mass damage (damage+scope) still exposes amount; affect_creature severity capped below exile.
   check('damage+scope amount empowerable',
     isEmpowerableField({ kind: 'damage', scope: 'all_creatures', amount: 2 }, 'amount'));
   check('affect_creature severity empowerable below exile',

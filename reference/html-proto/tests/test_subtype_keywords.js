@@ -17,8 +17,7 @@ function check(label, ok, info) {
   if (ok) pass++; else fail++;
 }
 
-// tplId, the subtype under test, and the keyword it should imply. Each card has
-// the keyword STRIPPED from its card.json — derivation is the only source.
+// Each card has the keyword STRIPPED from its card.json — derivation is the only source.
 const CASES = [
   ['shivan_dragon', 'Dragon', 'flying'],
   ['serra_angel', 'Angel', 'flying'],
@@ -51,8 +50,7 @@ console.log('\n=== grant round-trip: implied keyword survives alongside a perman
   check('starts with both flying (subtype) and first_strike (grant)',
     dragon.keywords.includes('flying') && dragon.keywords.includes('first_strike'));
 
-  // Mirror the EOT cleanup (engine.js): rebuild from intrinsics, then re-add
-  // anything still live in grantedBy.
+  // Mirrors the EOT cleanup in engine.js.
   const rebuilt = ENGINE.intrinsicKeywords(dragon);
   for (const [k, srcs] of dragon.grantedBy) {
     if (srcs.size > 0 && !rebuilt.includes(k)) rebuilt.push(k);
@@ -64,7 +62,7 @@ console.log('\n=== grant round-trip: implied keyword survives alongside a perman
 
 console.log('\n=== negative: a subtype with no implied keyword gains nothing ===');
 (() => {
-  const goblin = ENGINE.makeCard('raging_goblin');   // Goblin Warrior — no implied kw
+  const goblin = ENGINE.makeCard('raging_goblin');
   check('raging_goblin (Goblin Warrior) does not gain flying',
     !goblin.keywords.includes('flying'), JSON.stringify(goblin.keywords));
 })();
@@ -72,7 +70,6 @@ console.log('\n=== negative: a subtype with no implied keyword gains nothing ===
 console.log('\n=== AI draft scoring counts a raw template’s subtype-implied keyword ===');
 (() => {
   // getCardValue is fed raw templates during draft (no eager injection there).
-  // Same Dragon with its subtype stripped scores lower by exactly the flying bonus.
   const dragon = CARDS.shivan_dragon;
   const noSubtype = Object.assign({}, dragon, { types: ['Creature'] });
   const withFlying = ENGINE.getCardValue(dragon, 'draft');

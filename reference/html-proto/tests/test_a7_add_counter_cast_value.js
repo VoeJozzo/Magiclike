@@ -1,11 +1,5 @@
-// Audit A7-2 — the AI cast scorer (spellValueForEffects, ai.js) had NO
-// add_counter branch, so an UNTARGETED add_counter effect on a NON-PERMANENT
-// spell scored 0 and the AI never cast it (bestSpellPlay rejects score<=0).
-// Joe GO: give add_counter a non-zero value, mirroring the trigger-side
-// abilityValue formula (3 + P + T), floored at >=1 so the AI "at least tries
-// to cast it." The watchdog half — effectCoverageReport now PROBES that each
-// VALUED kind has a real cast-scorer branch — is pinned in
-// test_effect_coverage.js (the unscoredValuation list).
+// test_effect_coverage.js's unscoredValuation check (ENGINE.effectCoverageReport)
+// requires every VALUED effect kind to have a cast-scorer branch here.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -32,8 +26,8 @@ console.log('=== A7-2: add_counter has a non-zero cast value mirroring abilityVa
     check('parity add_counter ' + pt[0] + '/' + pt[1] + ' = 3+P+T', got === 3 + pt[0] + pt[1], '' + got);
   }
 
-  // The reject-gate consequence: a positive cast value means an untargeted
-  // counter spell is no longer auto-rejected (bestSpellPlay drops score<=0).
+  // bestSpellPlay drops any score <= 0, so a positive value here means the
+  // AI actually considers this spell.
   check('an untargeted add_counter effect now scores > 0 (was 0 -> never cast)',
     AI.spellValueForEffects([{ kind: 'add_counter', power: 1, toughness: 1 }]) > 0);
 })();

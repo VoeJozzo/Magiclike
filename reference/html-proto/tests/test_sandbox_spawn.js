@@ -87,7 +87,6 @@ console.log('\n=== Spawn a creature onto each battlefield; combat/legality/stats
   const f = ENGINE.findCard(mine.iid);
   check('findCard resolves the spawned creature as yours', !!f && f.controller === 'you');
 
-  // The instance must be complete enough that stats + legality don't throw.
   let threw = null, stats = null;
   try {
     stats = ENGINE.getStats(mine);
@@ -97,8 +96,7 @@ console.log('\n=== Spawn a creature onto each battlefield; combat/legality/stats
   check('getStats + getLegalActions did not throw on the spawned instance', !threw, threw && threw.message);
   check('getStats returns a [power, toughness] pair', Array.isArray(stats) && stats.length === 2);
 
-  // Drive a few AI turns to confirm the spawned creatures play out cleanly
-  // (combat damage / SBAs touch every battlefield instance).
+  // Combat damage / SBAs touch every battlefield instance.
   let crashed = null;
   try {
     for (let i = 0; i < 30 && !G.gameOver; i++) {

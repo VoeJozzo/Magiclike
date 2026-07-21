@@ -1,4 +1,4 @@
-// STICKERS — runtime application + deck-construction helpers (extracted from engine.js).
+// STICKERS — runtime application + deck-construction helpers.
 // Late-binds ENGINE.synthesizeStapledTemplate and tplForSlot (both resolve at call time).
 
 // Display metadata: which type tags on this card came from stickers. The
@@ -22,14 +22,12 @@ function resolveSticker(entry) {
   if (entry && typeof entry === 'object' && entry.kind) return entry;
   return null;
 }
-// A6-3: inline set-semantics descriptors (set_color / set_types) are idempotent
-// in EFFECT — a second identical application changes nothing — yet the apply
-// paths appended a duplicate entry on every application, growing the stored
-// list without bound (e.g. Bleaching the same run slot across N games stacks N
-// identical {kind:'set_color',color:'C'} descriptors). Detect an equivalent
-// inline descriptor already present so the push can be skipped (the idempotent
-// effect is still re-applied). Scoped to set-semantics ONLY: cost_mod is
-// deliberately stackable (embargo taxes accumulate by design).
+// Detect a duplicate inline set-semantics descriptor (set_color / set_types)
+// already present so the push can be skipped — these are idempotent in EFFECT,
+// so re-adding one (e.g. Bleaching the same run slot across N games) would
+// otherwise grow the stored list without bound; the idempotent effect is
+// still re-applied. Scoped to set-semantics ONLY: cost_mod is deliberately
+// stackable (embargo taxes accumulate by design).
 function inlineSetSemanticsDup(list, desc) {
   if (!desc || (desc.kind !== 'set_color' && desc.kind !== 'set_types')) return false;
   return (list || []).some(e => e && typeof e === 'object' && e.kind === desc.kind
@@ -42,7 +40,7 @@ function inlineSetSemanticsDup(list, desc) {
         // tag set_types is ever introduced.
         : JSON.stringify(e.types || [e.type]) === JSON.stringify(desc.types || [desc.type])));
 }
-// A6-6: deep-clone a granted ability/trigger before stamping it onto a card.
+// Deep-clone a granted ability/trigger before stamping it onto a card.
 // resolveSticker returns the shared STICKERS[id] singleton for registry
 // stickers, so a one-level copy would alias a nested array/object (an effect's
 // types[], a cost's mana sub-object) across every card built from one entry —
@@ -71,8 +69,8 @@ function applyStickerKindEffect(card, s) {
     }
   } else if (s.kind === 'cost_mod') {
     // Signed additive cost change (§3.8): +N for embargo, −1 for the reduction
-    // reward (unified from costReduction). Generic floored at 0.
-    // A6-7: stickers apply in card.stickers (= acquisition) order, so a cost_mod
+    // reward. Generic floored at 0.
+    // Stickers apply in card.stickers (= acquisition) order, so a cost_mod
     // floor vs a later set_color('C') pip-fold can yield a different generic cost
     // by order. That acquisition-order is canonical (canon is silent; the both-
     // -sticker case is rare). test_a6_7_cost_order.js pins it.
@@ -104,7 +102,6 @@ function applyStickerKindEffect(card, s) {
     if (!s.ability) return;
     if (!Array.isArray(card.abilities)) card.abilities = [];
     if (s.ability_id && card.abilities.some(ab => ab && ab._sticker_ability_id === s.ability_id)) return;
-    // A6-6: deep-copy the whole granted ability (was a one-level cost/effects copy).
     const granted = deepCloneStickerShape(s.ability);
     granted._sticker_ability_id = s.ability_id || null;
     card.abilities.push(granted);
@@ -112,7 +109,6 @@ function applyStickerKindEffect(card, s) {
     if (!Array.isArray(card.triggers)) card.triggers = [];
     // _from_sticker lets the card-text layer color this granted line distinctly
     // (it's reset every makeCard, so it's display metadata, not persisted state).
-    // A6-6: deep-copy (same latent shared-ref shape as the ability arm above).
     const granted = s.trigger ? deepCloneStickerShape(s.trigger) : {};
     granted._from_sticker = true;
     card.triggers.push(granted);
@@ -148,12 +144,9 @@ function applyStickersToCard(card) {
     if (s.kind === 'empower') {
       const rolls = Array.isArray(card.empowerRolls) ? card.empowerRolls : (card.empowerRolls = []);
       let roll = rolls[empowerCursor];
-      // A6-2: distinguish a stored BLANK (null — "rolled, nothing to empower")
+      // Distinguish a stored BLANK (null — "rolled, nothing to empower")
       // from NEVER-rolled (undefined — a legacy save). Only undefined falls back
-      // to a fresh roll; a stored null is respected and stays null. The old code
-      // re-rolled on either (truthy test), so a slot whose base had nothing to
-      // empower would, once a staple added empowerable fields, get a FRESH random
-      // target on every makeCard — non-deterministic across saves/staples. Joe:
+      // to a fresh roll; a stored null is respected and stays null. Joe:
       // "the empower stays pointing at the same number when stapled."
       if (roll === undefined) {
         // Stapled fallback: use merged tpl so roll can land on staple half's effects.
@@ -198,7 +191,7 @@ function applyOneStickerToRuntimeCard(card, sticker) {
   if (!Array.isArray(card.stickers)) card.stickers = [];
   const isInline = typeof sticker === 'object';
   if (!s.stackable && !isInline && card.stickers.includes(sticker)) return;
-  // A6-3: don't store a duplicate idempotent set_color/set_types descriptor, but
+  // Don't store a duplicate idempotent set_color/set_types descriptor, but
   // still re-apply the (idempotent) effect so the card reflects it either way.
   if (isInline && inlineSetSemanticsDup(card.stickers, sticker)) { applyStickerKindEffect(card, s); return; }
   card.stickers.push(sticker);
@@ -249,13 +242,12 @@ function bargainStickerCandidates(perms, deckColors) {
 // the runtime card. Opp-side: runtime card only (opp slots regenerate each
 // game). `state` is G; `logFn` is the engine's internal log.
 //
-// Selection (A6-1 option C — Joe, PR #98 round 3, 2026-06-10: "Keep the pool
-// broad, but make it factor weights in appropriately"): each pick draws the
-// STICKER by rarity weight via pickWeightedSticker — the same machinery as
-// normal reward offers, so Indestructible/Hexproof/Unblockable/Costs-1-Less
-// stay rare here too — then a target permanent uniformly among that sticker's
-// eligible permanents. Candidates re-derive between picks, so eligibility
-// updates as stickers land (a creature given flying can't be given it again).
+// Selection: each pick draws the STICKER by rarity weight via pickWeightedSticker
+// — the same machinery as normal reward offers, so Indestructible/Hexproof/
+// Unblockable/Costs-1-Less stay rare here too — then a target permanent uniformly
+// among that sticker's eligible permanents. Candidates re-derive between picks, so
+// eligibility updates as stickers land (a creature given flying can't be given it
+// again).
 function applyRandomStickersToSide(state, side, n, sourceName, logFn) {
   if (n <= 0) return;
   const perms = state[side].battlefield;
@@ -296,7 +288,6 @@ function applyRandomStickersToSide(state, side, n, sourceName, logFn) {
 // Falls back to the raw field name if we can't resolve the effect.
 function empowerRollLabel(card, roll) {
   if (!roll) return '';
-  // Resolve the effect this roll points at on the given card/template.
   let effs = null;
   if (roll.location === 'effects') {
     if (roll.modeIdx == null) {
@@ -484,7 +475,7 @@ function stickersForSlot(slot, deckColors) {
       addType(view, s.type);
       grantBasicLandMana(view);  // reflect §305.6 mana so landProducibleColors re-offer dedup sees it
     }
-    // §3.8 cost_mod (unified costReduction −1 / embargo +1) — reflect on the
+    // §3.8 cost_mod (−1 for the reduction reward, +1 for embargo) — reflect on the
     // view so re-offer eligibility sees the modified cost.
     if (s.kind === 'cost_mod' && view.cost) {
       view.cost.C = Math.max(0, (view.cost.C || 0) + (s.amount || 0));

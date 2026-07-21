@@ -8,7 +8,8 @@
 //   Symmetricize: place a creature, cast Symmetricize at it, verify
 //     pendingSymmetricizeChoice gets set with the right values, submit
 //     a choice, verify the target's stats/cost collapse to the chosen
-//     value AND slot.symmetricized persists (player-side only).
+//     value AND the change persists to the slot as stat_boost/cost_mod
+//     stickers (player-side only).
 //
 //   Number choice: put Archdemon onto the battlefield through ETB
 //     trigger flow, verify pendingNumberChoice is set with min/max,
@@ -62,9 +63,7 @@ function drainStack(G) {
 
 console.log('=== Symmetricize sets up pendingSymmetricizeChoice ===');
 {
-  // Use Devoted Watcher (ancestralGuard) — power=1, toughness=3,
-  // cost=2 ({W:1,C:1}). All three values differ, so each choice
-  // produces a visibly distinct outcome.
+  // All three values differ, so each choice produces a visibly distinct outcome.
   const G = makeBaselineGame(['devoted_watcher','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains']);
   const slots = RUN.getSlots();
   const piercerSlotIdx = slots.findIndex(s => s.tplId === 'devoted_watcher');
@@ -72,7 +71,6 @@ console.log('=== Symmetricize sets up pendingSymmetricizeChoice ===');
   piercer.slotIdx = piercerSlotIdx;
   G.you.battlefield.push(piercer);
 
-  // Opp casts Symmetricize at the piercer.
   const sym = mk('symmetricize', 'opp');
   G.opp.hand.push(sym);
   G.opp.mana.W = 1; G.opp.mana.C = 1;
@@ -124,10 +122,8 @@ console.log('\n=== Submitting symmetricizeChoice collapses stats + persists to s
   });
   drainStack(G);
 
-  // Player picks 'toughness' (=3). §3.8 additive snapshot: effective
-  // power/toughness become 3/3 and total mana cost becomes 3 via stat_boost +
-  // cost_mod stickers (not a base-stat clamp). Watcher is 1/3 for {W}{1},
-  // so picking 3 raises power by +2 and total mana cost by +1.
+  // §3.8 additive snapshot: Watcher is 1/3 for {W}{1}, so picking
+  // 'toughness' (=3) raises power by +2 and total mana cost by +1.
   const costTotal = (c) => c.cost ? ['W','U','B','R','G','C'].reduce((s,k)=>s+(c.cost[k]||0),0) : 0;
   const choiceAction = {type: 'symmetricizeChoice', which: 'toughness'};
   check("symmetricizeChoice is legal for the prompt's owner (you)",
@@ -141,7 +137,6 @@ console.log('\n=== Submitting symmetricizeChoice collapses stats + persists to s
   check('Watcher effective toughness == 3', et === 3, 'toughness=' + et);
   check('Watcher total mana cost == 3', costTotal(piercer) === 3, 'cost=' + JSON.stringify(piercer.cost));
   check('no symmetrizedTo sentinel (additive, not a clamp)', piercer.symmetrizedTo === undefined);
-  // Slot persistence: stat_boost + cost_mod stickers recorded for the run.
   const slotAfter = RUN.getSlots()[piercerSlotIdx];
   check('slot gained a stat_boost sticker',
     slotAfter && slotAfter.stickers.some(s => s && s.kind === 'stat_boost'));
@@ -170,8 +165,7 @@ console.log("\n=== Picking 'power' on Watcher (power=1) collapses to 1/1 cost {C
   drainStack(G);
   ENGINE.executeAction('you', {type: 'symmetricizeChoice', which: 'power'});
 
-  // Pick 'power' (=1): effective stats collapse to 1/1, total mana cost to 1
-  // (additive: toughness -2, cost -1).
+  // Additive: picking 'power' drops toughness by 2 and cost by 1.
   const costTotal = (c) => c.cost ? ['W','U','B','R','G','C'].reduce((s,k)=>s+(c.cost[k]||0),0) : 0;
   const [ep2, et2] = ENGINE.getStats(piercer);
   check('power pick: effective power == 1', ep2 === 1, 'power=' + ep2);
@@ -199,7 +193,6 @@ console.log('\n=== Out-of-set choices are rejected (validates whitelist) ===');
   });
   drainStack(G);
 
-  // Try a bogus 'which' value.
   const before = JSON.stringify({p: piercer.power, t: piercer.toughness, c: piercer.cost});
   ENGINE.executeAction('you', {type: 'symmetricizeChoice', which: 'banana'});
   const after = JSON.stringify({p: piercer.power, t: piercer.toughness, c: piercer.cost});
@@ -214,7 +207,6 @@ console.log('\n=== Number choice: Archdemon ETB opens 1-5 prompt for the CONTROL
     console.log('  (archdemonBargains not in CARDS -- skipping)');
   } else {
     const G = makeBaselineGame();
-    // Put Archdemon in opp's hand with enough mana to cast.
     const demon = mk('archdemon_of_bargains', 'opp');
     G.opp.hand.push(demon);
     G.opp.mana.B = 2; G.opp.mana.C = 3;
@@ -264,8 +256,7 @@ console.log('\n=== Submitting numberChoice stashes N on source + clears the prom
 
     check('pendingNumberChoice cleared after submit',
       G.pendingNumberChoice === null);
-    // The Archdemon should now carry bargainsNum=3 so its dies-trigger
-    // knows how many stickers to apply to the opposing side.
+    // bargainsNum feeds the dies-trigger's sticker count for the opposing side.
     const demonOnBoard = G.opp.battlefield.find(c => c.iid === demon.iid);
     check('demon still on battlefield', !!demonOnBoard);
     if (demonOnBoard) {

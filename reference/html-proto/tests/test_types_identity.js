@@ -1,10 +1,7 @@
-// Type system — types[] is the SOLE source of truth (the legacy card.type /
-// card.sub fields were removed in the cutover). This test pins the invariants
-// the accessors (typesOf / hasType / subtypesOf / governingType / typeLine)
-// must hold across the whole pool, plus the multi-type generalization and the
-// makeCard carry-through. (Previously this file proved accessor↔legacy-field
-// equivalence; with the legacy fields gone, the accessors ARE the definition,
-// so the equivalence half was retired — see git history / BACKLOG.)
+// Type system — types[] is the SOLE source of truth. This test pins the
+// invariants the accessors (typesOf / hasType / subtypesOf / governingType /
+// typeLine) must hold across the whole pool, plus the multi-type
+// generalization and the makeCard carry-through.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -27,19 +24,15 @@ console.log('=== whole pool: types[] is present + the accessors are coherent ===
   for (const id of ids) {
     const c = CARDS[id];
 
-    // The sole source of truth: every card carries a non-empty types[] and NO
-    // residual legacy type/sub field survived the cutover.
     if (!Array.isArray(c.types)) { noTypes.push(id); continue; }
     if (c.types.length === 0) emptyTypes.push(id);
     if ('type' in c || 'sub' in c) strayLegacy.push(id);
     if (new Set(c.types).size !== c.types.length) dupTags.push(id + ':' + JSON.stringify(c.types));
 
-    // governingType returns a real card-type tag, and it's a hasType member.
     const g = governingType(c);
     if (!g || !isCardTypeTag(g)) govMiss.push(id + ':' + g);
     else if (!hasType(c, g)) hasTypeMiss.push(id);
 
-    // hasType hits every declared tag; absent tags miss.
     for (const t of c.types) if (!hasType(c, t)) hasTypeMiss.push(id + ':' + t);
   }
   check('every card has a types[] array', noTypes.length === 0, noTypes.slice(0, 5).join(', '));
@@ -49,9 +42,6 @@ console.log('=== whole pool: types[] is present + the accessors are coherent ===
   check('governingType is a real card-type tag for every card', govMiss.length === 0, govMiss.slice(0, 5).join(', '));
   check('hasType hits governing type + every declared tag', hasTypeMiss.length === 0, hasTypeMiss.slice(0, 5).join(', '));
 
-  // typeLine renders the canonical MTG line, including the corrected cases:
-  // basic lands (Basic supertype + their color subtype), City of Brass
-  // (single Land), legendary cards.
   const EXPECT = { forest: 'Basic Land — Forest', island: 'Basic Land — Island',
     mountain: 'Basic Land — Mountain', plains: 'Basic Land — Plains',
     swamp: 'Basic Land — Swamp', city_of_brass: 'Land',
@@ -60,7 +50,6 @@ console.log('=== whole pool: types[] is present + the accessors are coherent ===
   check('typeLine renders canonical lines (basic lands / legendary / subtypes)',
     bad.length === 0, bad.map(id => id + '="' + typeLine(CARDS[id]) + '" want "' + EXPECT[id] + '"').join(', '));
 
-  // Every legendary card hasType('Legendary') and renders the supertype first.
   const legends = ids.filter(id => CARDS[id].legendary);
   check('legendary cards: hasType("Legendary") and typeLine starts "Legendary "',
     legends.length > 0 && legends.every(id => hasType(CARDS[id], 'Legendary') && typeLine(CARDS[id]).startsWith('Legendary ')),
@@ -114,13 +103,11 @@ console.log('\n=== multi-type governance + carry-through (the Phase-4 generaliza
   const robot = { types: ['Creature', 'Construct'] };
   check('robot hasType both Creature and Construct', hasType(robot, 'Creature') && hasType(robot, 'Construct'));
 
-  // RISK #1 (QA): the Legendary supertype must survive an explicit types[] — else
-  // a legendary multi-type card silently loses the legend rule.
+  // Dropping the Legendary tag here would silently lose the legend rule.
   const legendRobot = { types: ['Artifact', 'Creature'], legendary: true };
   check('legendary + types[]: Legendary tag unioned in, NOT dropped',
     hasType(legendRobot, 'Legendary') && typeLine(legendRobot).startsWith('Legendary '), typeLine(legendRobot));
 
-  // makeCard carries the template types[] onto the runtime instance end-to-end.
   const baseId = Object.keys(CARDS).find(id => hasType(CARDS[id], 'Creature') && !isUndraftable(CARDS[id]) && CARDS[id].cost);
   CARDS.__robotProbe = Object.assign({}, CARDS[baseId], { name: 'Robot Probe', types: ['Artifact', 'Creature'] });
   const inst = ENGINE.makeCard('__robotProbe', [], 0);

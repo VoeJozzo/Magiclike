@@ -1,9 +1,6 @@
-// Mass `scope` groundwork for the effects refactor (Slice 3 step 1 /
-// decision 2). damage/pump/affect_creature gain a `scope` path
-// (all_creatures / all_yours / all_opps) alongside the legacy
-// damageAll/pumpAllYours/removeAll handlers. Additive + a semantic no-op for
-// existing cards (none use `scope` yet); this exercises the new path directly
-// via applyEffect on a booted board.
+// damage/pump/affect_creature accept a `scope` path (all_creatures /
+// all_yours / all_opps) that collapses the retired
+// damageAll/pumpAllYours/removeAll kinds (see effect_migration_test.js).
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -28,7 +25,6 @@ const CREATURE_TPL = (() => {
     if (hasType(c, 'Creature') && (c.toughness || 0) >= 3
         && !c.triggers && !c.abilities) return id;
   }
-  // Fallback: any creature with toughness >= 3.
   for (const [id, c] of Object.entries(CARDS)) {
     if (hasType(c, 'Creature') && (c.toughness || 0) >= 3) return id;
   }
@@ -53,7 +49,6 @@ console.log('=== creaturesInScope ===');
   check('all_yours sees only controller', ENGINE.creaturesInScope(CTX, 'all_yours').length === 2);
   check('all_opps sees only opponent', ENGINE.creaturesInScope(CTX, 'all_opps').length === 1);
   check('unknown scope → empty', ENGINE.creaturesInScope(CTX, 'nonsense').length === 0);
-  // Non-creatures (lands) excluded.
   const land = ENGINE.makeCard('plains'); G.you.battlefield.push(land);
   check('lands excluded from scope', ENGINE.creaturesInScope(CTX, 'all_yours').length === 2);
 })();
@@ -123,7 +118,7 @@ console.log('\n=== sacrifice vs annihilate (graveyard contract) ===');
 (() => {
   function inZone(who, zone, iid) { return G[who][zone].some(c => c.iid === iid); }
 
-  // sacrifice → goes to graveyard, fires leave/death emits.
+  // sacrifice fires leave/death emits.
   clearBoards();
   const s = place('you');
   const sIid = s.iid;
@@ -131,7 +126,6 @@ console.log('\n=== sacrifice vs annihilate (graveyard contract) ===');
   check('sacrifice: off battlefield', !inZone('you', 'battlefield', sIid));
   check('sacrifice: in graveyard', inZone('you', 'graveyard', sIid));
 
-  // annihilate → ceases to exist: not on battlefield, NOT in graveyard/exile.
   clearBoards();
   const a = place('you');
   const aIid = a.iid;

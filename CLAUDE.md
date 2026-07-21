@@ -17,6 +17,8 @@ Tests are runnable scenes in `tests/` — one per port phase (e.g., `test_phase4
 
 Run it from the root of the checkout you are working in — **your worktree, not the main checkout** — or `--path` will test someone else's code.
 
+**Fresh worktree: run `--import -v` first** (same binary, `--headless --path . --import -v`). Otherwise the first test scene triggers the full asset import silently — minutes of zero output, indistinguishable from a hang.
+
 Each test prints assertion results and exits with code 0 (pass) / 1 (fail). Roughly 30 seconds per scene. A change is "done" when the whole `tests/` suite passes and the change itself is exercised by a test — extending an existing scene beats adding a new one.
 
 ## Durable concepts wiki (`docs/wiki/`)
@@ -45,6 +47,10 @@ Port the **behavior**, not the implementation shape — the prototype's engine h
 - **Don't reach into autoloads from predicates or effect handlers.** Predicates take `(state, source, event)`; effect handlers take `(effect, ctx)` and read `ctx.state`. No reading `RulesEngine.state()` from inside. (One documented exception: `counter.gd` — see `docs/ARCHITECTURE.md` §2.5.) → [`docs/wiki/predicate-registry.md`](docs/wiki/predicate-registry.md)
 - **Don't model per-instance state as dynamically-attached dictionary fields.** Use typed properties on `CardInstance` / `Player`; the `duplicate_deep()` overrides exist to prevent that class of bug. → [`docs/wiki/magiclike-architecture.md`](docs/wiki/magiclike-architecture.md)
 - **Don't let the engine call the text generator.** Keep the engine UI-free — emit a structured "trigger fired" signal; the presentation layer renders the log/text. → [`docs/wiki/magiclike-architecture.md`](docs/wiki/magiclike-architecture.md)
+
+## Comments
+
+A comment must state something the code cannot: a constraint, invariant, rule citation, caller contract, or external data shape. Write in the eternal present — no diff narration ("removed", "the old X", version stamps), no port-phase labels, no "verified"-style claims (pin those with a test), no features that don't exist. Shortest true form; when editing code, update or delete the comments it touches. *(Why + the failure taxonomy: [`docs/wiki/comment-doctrine.md`](docs/wiki/comment-doctrine.md).)*
 
 ## Risks and gotchas
 

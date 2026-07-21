@@ -95,7 +95,7 @@ function pickThroughBoonPhase() {
   })());
 
   // --- §4 out-of-range / wrong-phase guards ----------------------------------
-  RUN.pickBucket(7);   // no pendingReward — must be a no-op, not a throw
+  RUN.pickBucket(7);   // must not throw
   check('pickBucket without pendingReward is a no-op', RUN.getSlots().length === after.length);
 
   RUN._setPendingRewardForTest({ phase: 'bucketPick', buckets: buckets.slice(0, 1) });
@@ -107,8 +107,6 @@ function pickThroughBoonPhase() {
 
 // --- §5 growth weight: addBucket offered while under target, gone at target --
 {
-  // Fresh minimal growing run far under target: growth candidates should
-  // appear in (nearly) every offer.
   DRAFT.startDraft('growing');
   pickThroughBoonPhase();
   for (let i = 0; i < 5; i++) DRAFT.pickBucketOffer(0);

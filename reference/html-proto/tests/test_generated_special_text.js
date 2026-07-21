@@ -1,9 +1,7 @@
-// Authored text is keyed on `custom_text`, NOT `special`. `special` is a gameplay
-// flag (draft-excluded / unspliceable); routing it to hand-written text let a
-// card's text drift from its effects. After decoupling, special cards whose
-// effects ARE describable generate their text (guaranteed accurate); only cards
-// whose mechanic can't be expressed carry `custom_text: true`. This locks the
-// split and the five cards that moved to generated text.
+// Text generation keys off `custom_text`, not `special`. `special` marks a card
+// draft-excluded/unspliceable — it does not select hand-written text. Only cards
+// whose mechanic can't be expressed carry `custom_text: true`; other special
+// cards generate their text from effects.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -17,8 +15,6 @@ function r(c) { return describeCardSegments(c, { skipKeywords: false }).map(x =>
 
 console.log('=== boon/boss status alone does not force authored text ===');
 (() => {
-  // vileEdict / symmetricize / bleach / embargo (bosses) and endomorph (boon)
-  // carry NO custom_text → they must generate from their effects.
   for (const id of ['vile_edict', 'symmetricize', 'endomorph', 'bleach', 'embargo']) {
     check(id + ' is undraftable but not custom_text',
       isUndraftable(CARDS[id]) && CARDS[id].custom_text !== true);
@@ -29,9 +25,8 @@ console.log('\n=== the moved cards generate accurate text (not sentinel/empty) =
 (() => {
   const want = {
     vile_edict: 'Target opponent rips a permanent they control.',
-    // symmetricize + bleach are flash sorceries (retired Instants); the keyword
-    // preamble now surfaces "Flash." on non-creature spells too (r() renders
-    // with skipKeywords:false).
+    // symmetricize and bleach are sorceries with the Flash keyword; the keyword
+    // preamble surfaces "Flash." on non-creature spells too.
     symmetricize: "Flash. Target creature's controller equalizes its power, toughness, or cost.",
     bleach: 'Flash. Exile target creature; it becomes colorless, including its mana cost, permanently.',
     embargo: "Return target creature to its owner's hand; it costs {1} more permanently.",
@@ -57,9 +52,6 @@ console.log('\n=== cards that genuinely need authored text keep custom_text:true
 
 console.log('\n=== scarification generates (no custom_text) so empower shows in the text ===');
 (() => {
-  // Was custom_text with a hardcoded "Destroy ..." — which froze the removal
-  // verb, so an empower(severity)-stickered Scarification still read "Destroy"
-  // even though it mechanically EXILES. Now generated: the verb tracks severity.
   check('scarification is NOT custom_text', CARDS.scarification.custom_text !== true);
   const base = describeCardText(ENGINE.makeCard('scarification', [], 0));
   check('base reads "Destroy target creature."', /^Destroy target creature\. Scar it:/.test(base), base);
@@ -74,11 +66,8 @@ console.log('\n=== stapled multi-target spell: ETB trigger keeps its per-slot ta
 (() => {
   // A multi-slot spell (Twin Strike: two `pump` effects on two `creature` slots)
   // stapled onto a creature folds both effects into ONE ETB trigger that carries
-  // `target_slots`. describeTrigger must forward those slot specs to
-  // describeEffectList (it previously passed only trig.target, dropping the slot
-  // specs) — else the target nouns vanish and the text reads
-  // "...,  gets +1/+1 ...  gets +1/+1 ..." with empty subjects + double spaces.
-  // Repro: "Clockwork Beetle + Twin Strike" rendered blank targets in-game.
+  // `target_slots`; describeTrigger must forward those slot specs to
+  // describeEffectList or target nouns vanish (empty subjects, double spaces).
   const beetleTwin = describeCardText(
     ENGINE.makeCard('clockwork_beetle', [], 0, null, null, ['twin_strike']));
   check('stapled ETB names its targets (no empty subject)', /target creature/i.test(beetleTwin), beetleTwin);

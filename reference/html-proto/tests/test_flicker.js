@@ -1,13 +1,7 @@
-// flicker decomposition (Slice 3 step 8 / plan-effects-refactor §4.1, line 763):
-// flicker collapses to two back-to-back move_cards — move_card(battlefield→exile)
+// Flicker collapses to two back-to-back move_cards — move_card(battlefield→exile)
 // then move_card(exile→battlefield) — on the card's top-level target() step. The
-// exile→battlefield half mints a fresh iid (§3.7) and re-fires ETB triggers.
-//
-// One DELIBERATE behavior change vs the old monolithic flicker: the bf→exile
-// half now emits emitLeavesBattlefield, so "leaves play" triggers fire (MTG-
-// correct; the monolith silently skipped them). Cloudshift is the only flicker
-// card and is migrated; the flicker EFFECTS handler + its card-text/AI cases
-// are gone. This test casts cloudshift through the REAL resolution path.
+// exile→battlefield half mints a fresh iid and re-fires ETB triggers; the
+// bf→exile half emits emitLeavesBattlefield so "leaves play" triggers fire too.
 
 const setup = require('./_setup');
 setup.loadEngine();

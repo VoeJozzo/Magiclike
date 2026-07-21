@@ -55,7 +55,7 @@ BTN_STATES = {
 # four at 2 (an easy mistake) pulls the shadow up into the middle fill and the
 # label ends up sitting on it.
 BTN_SLICE = {name: dict(L=2, R=2, T=2, B=2 + p["black_off"])
-             for name, p in BTN_STATES.items()}   # rest B=7, hover B=9, press B=3
+             for name, p in BTN_STATES.items()}
 
 
 def make_button(ramp, edge_hex, edge_h, black_off, top_hi_a, bot_sh_a, bot_sh_px):
@@ -240,12 +240,10 @@ def main():
     for name, im in tiles.items():
         im.save(os.path.join(out, name + ".png"))
 
-    # 9-slice manifest, emitted beside the art. The intended insets used to live
-    # only in this file's constants, so consumers hand-copied them and drifted —
-    # twice, silently (button labels rendered on the drop shadow; the info bar
-    # rendered hollow). Writing them out lets CSS/Godot and tools/pixel-lint.js
-    # diff against one authoritative source. Only 9-sliced tiles appear here;
-    # gems/nodes/ctrl tiles are drawn whole and are deliberately absent.
+    # 9-slice manifest, emitted beside the art. CSS/Godot and tools/pixel-lint.js
+    # read insets from here rather than hand-copying the constants above, so the
+    # two can't drift apart. Only 9-sliced tiles appear here; gems/nodes/ctrl
+    # tiles are drawn whole and are deliberately absent.
     slices = {"woodbar_src": WOODBAR_SLICE}
     for name, s in BTN_SLICE.items():
         slices[f"pxbtn_{name}"] = s

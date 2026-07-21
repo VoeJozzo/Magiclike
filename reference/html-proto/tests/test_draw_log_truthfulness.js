@@ -1,20 +1,8 @@
-// Audit fix A1-9 — the DRAW step logs "X draws." only when a card actually
-// moved to hand.
-//
-// Pre-fix, step()'s DRAW case was `drawCard(ap); log(`${name} draws.`)` with
-// no return-value check. drawCard returns null on BOTH empty-library paths:
-//   1. deck-out — the player loses, yet the topmost log line claimed a
-//      successful draw ("You draws." / "Opponent wins!" / "can't draw — loses!"
-//      reading newest-first);
-//   2. Phylactery rip — the curse rips a slot INSTEAD of drawing ("rips a
-//      slot instead" was followed by a false "draws." in live play).
-// Engine state was always correct (loss/rip per §100.6/§512); only the log lied.
-//
-// This file pins:
-//   1. a deck-out DRAW step produces NO "draws." line (loss line present)
-//   2. a Phylactery-protected empty-library DRAW produces NO "draws." line
-//      (rip line present, game continues)
-//   3. a normal draw still logs "draws." (regression guard)
+// The DRAW step logs "X draws." only when a card actually moved to hand.
+// drawCard returns null on both empty-library paths: a deck-out (the
+// player loses) and a Phylactery rip (curse rips a slot instead of
+// drawing) — state for both is correct per §100.6/§512; only the log
+// must independently avoid a false "draws." line.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -34,8 +22,7 @@ function newGame(deckCards) {
 function readyMain(G, who) {
   setup.startMainPhase(who);
 }
-// Pass priority for whoever is expected to act until the turn rolls over
-// (or the game ends) — same shape as test_exile_until_eot.js's endTurn.
+// Same shape as test_exile_until_eot.js's endTurn.
 function endTurn(G) {
   const startTurn = G.turn;
   let safety = 200;
@@ -52,7 +39,6 @@ console.log('=== A1-9: deck-out DRAW step logs the loss, NOT a draw ===');
 (() => {
   const G = newGame();
   readyMain(G, 'you');
-  // The opponent will deck out on their upcoming DRAW step.
   G.opp.library = [];
   G.log.length = 0;   // only inspect lines produced from here on
   endTurn(G);
@@ -66,8 +52,6 @@ console.log('=== A1-9: deck-out DRAW step logs the loss, NOT a draw ===');
 
 console.log('\n=== A1-9: Phylactery rip on empty library logs the rip, NOT a draw ===');
 (() => {
-  // 'you' holds a Phylactery slot: drawing from an empty library rips a slot
-  // instead of losing — and must not claim a draw either.
   const deck = Array(11).fill('plains'); deck.push('phylactery');
   const G = newGame(deck);
   check('you have Phylactery protection',

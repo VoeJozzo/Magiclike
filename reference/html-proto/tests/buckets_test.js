@@ -43,16 +43,10 @@ function check(label, ok, info) {
 
   // Subtype-implied keywords reach the graph (engine.js SUBTYPE_KEYWORDS via
   // ENGINE.addSubtypeKeywords): this Serra Angel has no explicit flying in
-  // keywords[], but Angels fly at runtime — the graph must agree. (Found by
-  // a Wave 1.5 judge agent; the graph had been blind to implied keywords.)
+  // keywords[] — Angels fly at runtime only.
   const serra = BUCKETS.analyzeCard('serra_angel');
   check('implied keywords: Angel gets the flying plan tag', serra.tags.has('flying'));
 
-  // Humans are NOT special-cased: they provide their subtype like any tribe.
-  // The old pin here documented "nothing wants Humans (a pool fact, not a
-  // ban) — Human tribal starts working the day a payoff ships, no code
-  // change." Wave 2 shipped that payoff (chapter_recruiter), and the
-  // prophecy held: the want appeared with zero extractor changes.
   const knight = BUCKETS.analyzeCard('white_knight');
   check('Humans provide sub:Human like any tribe (no exclusion list)',
     knight && knight.provides['sub:Human'] > 0);
@@ -61,7 +55,7 @@ function check(label, ok, info) {
     recruiter && recruiter.wants['sub:Human'] > 0,
     JSON.stringify(recruiter && recruiter.wants));
 
-  // Wave 2 vocabulary pins — one wanter + one provider per new resource.
+  // Vocabulary pins — one wanter + one provider per new resource.
   const w2 = (id) => BUCKETS.analyzeCard(id);
   check('trick: sapling_tender wants, updraft provides',
     w2('sapling_tender').wants.trick > 0 && w2('updraft').provides.trick > 0);
@@ -85,7 +79,7 @@ function check(label, ok, info) {
   check('kw:flying: wing_commander wants, air_elemental provides',
     w2('wing_commander').wants['kw:flying'] > 0 && w2('air_elemental').provides['kw:flying'] > 0);
 
-  // Extraction-audit sweep pins (post-Wave-2). The principle each rule obeys:
+  // Extraction-audit sweep pins. The principle each rule obeys:
   // a filter earns a want only when YOUR deck can manufacture the condition.
   check('tapped: smite_the_wicked wants, intimidating_lancer + roots_and_branches provide',
     w2('smite_the_wicked').wants.tapped > 0 && w2('intimidating_lancer').provides.tapped > 0
@@ -107,7 +101,7 @@ function check(label, ok, info) {
   check('flying-hate wants nothing (cannot manufacture their fliers): choking_vines',
     Object.keys(w2('choking_vines').wants).length === 0, JSON.stringify(w2('choking_vines').wants));
   // etbtrigger (Joe's direction review of the sweep): blink wants ETB VALUE,
-  // not just bodies — vanishing_act pulls pyromaniac, never a vanilla bear.
+  // not just bodies.
   check('etbtrigger: vanishing_act wants, pyromaniac provides, grizzly_bears does not',
     w2('vanishing_act').wants.etbtrigger > 0 && w2('pyromaniac').provides.etbtrigger > 0
     && !w2('grizzly_bears').provides.etbtrigger);
@@ -146,18 +140,16 @@ function check(label, ok, info) {
     && /dies/.test(BUCKETS.edgeBetween('murder', 'blood_artist').reasons[0] || ''));
   // Joe's generic-target correction ("your etb value deck will get more out
   // of it than their deck"): a generic creature target includes YOURS, and a
-  // mass bounce rebuys your whole board — both provide etb/wrathproof and
-  // want etbtrigger. Deaths still require destruction (the dies pin above).
+  // mass bounce rebuys your whole board. Deaths still require destruction
+  // (the dies pin above).
   check('generic bounce provides replay value: mist_raider + cloud_caller provide etb',
     w2('mist_raider').provides.etb >= 0.75 && w2('cloud_caller').provides.etb >= 0.75
     && w2('mist_raider').wants.etbtrigger > 0);
   check('mass bounce is the Evacuation engine: wash_away provides etb 1.5 + wants etbtrigger 3',
     w2('wash_away').provides.etb === 1.5 && w2('wash_away').wants.etbtrigger === 3
     && BUCKETS.edgeBetween('wash_away', 'bramble_acolyte').w > 2);
-  // The fallback flag IS the contract line (successor to the v2.2.21
-  // theme-label-implies-story invariant, re-keyed when display names died):
-  // a seed-grown bucket carries a story (why[] non-empty), a fallback
-  // bundle carries none — the flag and the story must never disagree.
+  // The fallback flag IS the contract line between a bucket's story and its
+  // origin — the two must never disagree.
   let unstoried = 0, storiedFallbacks = 0;
   for (let i = 0; i < 20; i++) {
     for (const b of BUCKETS.rollBucketOffer([])) {
@@ -170,10 +162,8 @@ function check(label, ok, info) {
   check('fallback bundles never carry a story (value-sampling made no contract)',
     storiedFallbacks === 0, storiedFallbacks + ' fallbacks with why[]');
 
-  // Qualified-entry wart (Joe's playtest catch: drummer had an etb edge to
-  // a Human Cleric that can never fire it): a subtype-gated entry trigger
-  // wants its TRIBE, never generic etb; unqualified any-creature entry
-  // payoffs keep the generic want.
+  // Qualified-entry wart: Joe's playtest catch — drummer had an etb edge to
+  // a Human Cleric that can never fire it.
   check('subtype-gated entry payoffs want the tribe, NOT generic etb',
     !w2('goblin_war_drummer').wants.etb && w2('goblin_war_drummer').wants['sub:Goblin'] > 0
     && !w2('chapter_recruiter').wants.etb && !w2('skyfire_drakelord').wants.etb
@@ -182,7 +172,6 @@ function check(label, ok, info) {
     w2('beast_whisperer').wants.etb > 0 && w2('charnel_chorister').wants.etb > 0);
   check('the phantom drummer edge is dead (cult_priest cannot trigger it)',
     BUCKETS.edgeBetween('cult_priest', 'goblin_war_drummer').w === 0);
-  // Rule-shape audit pins (Joe, 2026-07-14):
   // Non-spell destroyers manufacture deaths too — the dies provide is
   // shape-agnostic (chupacabra's ETB destroy, assassin's repeatable tap).
   check('creature-borne destroy provides dies (chupacabra, royal_assassin)',
@@ -194,7 +183,7 @@ function check(label, ok, info) {
     w2('rakdos_underboss').wants['sub:Demon'] > 0 && w2('rakdos_underboss').wants.your_dies > 0
     && w2('rakdos_underboss').wants.opp_dies > 0);
   // Opp-discard is their loss, not your engine: toll_of_secrets hears only
-  // YOUR discards, so duress/mind_rot correctly provide no discard.
+  // YOUR discards, so duress/mind_rot provide no discard.
   check('opp-discard cards provide no discard resource (duress, mind_rot)',
     !w2('duress').provides.self_discard && !w2('mind_rot').provides.self_discard);
   // card_damaged_by_this gates make external death-manufacturers useless
@@ -203,9 +192,7 @@ function check(label, ok, info) {
   check('damaged-by-this dies payoffs want no generic dies (sengir, endomorph)',
     !w2('sengir_vampire').wants.your_dies && !w2('sengir_vampire').wants.opp_dies
     && !w2('endomorph').wants.your_dies && !w2('endomorph').wants.opp_dies);
-  // The ownership discrimination (Joe's question made it a rule): an
-  // any-death payoff wants both directions; a your-side-only payoff wants
-  // your_dies ONLY — so Murder never edges into charnel_shaman.
+  // The ownership discrimination: Joe's question made it a rule.
   check('any-death payoff wants both directions (blood_artist)',
     w2('blood_artist').wants.your_dies > 0 && w2('blood_artist').wants.opp_dies > 0);
   check('your-side-only payoff wants your_dies only (charnel_shaman)',
@@ -223,8 +210,7 @@ function check(label, ok, info) {
   // But an {op:or} carrying the sole copy of a want-predicate would silently
   // drop that want. This flips RED the day a NEW card ships an {op} condition,
   // signalling: check that card's extraction, and teach the walker to descend
-  // if the hidden predicates matter. (Supersedes the earlier "mixed-OR mis-
-  // gates" framing — the real failure is invisibility, not mis-gating.)
+  // if the hidden predicates matter.
   const VETTED_OP_CONDITIONS = new Set(['spellrider']);   // {op:not}, judged benign
   const hasOpNode = (node) => {
     if (Array.isArray(node)) return node.some(hasOpNode);
@@ -302,16 +288,15 @@ function check(label, ok, info) {
 }
 
 // --- §3b color fence mechanism (deterministic) ------------------------------
-// colorFitFactor(card, deckColors) is the pure weight multiplier the old
-// sampled off-color-rate + second-color checks only measured the effect of.
-// Pinning it directly needs no rolls and no threshold.
+// colorFitFactor(card, deckColors) is the pure weight multiplier for color
+// fit; pinning it directly needs no rolls and no threshold.
 {
   const fit = BUCKETS._colorFitForTest;
   // Factor 1 = no fence. Guards the SPELLSTORM×3 lockout, where this returned
   // ~0 and trapped a mono deck in its one color.
   check('mono deck: no color fence, off-color rides at full weight',
     fit('counterspell', ['R']) === 1, String(fit('counterspell', ['R'])));
-  // Off-color splash stays a temptation, not a ban (Joe's call).
+  // Deliberate: damping off-color splash instead of banning it is Joe's call.
   const onColor = fit('lightning_bolt', ['B', 'R']);
   const offColor = fit('counterspell', ['B', 'R']);
   check('committed deck: on-color card rides at full weight', onColor === 1,
@@ -392,7 +377,6 @@ function check(label, ok, info) {
 
 // --- §6c synergy hints: the custom_text of the graph --------------------------
 {
-  // Inject a synthetic custom-kind card that declares its synergy by hand.
   CARDS.__hint_test = {
     tplId: '__hint_test', name: 'Hint Tester', types: ['Creature', 'Horror'],
     cost: { B: 1 }, power: 1, toughness: 1, boon: true,
@@ -421,8 +405,6 @@ function check(label, ok, info) {
   check('bucket lands cover every needed color (U3/B1 → island+swamp)',
     lands.includes('island') && lands.includes('swamp'), lands.join(','));
 
-  // Reinforcements must never sell the player their own deck back: sample a
-  // few fallbacks and check none reprint a card the deck already holds.
   const deck = ['skyfire_drakelord', 'mind_control', 'final_strike', 'island', 'island'];
   let soldOwnCard = false;
   let rolls = 0, seen = 0;
@@ -436,16 +418,14 @@ function check(label, ok, info) {
   check('Reinforcements never contains cards already in the deck', !soldOwnCard);
 }
 
-// --- §6c2 Elystra's authored want (v2.2.25) -----------------------------------
+// --- §6c2 Elystra's authored want -------------------------------------------
 {
-  // The synergy-hint mechanism's design exemplar finally uses it: Elystra's
-  // permanence (EOT effects stick forever) is declared as wants:trick on the
-  // card. She's a boon (never offered), but a deck holding her must pull
-  // trick spells into offers via seed affinity.
+  // Elystra's permanence (EOT effects stick forever) auto-derives
+  // wants:eot_buff from permanent_eot, not a synergy hint. She's a boon
+  // (never offered), but a deck holding her must still pull trick spells
+  // into offers via seed affinity.
   const w2 = (id) => BUCKETS.analyzeCard(id);
   const ely = BUCKETS.analyzeCard('elystra_the_immortal');
-  // Graduated from a synergy hint to a rule off the permanent_eot flag
-  // (v2.2.30): her card.json carries no synergy block; the want is derived.
   check('elystra WANTS eot_buff (derived from permanent_eot, not a hint)',
     ely && ely.wants.eot_buff === 3 && !CARDS.elystra_the_immortal.synergy,
     JSON.stringify(ely && ely.wants));
@@ -462,7 +442,7 @@ function check(label, ok, info) {
     && BUCKETS.edgeBetween('cloudshift', 'elystra_the_immortal').w === 0);
 }
 
-// --- §6e the dupe shelf (v2.2.24) --------------------------------------------
+// --- §6e the dupe shelf -------------------------------------------------------
 {
   const f = BUCKETS._dupeFactorForTest;
   check('empty deck: everything rides at full shelf (factor 1)',
@@ -484,11 +464,10 @@ function check(label, ok, info) {
       === 0.8);
 }
 
-// --- §6f the Reinforcements retirement (v2.2.26) -------------------------------
+// --- §6f the Reinforcements retirement ---------------------------------------
 {
   // Per-slot value fill: a stranded bucket keeps its grown members and
-  // fills only the empty seats — value-weighted, color-fenced, never a
-  // card you own, with an honest value-type why line per filled seat.
+  // value-weights only the empty seats.
   const deck = ['murder', 'swamp', 'swamp'];
   const r = BUCKETS._valueFillForTest(['blood_artist'], deck);
   check('value fill completes a stranded bucket to 3 cards', r.cards.length === 3,
@@ -502,9 +481,9 @@ function check(label, ok, info) {
   for (const id of r.cards) for (const k of PIPS) if ((CARDS[id].cost || {})[k] > 0) cols.add(k);
   check('filled bucket still obeys the two-color law', cols.size <= 2, [...cols].join(','));
 
-  // With a full pool, normal offers NEVER fall back anymore: every seed
-  // grows-or-fills to a full bucket (the floor is gone; whole-bundle
-  // Reinforcements is reserved for seeding starvation).
+  // With a full pool, normal offers never fall back: every seed grows-or-
+  // fills to a full bucket; whole-bundle Reinforcements is reserved for
+  // seeding starvation.
   let fallbacks = 0, tiles = 0;
   for (let i = 0; i < 15; i++) {
     for (const b of BUCKETS.rollBucketOffer(['goblin_piercer', 'blood_artist', 'mountain', 'swamp'])) {

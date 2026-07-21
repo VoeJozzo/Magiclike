@@ -1,7 +1,6 @@
 // The boon is the draft's pick #0: a real card tagged `boon:true`, offered by
-// rollBoonOffer and rendered by the same card picker as the packs. The old
-// RUN_MODIFIERS boon registry (with its duplicate-`art:` trap this test used
-// to pin) is gone — the boon's art IS the card's art now, by construction.
+// rollBoonOffer and rendered by the same card picker as the packs. The boon's
+// art IS the card's art, by construction.
 // What can still silently break:
 //   - a boon card without `art` renders a blank tile in the pick-#0 offer;
 //   - a boon pool under 3 cards silently shrinks the offer;

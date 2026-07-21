@@ -1,9 +1,3 @@
-// Audit A5-5 — a cloned Stapler slot had no `charges` field, so the engine
-// charge gate (`typeof stSlot.charges === 'number'`) read it as infinite: the
-// clone never decremented, never ripped, and the UI showed "3 charges" forever.
-// Joe Option A (PR #98): photocopy the source slot's REMAINING charges onto the
-// clone — a copy of a half-used Stapler is half-used.
-
 const setup = require('./_setup');
 setup.loadEngine();
 
@@ -30,7 +24,7 @@ console.log('=== A5-5: cloning a half-used Stapler photocopies its REMAINING cha
   const stIdx = slots.findIndex(s => s.tplId === 'stapler');
   check('Stapler slot present', stIdx >= 0, 'idx=' + stIdx);
   check('Stapler slot starts at 3 charges', slots[stIdx].charges === 3, 'charges=' + slots[stIdx].charges);
-  slots[stIdx].charges = 1;   // half-used
+  slots[stIdx].charges = 1;
 
   const after = cloneSlot(stIdx);
   const clone = after[stIdx + 1];
@@ -45,7 +39,7 @@ console.log('=== A5-5: cloning a half-used Stapler photocopies its REMAINING cha
 console.log('\n=== control: cloning a non-charges slot adds NO charges field (guard is a pure superset) ===');
 (() => {
   RUN.start({ cards: Array(5).fill('mountain'), colors: ['R'] }, 'stapler');
-  const after = cloneSlot(0);   // slot 0 is a mountain — no charges
+  const after = cloneSlot(0);
   const clone = after[1];
   check('mountain clone inserted', clone && clone.tplId === 'mountain', clone ? clone.tplId : 'none');
   check('mountain clone has NO charges field', clone && !('charges' in clone),
@@ -54,10 +48,9 @@ console.log('\n=== control: cloning a non-charges slot adds NO charges field (gu
 
 console.log('\n=== A5-5 review: a charged clone Stapler SURVIVES the original ripping out of charges ===');
 (() => {
-  // With two Stapler instances on independent slots, the original running out of
-  // charges must rip ONLY its own slot/instance — not purge every card by tplId
-  // (which would also destroy the still-charged clone). Drives a real cross-owner
-  // splice so the charge-accounting rip block fires.
+  // The charge-rip must purge only the out-of-charges instance's own slot, not
+  // every card sharing tplId (which would also destroy the still-charged clone).
+  // Drives a real cross-owner splice so the charge-accounting rip block fires.
   const baseTpl = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceableBase(k));
   const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k], 'Creature') && isSpliceableStaple(k));
 
@@ -67,8 +60,7 @@ console.log('\n=== A5-5 review: a charged clone Stapler SURVIVES the original ri
   setup.startMainPhase('you');
   G.you.mana = { C: 9, W: 9, U: 9, B: 9, R: 9, G: 9 };
 
-  // Two independent Stapler slots: the original (1 charge, about to rip) and
-  // a clone right after it (3 charges). Set up directly to avoid the reward/map flow.
+  // Set up directly (not via cloneSlot) to avoid the reward/map flow.
   const slots = RUN.getSlots();
   const origIdx = slots.findIndex(s => s.tplId === 'stapler');
   slots.splice(origIdx + 1, 0, { tplId: 'stapler', stickers: [], charges: 3 });
@@ -96,7 +88,7 @@ console.log('\n=== A5-5 review: a charged clone Stapler SURVIVES the original ri
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: actingStapler.iid, abilityIdx: 0,
     targets: [{ kind: 'permanent', iid: oppBase.iid, label: oppBase.name },
               { kind: 'permanent', iid: youStaple.iid, label: youStaple.name }] });
-  // The ability goes on the stack (A3-2); drain it so the splice + charge-rip resolve.
+  // The ability goes on the stack; drain it so the splice + charge-rip resolve.
   let drain = 20;
   while (G.stack.length > 0 && drain-- > 0) {
     const w = ENGINE.expectedActor(); if (!w) break;

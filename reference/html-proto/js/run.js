@@ -1,10 +1,9 @@
 // SAVE_VERSION bumps on schema change; MIGRATIONS walks old saves forward.
-// Hoisted out of the RUN IIFE so the test harness can exercise them via EXPOSED.
+// Declared at module scope, not inside the RUN IIFE, so the test harness can exercise them via EXPOSED.
 const SAVE_KEY = 'magiclike_run_v1';
 const SAVE_VERSION = 2;
 
 // tplId renames — old → new. Used by run-save migration AND picklog translation.
-// v1.0.134.16: four cards' tplIds didn't match display names from earlier renames.
 const TPLID_RENAMES = {
   "abyssLurker":         "abyss_lurker",
   "aerialManeuver":      "aerial_maneuver",
@@ -254,8 +253,6 @@ const TPLID_RENAMES = {
   "wrathOfGod":          "day_of_reckoning",
   "wurm":                "gizzard_beast",
   "zealot":              "holy_zealot",
-  // v2.2.13: Joe's RENAME-LATER flag from the Wave 2 flavor pass, resolved
-  // ("Uplifting Angel! That's the name I wanted").
   "rescue_angel":        "uplifting_angel",
 };
 function renameTplId(id) { return TPLID_RENAMES[id] || id; }
@@ -264,7 +261,7 @@ function renameTplId(id) { return TPLID_RENAMES[id] || id; }
 // renameTplId over every loaded pick on every load (no schema gate — picklog.js),
 // so if a key were ever reused as a LIVE card id, that card's picklog history
 // would be silently rewritten forever. Boot surfaces any collision (main.js); the
-// static invariant is also pinned in tplid_renames_test.js. Empty today.
+// static invariant is also pinned in tplid_renames_test.js.
 function tplidRenameKeyCollisions(cards) {
   return Object.keys(TPLID_RENAMES).filter(k => cards && cards[k]);
 }
@@ -283,19 +280,13 @@ function migrateSlotTplIds(slots) {
 
 const MIGRATIONS = {
   // v1->v2 tplId rename. The renames must reach every place a tplId actually
-  // persists on a SAVED runState. Git-verified at df2fd38^ (where SAVE_VERSION
-  // was 1 and save() stored {version, runState}): those places are the live
-  // slots; the mid-game slots snapshot (a deep-clone of slots taken at game
-  // start); a pending transform reward's replacementPack (two shapes — a
-  // 'mixed'-phase candidate, and the committed 'transformPick' phase); and the
-  // run modifier (boon) id (e.g. cityOfBrass -> city_of_brass). The PREVIOUS
-  // migration was written against a PHANTOM shape: it renamed four fields that
-  // never existed on a persisted runState (pendingNeowModifier / currentPack /
-  // youPicks / oppDecks — youPicks/currentPack live on DRAFT's in-memory state,
-  // not the save) and MISSED the snapshot, so loading an old mid-game save
-  // resurrected dead tplIds and the next deck build threw "Unknown card",
-  // wiping the run (audit A9-1). (A9-10's later version-gap miss is a non-issue
-  // per Joe — solo player, two-week-old saves — so SAVE_VERSION stays 2.)
+  // persists on a SAVED runState: the live slots; the mid-game slots snapshot
+  // (a deep-clone of slots taken at game start); a pending transform reward's
+  // replacementPack (two shapes — a 'mixed'-phase candidate, and the
+  // committed 'transformPick' phase); and the run modifier (boon) id (e.g.
+  // cityOfBrass -> city_of_brass). (A9-10's later version-gap miss is a
+  // non-issue per Joe — solo player, two-week-old saves — so SAVE_VERSION
+  // stays 2.)
   1: (blob) => {
     const rs = blob.runState || {};
     migrateSlotTplIds(rs.slots);
@@ -380,7 +371,6 @@ function load() {
         slot.stickers = slot.stickers.filter(s =>
           (s && typeof s === 'object' && s.kind) || STICKERS[s]);
         stalePruned += before - slot.stickers.length;
-        // Backfill empowerRolls for empower stickers without recorded rolls.
         const empowerCount = slot.stickers.filter(id => id === 'empower').length;
         if (!Array.isArray(slot.empowerRolls)) slot.empowerRolls = [];
         while (slot.empowerRolls.length < empowerCount) {
@@ -464,7 +454,6 @@ function start(playerDeck) {
     },
   };
   runState.map.currentNodeId = runState.map.rootId;
-  // Post-draft Innate offer: up to 3 most-drafted basic types.
   const BASIC_TPL_IDS = new Set(['plains','island','swamp','mountain','forest']);
   const basicCounts = {};
   for (const slot of runState.slots) {
@@ -619,7 +608,6 @@ function startNextGame() {
   return { gameNum: runState.gameNum, bossName, bossIcon };
 }
 
-// Commit fork choice; validates against pendingMapChoice options.
 function pickMapNode(nodeId) {
   if (!runState || !runState.pendingMapChoice) return false;
   if (!runState.pendingMapChoice.options.includes(nodeId)) return false;
@@ -629,7 +617,6 @@ function pickMapNode(nodeId) {
   return true;
 }
 
-// Apply Innate sticker to the first slot of the chosen basic tplId.
 function pickPostDraftOffer(tplId) {
   if (!runState || !runState.pendingPostDraftOffer) return false;
   const offer = runState.pendingPostDraftOffer;
@@ -717,11 +704,10 @@ const REWARD_TYPE_WEIGHTS = {
   transform:     2,   // uncommon — opens a draft-style replacement pack
   clone:         2,   // uncommon — duplicate a slot (fresh, no stickers carry)
   threeStickersBlind: 1,  // rare — three stickers on a random creature slot,
-                          // identity not revealed at offer time. Lowered from
-                          // 2 → 1 (v1.0.46) because three stickers on a single
-                          // creature reliably produces a centerpiece threat,
-                          // and at weight 2 it was showing up often enough to
-                          // distort the run's power curve.
+                          // identity not revealed at offer time. Kept low:
+                          // at weight 2, three stickers on one creature
+                          // reliably produces a centerpiece threat that
+                          // distorts the run's power curve.
   ripUp:         1,   // rare — permanently removes a slot
   splice:        2,   // uncommon — combines two of the player's cards into
                       // one slot (Bolt + Giant Growth → 2-cost spell that
@@ -731,7 +717,7 @@ const REWARD_TYPE_WEIGHTS = {
                       // enumerates eligible pairs and picks one;
                       // canonicalSplicePair decides which half is the
                       // base); the player accepts or declines the offered
-                      // pair as-is — no pick-then-pick step (v1.0.47).
+                      // pair as-is — no pick-then-pick step.
 };
 
 // Growing Deck growth targets — the canonical classic deck shape the run
@@ -1053,7 +1039,7 @@ function pickRewardCandidate(idx) {
   if (cand.kind === 'clone') {
     // Deep-clone all slot state (stickers, staples, empowerRolls, bonusTrigger,
     // charges) so the player gets the merged/buffed version, not just the base.
-    // Elystra's permanent buffs ride along inside stickers now (audit A5-6/A5-7).
+    // Elystra's permanent buffs ride along inside stickers (audit A5-6/A5-7).
     const orig = runState.slots[cand.slotIdx];
     if (!orig) {
       runState.pendingReward = null;
@@ -1082,7 +1068,7 @@ function pickRewardCandidate(idx) {
       };
     }
     if (typeof orig.charges === 'number') {
-      // A5-5 (Joe Option A, PR #98): photocopy the REMAINING charges. A clone
+      // A5-5: photocopy the REMAINING charges. A clone
       // of a half-used Stapler is half-used — without this the clone slot has no
       // charges field, the engine charge gate reads it as infinite (never
       // decrements, never rips), and the UI shows "3 charges" forever.
@@ -1158,8 +1144,7 @@ function pickRewardCandidate(idx) {
   }
 }
 
-// Player chose a replacement card from the transform pack. Replace the slot
-// (no stickers carry over — fresh slot) and clear the pending reward.
+// No stickers carry over onto the replacement — a fresh slot, by design.
 function pickTransformReplacement(tplId) {
   if (!runState || !runState.pendingReward) return;
   if (runState.pendingReward.phase !== 'transformPick') return;
@@ -1245,7 +1230,7 @@ function applySplice(baseSlotIdx, stapleSlotIdx) {
   // (engine.js mergeSpliceData). Stickers are slot-scoped and just concat;
   // empower rolls remap (effect indices shift when arrays concatenate / move
   // into an ETB trigger); subtype concat; bonusTrigger: base wins. (Elystra's
-  // permanent buffs are stickers now, so they ride the sticker concat.)
+  // permanent buffs are stickers, so they ride the sticker concat.)
   const merged = mergeSpliceData(
     { tplId: baseSlot.tplId, stickers: baseSlot.stickers, empowerRolls: baseSlot.empowerRolls,
       subtypeRolls: baseSlot.subtypeRolls,
@@ -1264,13 +1249,10 @@ function applySplice(baseSlotIdx, stapleSlotIdx) {
   return true;
 }
 
-// (countEffects + remapEmpowerRollForStaple moved to module scope so both
+// (countEffects + remapEmpowerRollForStaple live at module scope so both
 //  the RUN IIFE and the ENGINE IIFE can call them — ENGINE needs them for
-//  in-game Stapler splice. The function bodies are unchanged from the
-//  original RUN-private versions.)
+//  in-game Stapler splice.)
 
-// Dismiss the reveal screen for twoStickers — closes the modal so the
-// player can advance to the next game.
 function dismissReveal() {
   if (!runState || !runState.pendingReward) return;
   if (runState.pendingReward.phase !== 'twoStickersReveal') return;
@@ -1369,8 +1351,6 @@ function appendSlot(tplId, stickers, meta) {
     if (Array.isArray(meta.stapledTpls))  newSlot.stapledTpls  = meta.stapledTpls.slice();
     if (meta.bonusTrigger)                newSlot.bonusTrigger = meta.bonusTrigger;
     if (typeof meta.charges === 'number') newSlot.charges = meta.charges;
-    // §3.8: Balancer overrides (symmetricized/colorOverride/extraCost) are gone —
-    // those cards now persist via stickers (cost_mod / set_color / stat_boost).
   }
   runState.slots.push(newSlot);
   save();

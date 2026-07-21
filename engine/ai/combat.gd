@@ -1,7 +1,7 @@
 class_name AICombat
 extends RefCounted
 
-# AI combat helpers. Ported from js/ai.js's combat block. Pure: simulate_combat
+# AI combat helpers, mirroring js/ai.js's combat block. Pure: simulate_combat
 # operates on a duplicate_deep of EngineState — real state never touched.
 # Outcome dict from attacker POV: {dead_attackers, dead_blockers, damage_to_defender, *_life_gain}.
 

@@ -1,34 +1,13 @@
-// Audit fix A2-1 — first-strike membership is SNAPSHOTTED at combat-damage
-// start; the two strike passes consult the snapshot, never live keywords.
-//
-// Before this fix, resolveCombatDamage's pass filters read the mutable
-// `card.keywords` array at call time. Deaths are swept BETWEEN the passes,
-// and a dying lord's clearRestrictionsFromSource splices its granted
-// keywords out — so a creature whose first strike was granted by a lord
-// that died in pass 1 re-qualified for the pass-2 `!first_strike` filter
-// and dealt combat damage TWICE (the finding's executed repro: 5 face
-// damage where canon says 3). Mirror bug: a creature GAINING first strike
-// between the passes matched NEITHER filter and dealt zero.
-//
-// Design ruling (PR #98, 2026-06-11, per MTG): there is no priority window
-// between the strike steps, so nothing can respond to the revocation —
-// snapshot who has first strike once, at damage start. Each combatant
-// deals damage in exactly the wave the snapshot assigns (pass 1 if it had
-// first strike when damage started, pass 2 otherwise) — never both, so no
-// accidental double-strike semantics. Canon: docs/wiki/rules/800-combat.md
+// First-strike membership is snapshotted at combat-damage start; the two
+// strike passes consult the snapshot, never live keywords. There is no
+// priority window between the strike steps, so nothing can respond to a
+// keyword change mid-combat: each combatant deals damage in exactly the wave
+// the snapshot assigned it (pass 1 if it had first strike when damage
+// started, pass 2 otherwise) — never both. Canon: docs/wiki/rules/800-combat.md
 // §803.
 //
-// This file pins both directions, using the finding's executed repro cards:
-//   1. Lord dies in pass 1 (skyfire_drakelord granting FS+1/+1 to Dragons,
-//      killed by a first-strike blocker): the granted Dragon deals its
-//      pass-1 damage ONLY — face total 3, not 5 — even though the grant
-//      is revoked between passes.
-//   2. Inverse — a creature GAINING first strike between passes (a
-//      not_keyword-gated FS lord starts matching when the lord granting
-//      that keyword dies in pass 1) still deals its single,
-//      snapshot-assigned pass-2 damage — face 2, not 0.
-//      (Why not_keyword: a stat-gated filter like max_power on a
-//      static_buff recurses getStats <-> matchFilter; keyword gates don't.)
+// (not_keyword rather than a stat-gated filter like max_power: a stat gate on
+// a static_buff recurses getStats <-> matchFilter; keyword gates don't.)
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -57,7 +36,6 @@ function newGame() {
 function readyMain(G, who) {
   setup.startMainPhase(who);
 }
-// Pass priority with whoever the engine expects until `done()` or safety.
 function passUntil(G, done, max) {
   let safety = max || 40;
   while (!done() && safety-- > 0) {
@@ -81,7 +59,7 @@ if (!VANILLA || !CARDS['skyfire_drakelord'] || !CARDS['goblin_raider'] || !CARDS
   {
     const G = newGame();
     // Skyfire Drakelord: 3/4 first strike, grants first_strike +1/+1 to
-    // your Dragons. The finding's repro makes Goblin Raider (2/1) a Dragon.
+    // your Dragons; Goblin Raider (2/1) is made a Dragon to receive it.
     const lord = mk('skyfire_drakelord', 'you');
     const raider = mk('goblin_raider', 'you');
     raider.types.push('Dragon');
@@ -118,9 +96,6 @@ if (!VANILLA || !CARDS['skyfire_drakelord'] || !CARDS['goblin_raider'] || !CARDS
     check('raider survives, grant revoked by the lord\'s death',
       !!raiderNow && !raiderNow.keywords.includes('first_strike'),
       raiderNow ? 'keywords=' + JSON.stringify(raiderNow.keywords) : 'raider dead');
-    // THE pin: raider dealt its buffed 3 in pass 1 (granted FS) and must
-    // NOT deal again in pass 2 after the grant is revoked. Live-filter bug
-    // dealt 3 + 2 = 5; snapshot rule says 3.
     check('A2-1: face damage is the pass-1 hit only (3, not 5)',
       oppLifeAtStart - G.opp.life === 3,
       'face damage=' + (oppLifeAtStart - G.opp.life));
@@ -181,9 +156,6 @@ if (!VANILLA || !CARDS['skyfire_drakelord'] || !CARDS['goblin_raider'] || !CARDS
     check('X survives and GAINED first strike between passes (vigilance revoked)',
       !!xNow && xNow.keywords.includes('first_strike'),
       xNow ? 'keywords=' + JSON.stringify(xNow.keywords) : 'X dead');
-    // THE pin: X had no first strike when damage started, so the snapshot
-    // assigns it pass 2 — it deals its (now unbuffed) 2 there. Live-filter
-    // bug excluded it from BOTH passes: face damage 0.
     check('A2-1: X deals its single pass-2 hit (2, not 0)',
       oppLifeAtStart - G.opp.life === 2,
       'face damage=' + (oppLifeAtStart - G.opp.life));

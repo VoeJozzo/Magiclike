@@ -1,6 +1,6 @@
-// Wave 2 — the ability_activated event (primitive bill item 6; customer:
-// Backlash Mage, "Whenever you activate an ability of a creature you
-// control, ~ deals 1 damage to target opponent").
+// The ability_activated event — the trigger behind cards like Backlash
+// Mage, "Whenever you activate an ability of a creature you control, ~
+// deals 1 damage to target opponent".
 //
 // The event announces a NON-MANA activated ability taking its kind:'ability'
 // stack entry (the single emit site in doActivateAbility's stackable branch).
@@ -37,9 +37,7 @@ function mk(tplId, controller) {
     keywords: (inst.keywords || []).slice(),
   });
 }
-// A Backlash Mage-shaped listener: creature payoff for your creature
-// activations, draining the opponent through the trigger-level target:'opp'
-// implicit slot (blood_artist house shape — auto-fills, zero prompts).
+// blood_artist house shape: target:'opp' auto-fills, zero prompts.
 function mkListener(controller) {
   const c = mk('grizzly_bears', controller);
   c.name = 'Backlash Listener';
@@ -65,7 +63,7 @@ function newGame() {
   G.opp.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   return G;
 }
-// Pass-until-settled (bounded), same as test_stackable_infra.
+// Same as test_stackable_infra.
 function settle(G) {
   let safety = 12;
   while (G.stack.length > 0 && safety-- > 0) {
@@ -139,9 +137,8 @@ if (!CARDS['prodigal_sorcerer'] || !CARDS['llanowar_elves'] || !CARDS['grizzly_b
 
   console.log('\n=== (c) condition scoping: opponent activations and non-creature sources stay silent ===');
   (() => {
-    // Opponent activates THEIR creature: controlled_by(you) fails for your
-    // listener, so nothing fires (event still emitted — the condition is the
-    // filter, same contract as every composable trigger).
+    // The event still fires here — controlled_by(you) is the filter, same
+    // contract as every composable trigger.
     const G = newGame();
     G.activePlayer = 'opp'; G.priorityHolder = 'opp';
     setup.startMainPhase('opp');
@@ -164,8 +161,6 @@ if (!CARDS['prodigal_sorcerer'] || !CARDS['llanowar_elves'] || !CARDS['grizzly_b
     settle(G);
     check('opponent took no listener damage', G.opp.life === oppLife0);
 
-    // Non-creature source: an artifact's non-mana ability emits the event,
-    // but card_is_creature filters it out.
     const G2 = newGame();
     const listener2 = mkListener('you');
     G2.you.battlefield.push(listener2);
