@@ -166,6 +166,7 @@ const EXPOSED = [
   'rollSubtypeFromDeck', 'pushStickerWithRoll', 'stickersForSlot',
   // Render module-scope helpers (render.js has no IIFE).
   'stickerBadgesHtml', 'keywordIconsHtml', 'segmentsToHtml', 'effectiveArt', 'renderManaSymbols', 'formatCostBraced',
+  'cardToViewModel',
   'isValidTargetCreature', 'canPlayFromUI', 'playerForcedPrompt', 'anyForcedPrompt',
   'activationGlowAvailable',
   'edictChoiceNoun', 'graveyardPickerPrompt', 'castCardByIid',

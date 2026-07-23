@@ -50,6 +50,13 @@ console.log('\n=== cards that genuinely need authored text keep custom_text:true
   }
 })();
 
+console.log('\n=== Pacifism authored face matches its opponent-only target ===');
+(() => {
+  const oracleHtml = cardToViewModel(ENGINE.makeCard('pacifism')).oracleHtml;
+  check('Pacifism view displays the opponent-control restriction',
+    oracleHtml === "Target creature an opponent controls can't attack or block.", oracleHtml);
+})();
+
 console.log('\n=== scarification generates (no custom_text) so empower shows in the text ===');
 (() => {
   check('scarification is NOT custom_text', CARDS.scarification.custom_text !== true);
