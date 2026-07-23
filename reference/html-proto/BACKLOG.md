@@ -85,6 +85,8 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 
 ## Recently done
 
+- **v2.2.47 — Architect's Codex generated face damage is opponent-only.** The `damageFace` trigger option now uses the canonical `opp` target, so its controller is never offered self-damage; assembled text and controller-relative legality are pinned by focused regressions.
+
 - **v2.2.46 — Stats button on the main menu restored.** The stats overlay now uses the established utility-modal layer above the start screen, so the already-working toggle opens a visible panel.
 
 - **v2.2.37 — audit A3 closed (post flake-merge)**: rollBucket demoted from
