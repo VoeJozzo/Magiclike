@@ -44,8 +44,6 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 
 - **Symmetricize should not target symmetric creatures** — the Symmetricize ability should exclude creatures that are already symmetric from its targeting.
 
-- **What boss you face should be visibly on campaign map** — the player should be able to see which boss they will face displayed on the campaign map before entering the encounter.
-
 - **AI pings appear to not factor each other into targeting** — the AI's targeting logic for multiple ping effects from the same source doesn't account for previously selected targets (e.g., multiple pings from the same card all targeted the same 1/1 instead of spreading damage).
 
 - **Raise the Alarm token type mismatch** — Raise the Alarm states that the tokens are soldiers, but when created they are humans. This may be a broader bug in token creation logic that needs investigation.
@@ -85,6 +83,7 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 
 ## Recently done
 
+- **v2.2.47 — campaign map shows the sector's exit boss up front.** A persistent header label uses the same resolved constructed-deck name as node tooltips and stays visible throughout the sector.
 - **v2.2.46 — Stats button on the main menu restored.** The stats overlay now uses the established utility-modal layer above the start screen, so the already-working toggle opens a visible panel.
 
 - **v2.2.37 — audit A3 closed (post flake-merge)**: rollBucket demoted from

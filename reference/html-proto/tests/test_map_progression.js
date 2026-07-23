@@ -57,21 +57,29 @@ console.log('=== walk a full sector (root → boss → next sector) ===');
 
 console.log('\n=== boss node carries a resolvable constructed deck ===');
 (() => {
-  let bossNodes = 0, resolvable = 0;
+  let bossNodes = 0, resolvable = 0, labelsMatched = 0;
+  let exactlyOneBossPerMap = true;
   for (let i = 0; i < 20; i++) {
     RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
     const ms = RUN.getMapState();
-    for (const n of ms.nodes) {
-      if (n.type === 'boss' && n.constructedId) {
-        bossNodes++;
-        const spec = DRAFT.getConstructedDeck(n.constructedId);
-        if (spec && spec.name) resolvable++;
+    const bosses = ms.nodes.filter(n => n.type === 'boss');
+    if (bosses.length !== 1) exactlyOneBossPerMap = false;
+    for (const n of bosses) {
+      if (!n.constructedId) continue;
+      bossNodes++;
+      const spec = DRAFT.getConstructedDeck(n.constructedId);
+      if (spec && spec.name) {
+        resolvable++;
+        if (mapNodeLabel(n) === spec.name) labelsMatched++;
       }
     }
   }
+  check('each sector has exactly one exit boss', exactlyOneBossPerMap);
   check('boss nodes exist across sampled maps', bossNodes > 0, 'count=' + bossNodes);
   check('every boss constructedId resolves to a named deck', bossNodes > 0 && resolvable === bossNodes,
     resolvable + '/' + bossNodes);
+  check('map labels use the resolved constructed-deck name', bossNodes > 0 && labelsMatched === bossNodes,
+    labelsMatched + '/' + bossNodes);
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

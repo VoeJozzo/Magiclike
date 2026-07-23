@@ -129,7 +129,7 @@ const EXPOSED = [
   'ENGINE', 'AI', 'RUN', 'DRAFT', 'CARDS', 'STICKERS', 'BUCKETS',
   // §7b cast-path coverage sets (ai.js module scope).
   'TARGET_SCORED_KINDS', 'NOT_TARGET_SCORED_KINDS',
-  'CONTROLLER', 'PICKLOG', 'VERSION', 'Modal', 'SETTINGS',
+  'CONTROLLER', 'PICKLOG', 'VERSION', 'Modal', 'SETTINGS', 'mapNodeLabel',
   // Card-load surface (cards.js, module-scope).
   'ingestCard', 'basicLandTypeColors',
   // tplId rename plumbing — exposed for tplid_renames_test.

@@ -1,5 +1,19 @@
 // CONTROLLER — UI state, AI scheduling, click-to-engine glue.
 
+function mapNodeLabel(node) {
+  if (node.constructedId) {
+    const spec = DRAFT.getConstructedDeck(node.constructedId);
+    if (spec && spec.name) return spec.name;
+  }
+  const base = node.type === 'combat' ? 'Draft Deck'
+    : node.type === 'boss' ? 'Boss'
+    : 'Unknown';
+  const colorNames = {W:'White', U:'Blue', B:'Black', R:'Red', G:'Green'};
+  return node.color && colorNames[node.color]
+    ? `${colorNames[node.color]} ${base}`
+    : base;
+}
+
 // Modal helper. Module-scope so render.js can call Modal.show/hide directly.
 // Escape-to-close, focus restore, aria-modal, LIFO stack. dismissible:false for
 // flow-gates (gameover/cardPick/reward) where Escape would softlock.
@@ -1080,26 +1094,13 @@ function renderMap() {
   // boss tile + corner gem already mark them, and a letter on top would be a
   // third, redundant boss signal.
   const PLACEHOLDER_ICON = { combat: 'C', elite: 'E', shop: '$', event: '?', rest: 'R', boss: '' };
-  // Tooltip combines type + color (e.g., "Red Draft Deck"). Constructed nodes use deck name.
-  const COLOR_NAME = {W:'White', U:'Blue', B:'Black', R:'Red', G:'Green'};
-  const labelForType = (type) => {
-    switch (type) {
-      case 'combat': return 'Draft Deck';
-      case 'boss':   return 'Boss';
-      default:       return 'Unknown';
-    }
-  };
-  const tooltipFor = (node) => {
-    if (node.constructedId) {
-      const spec = DRAFT.getConstructedDeck(node.constructedId);
-      if (spec) return spec.name;
-    }
-    const base = labelForType(node.type);
-    if (node.color && COLOR_NAME[node.color]) {
-      return `${COLOR_NAME[node.color]} ${base}`;
-    }
-    return base;
-  };
+  const bossNames = [...new Set(ms.nodes
+    .filter(n => n.type === 'boss' && n.constructedId)
+    .map(mapNodeLabel)
+    .filter(name => name !== 'Boss'))];
+  const bossRow = document.getElementById('mapBoss');
+  if (bossRow) bossRow.hidden = bossNames.length !== 1;
+  setText('mapBossName', bossNames.length === 1 ? bossNames[0] : '');
   for (const lvl of levels) {
     const row = document.createElement('div');
     row.className = 'map-level';
@@ -1111,7 +1112,7 @@ function renderMap() {
       mi.className = 'mi';
       mi.textContent = PLACEHOLDER_ICON[n.type] ?? '?';
       el.appendChild(mi);
-      el.title = tooltipFor(n);
+      el.title = mapNodeLabel(n);
       // Corner badge = the node's color gem (constructed decks ring with
       // their first color). Pure art: .map-color-badge paints gem_<C>.png.
       let ringColor = n.color;
@@ -1130,7 +1131,7 @@ function renderMap() {
       }
       if (n.id === current) el.classList.add('current');
       else if (visited.has(n.id)) el.classList.add('visited');
-      const label = tooltipFor(n);
+      const label = mapNodeLabel(n);
       if (legal.has(n.id)) {
         el.classList.add('legal');
         if (n.id === selectedMapNode) el.classList.add('selected');
