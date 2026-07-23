@@ -44,4 +44,4 @@ Adopted name: **the Adversaria** for black's infernal bureaucracy — see [[name
 
 ## See also
 
-[[world-bible|world hub]] · [[white]] (the other half of the bypass) · [[names-ledger]] · [[tone]]
+[[world-bible|world hub]] · [[white]] (the other half of the bypass) · [[names-ledger]] · [[tone]] · [[mechanical-color-pie]] (what black *does*)

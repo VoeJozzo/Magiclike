@@ -39,4 +39,4 @@ Red cards want: the moment of seizing (a gate, a torch, a chance); ambition rend
 
 ## See also
 
-[[world-bible|world hub]] · [[blue]] (what the legion burned) · [[tone]] · [[names-ledger]]
+[[world-bible|world hub]] · [[blue]] (what the legion burned) · [[tone]] · [[names-ledger]] · [[mechanical-color-pie]] (what red *does*)
