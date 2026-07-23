@@ -20,6 +20,8 @@ const CATEGORY_A = [
   'trigger_generator_test.js',
   'ai_burn_lethal_test.js',
   'choice_prompts_test.js',
+  // Symmetricize excludes creatures whose live P/T and stored total mana cost match.
+  'test_symmetricize_targeting.js',
   'card_text_test.js',
   'art_ladder_test.js',
   // cards/_manifest.json vs cards/ folder can drift: an unlisted folder

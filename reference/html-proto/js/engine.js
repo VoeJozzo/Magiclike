@@ -1308,13 +1308,13 @@ function pluckFromBattlefield(f) {
 // filter.controller:'self' = "creatures you control" (shares lord controller).
 //
 // A4-14: lord-buff filters evaluate through matchFilterNoStats — the
-// stats-free view. The four stat-bound axes (max/min power/toughness) call
-// getStats, which walks the lord loop, which lands back here: a stat-bounded
-// static_buff filter would recurse getStats ↔ matchFilter to a RangeError on
-// every stats read (AI scoring, SBAs, render, combat). This predicate is the
-// one funnel through which BOTH halves (stat + keyword) reach matchFilter,
-// so the guard lives here; boot validation additionally REJECTS stat bounds
-// inside static_buffs until that semantics is properly designed
+// stats-free view. Any filter axis that calls getStats (stat bounds and
+// not_symmetric) would otherwise walk the lord loop and land back here,
+// recursing getStats ↔ matchFilter to a RangeError on every stats read (AI
+// scoring, SBAs, render, combat). This predicate is the one funnel through
+// which BOTH halves (stat + keyword) reach matchFilter, so the guard lives
+// here; boot validation additionally REJECTS stats-reading restrictions inside
+// static_buffs until those semantics are properly designed
 // (validateAllCardEffects, loud).
 function lordBuffApplies(lord, lordCtrl, buff, target, tgtCtrl) {
   if (lord.iid === target.iid) return false;   // lords buff OTHER creatures
@@ -1370,6 +1370,20 @@ function costTotalCard(card) {
   let n = card.cost.C || 0;
   for (const k of ['W','U','B','R','G']) n += card.cost[k] || 0;
   return n;
+}
+
+// Symmetricize snapshots these exact live values at resolution. Its target
+// filter reads the same helper so eligibility cannot drift from the prompt:
+// effective P/T (including temporary and static changes) plus the card's
+// currently stored mana cost (including persistent cost stickers).
+function symmetricizeValues(card) {
+  const [power, toughness] = getStats(card);
+  return { power, toughness, cost: costTotalCard(card) };
+}
+function isAlreadySymmetricCreature(card) {
+  if (!hasType(card, 'Creature')) return false;
+  const { power, toughness, cost } = symmetricizeValues(card);
+  return power === toughness && toughness === cost;
 }
 
 function getCardValue(card, purpose, ctx) {
@@ -2513,12 +2527,7 @@ const EFFECTS = {
       log(`${ctx.sourceName} fizzles — target must be a creature.`, 'sp');
       return;
     }
-    const [curPow, curTou] = getStats(f.card);
-    let curCost = 0;
-    if (f.card.cost) {
-      curCost = f.card.cost.C || 0;
-      for (const k of ['W','U','B','R','G']) curCost += f.card.cost[k] || 0;
-    }
+    const values = symmetricizeValues(f.card);
     G.pendingSymmetricizeChoice = {
       who: f.controller,
       source: ctx.sourceName,
@@ -2526,7 +2535,7 @@ const EFFECTS = {
       targetName: f.card.name,
       targetSlotIdx: (typeof f.card.slotIdx === 'number') ? f.card.slotIdx : null,
       targetIsYours: f.controller === 'you',
-      values: { power: curPow, toughness: curTou, cost: curCost },
+      values,
     };
     log(`${ctx.sourceName}: ${pname(f.controller)} must pick power, toughness, or mana cost for ${f.card.name}.`, 'sp');
   },
@@ -3758,7 +3767,7 @@ const EFFECT_SCHEMA = {
 const MATCH_FILTER_KEYS = new Set([
   // matchFilter axes
   'tapped', 'not_color', 'color', 'controller',
-  'max_tough', 'min_tough', 'max_power', 'min_power',
+  'max_tough', 'min_tough', 'max_power', 'min_power', 'not_symmetric',
   'not_keyword', 'has_keyword', 'subtype', 'type', 'not_type',
   'not_token', 'spliceable_base', 'spliceable_staple',
   // graveyard_card search axes (consumed in getValidTargets, not matchFilter)
@@ -3900,18 +3909,17 @@ function validateAllCardEffects(cards) {
       checkList(trig.effects, cardId,
         !!(trig.target || (Array.isArray(trig.target_slots) && trig.target_slots.length)));
     }
-    // static_buff filters: same key sweep, PLUS stat bounds are rejected
-    // outright (audit A4-14) — a stat-bounded lord filter closes the
-    // getStats ↔ matchFilter recursion; lordBuffApplies evaluates stat-free
-    // (matchFilterNoStats) until that semantics is properly designed, so a
-    // stat bound here would be silently ignored at best.
+    // static_buff filters: same key sweep, PLUS filters that read live stats are
+    // rejected outright (audit A4-14) — they close the getStats ↔ matchFilter
+    // recursion. lordBuffApplies evaluates a stats-free view until those semantics
+    // are properly designed, so such a restriction would be silently ignored.
     for (const buff of (card.static_buffs || [])) {
       if (!buff) continue;
       checkFilterKeys(buff.filter, cardId + '.static_buff.filter');
-      if (buff.filter && STAT_BOUND_FILTER_KEYS.some(k => buff.filter[k] !== undefined)) {
-        schemaErrors.push(cardId + ': static_buff filter uses a stat bound ('
-          + STAT_BOUND_FILTER_KEYS.filter(k => buff.filter[k] !== undefined).join(',')
-          + ') — unsupported until stat-bounded lord buffs are designed (audit A4-14)');
+      if (buff.filter && STATS_READING_FILTER_KEYS.some(k => buff.filter[k] !== undefined)) {
+        schemaErrors.push(cardId + ': static_buff filter uses a stat bound/live-stats restriction ('
+          + STATS_READING_FILTER_KEYS.filter(k => buff.filter[k] !== undefined).join(',')
+          + ') — unsupported until stats-reading lord buffs are designed (audit A4-14)');
       }
     }
     const RIDER_SCOPES = ['all_targets', 'creature_targets', 'your_creature_targets', 'self'];
@@ -5204,6 +5212,7 @@ function matchFilter(card, filter, controller, who) {
     const [pw] = getStats(card);
     if (pw < filter.min_power) return false;
   }
+  if (filter.not_symmetric && isAlreadySymmetricCreature(card)) return false;
   // not_keyword: rejects creatures with the named keyword (sibling of has_keyword).
   if (filter.not_keyword && (card.keywords || []).includes(filter.not_keyword)) return false;
   // Subtype filter — used by tribal recursion (Spirit Shepherd's "return a
@@ -5246,23 +5255,23 @@ function matchFilter(card, filter, controller, who) {
   return true;
 }
 
-// The four matchFilter axes that read getStats. Lord-buff evaluation must
-// not use them (getStats walks the lord loop → recursion, audit A4-14);
-// boot validation rejects them inside static_buffs (validateAllCardEffects).
-const STAT_BOUND_FILTER_KEYS = ['max_tough', 'min_tough', 'max_power', 'min_power'];
+// matchFilter axes that read getStats. Lord-buff evaluation must not use them
+// (getStats walks the lord loop → recursion, audit A4-14); boot validation
+// rejects them inside static_buffs (validateAllCardEffects).
+const STATS_READING_FILTER_KEYS = [
+  'max_tough', 'min_tough', 'max_power', 'min_power', 'not_symmetric',
+];
 
-// matchFilter through a STATS-FREE view: the four stat-bound axes are
-// skipped (treated as matching). Sole consumer today is lordBuffApplies —
-// the one funnel through which both static_buff halves (stat + keyword)
-// evaluate their filters — so a stat-bounded lord filter can no longer
-// close the getStats ↔ matchFilter cycle into a RangeError (audit A4-14).
-// If stat-bounded lord buffs are ever designed for real, the non-circular
-// semantics is thresholding on PRE-lord stats; until then they're
-// boot-rejected and skipped here.
+// matchFilter through a STATS-FREE view: stats-reading axes are skipped
+// (treated as matching). Sole consumer today is lordBuffApplies — the one funnel
+// through which both static_buff halves (stat + keyword) evaluate their filters —
+// so an accidental stats-reading lord filter cannot close getStats ↔ matchFilter
+// into a RangeError. If such lord buffs are ever designed for real, their
+// non-circular semantics must be defined; until then they're boot-rejected.
 function matchFilterNoStats(card, filter, controller, who) {
-  if (filter && STAT_BOUND_FILTER_KEYS.some(k => filter[k] !== undefined)) {
+  if (filter && STATS_READING_FILTER_KEYS.some(k => filter[k] !== undefined)) {
     const f = { ...filter };
-    for (const k of STAT_BOUND_FILTER_KEYS) delete f[k];
+    for (const k of STATS_READING_FILTER_KEYS) delete f[k];
     return matchFilter(card, f, controller, who);
   }
   return matchFilter(card, filter, controller, who);

@@ -93,6 +93,7 @@ function withFilter(noun, eff) {
   if (f.has_keyword)       post.push('with ' + f.has_keyword);
   if (f.not_keyword)       post.push('without ' + f.not_keyword);
   if (f.not_token)         post.push("that isn't a token");
+  if (f.not_symmetric)     post.push("that isn't already symmetric");
   if (f.controller === 'you' || f.controller === 'self') post.push('you control');
   if (f.controller === 'opp') post.push('an opponent controls');
   if (typeof f.max_tough === 'number') post.push('with toughness ' + f.max_tough + ' or less');
@@ -512,8 +513,10 @@ function describeEffect(eff, tplEff) {
       const rider = keep ? (", except it's also " + indefiniteArticle(keep) + ' ' + keep) : '';
       return [plainSeg('this becomes a copy of that creature' + rider)];
     }
-    case 'symmetricize':
-      return [plainSeg(t + "'s controller equalizes its power, toughness, or cost")];
+    case 'symmetricize': {
+      const target = t.replace(/^target /, 'the target ');
+      return [plainSeg('the controller of ' + target + ' equalizes its power, toughness, or cost')];
+    }
     case 'apply_sticker': {
       // Standalone persistent rider (Bleach: set_color). The 2-effect balancer-
       // tax pattern (move_card + apply_sticker) is rendered at the list level.

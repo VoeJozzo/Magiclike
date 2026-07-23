@@ -32,6 +32,7 @@ const CASES = {
   min_tough:   [6,           c => { c.toughness = 5; }],
   max_power:   [1,           c => { c.power = 2; }],
   min_power:   [6,           c => { c.power = 2; }],
+  not_symmetric: [true,      c => { c.cost = { C: 2 }; }],
 };
 
 console.log('=== every enforced filter key is ALSO rendered (no hidden restrictions) ===');

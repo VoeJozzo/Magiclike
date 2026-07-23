@@ -42,8 +42,6 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 
 - **Some wireframe UI remains** — several UI elements still have wireframe/placeholder styling that needs proper theming: "target opponent", "cancel cast", and likely others. Audit and polish all remaining wireframe elements.
 
-- **Symmetricize should not target symmetric creatures** — the Symmetricize ability should exclude creatures that are already symmetric from its targeting.
-
 - **What boss you face should be visibly on campaign map** — the player should be able to see which boss they will face displayed on the campaign map before entering the encounter.
 
 - **AI pings appear to not factor each other into targeting** — the AI's targeting logic for multiple ping effects from the same source doesn't account for previously selected targets (e.g., multiple pings from the same card all targeted the same 1/1 instead of spreading damage).
@@ -84,6 +82,12 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 - **Reinforcements retirement package** — SHIPPED as v2.2.26 (fallback 0.0%, value seat never fires at current pool density — insurance only). Original plan: — the fallback's founding rationale died with the theme labels (v2.2.22): it existed so incoherent buckets wouldn't ship wearing a lying theme name, but an unlabeled weak bucket now tells an honest weak story. The plan, in Joe's design: (1) **delete `MIN_COHERENCE`** — every seed ships its honest bucket, the player reads three weak reasons and declines with open eyes; (2) **per-slot value fill replaces whole-bucket fallback** (Joe's design: "duplicate the logic, but in the smaller case") — when growth strands below 3 cards, keep the seed + grown recruits and fill only the empty seat(s) with the Reinforcements sampling logic (value-weighted, color-fenced, not-owned); story line for the filled seat is a value-type reason ("joins as a solid card in your colors"); (3) **whole-bucket Reinforcements survives only for true pool exhaustion** (can't even seed — near-unreachable at 341 cards). Notably (2) is a natural tail seat: a value-sampled slot that fires exactly when synergy is exhausted — the honest micro-form of the value channel the ε experiments failed to build (plan-bucket-draft §8b). Also killed in discussion: "lean into the fallback as the value channel" — a channel whose bandwidth shrinks as the graph improves is exhaust, not a channel (Joe: "we've deliberately set it up to fire as rarely as possible"). Dials for the build: coherence distribution of shipped buckets, answer-card exposure before/after, PICKLOG pick-rate of low-coherence tiles (the v2.2.22 fallback flag already logs what's needed — a few of Joe's runs first would inform whether players ever pick goodstuff tiles at all).
 
 ## Recently done
+
+- **v2.2.47 — Symmetricize excludes already-symmetric creatures.** "Already
+  symmetric" means the creature's current power, current toughness, and stored
+  total mana cost are all equal. The shared live-value helper now drives both
+  targeting and the resolution prompt, including temporary/static P/T changes
+  and persistent cost modifications; generated text states the restriction.
 
 - **v2.2.46 — Stats button on the main menu restored.** The stats overlay now uses the established utility-modal layer above the start screen, so the already-working toggle opens a visible panel.
 

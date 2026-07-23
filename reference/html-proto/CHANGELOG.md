@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.46`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.47`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -3232,3 +3232,12 @@ main menu. UI/CSS-only; the Node harness does not model browser layout. Suite
 151 files / 3004 green; lint clean; headless Chrome verified the button opens
 the visible Stats panel above the still-visible start screen with zero console
 errors.
+
+v2.2.47: Symmetricize now excludes creatures that are already symmetric:
+current power, current toughness, and the card's stored total mana cost are
+all equal. A shared snapshot helper drives both the new `not_symmetric`
+target filter and resolution prompt, so temporary/static P/T and persistent
+cost changes cannot make eligibility drift from the effect. Human targeting,
+action enumeration, direct validation, resolution revalidation, and generated
+text all route through the filter. Focused regression: 23/23; full suite:
+152 files / 3029 assertions green; lint clean.

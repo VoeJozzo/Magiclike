@@ -317,11 +317,15 @@ its own (e.g. "non-black creature", "tapped creature", "flying creature you don'
 control"). It sits **beside** `target` on the same container (card / trigger /
 ability) and carries `matchFilter` keys: `not_color`, `color`, `has_keyword`,
 `not_keyword`, `subtype`, `tapped`, `max_tough`/`min_tough`,
-`max_power`/`min_power`, `not_token`, `type`/`not_type`. The taxonomy kind
-covers the type + controller axis; `target_filter` covers everything else.
-**Keys are snake_case** (the same sweep as the §3.2 naming rule) — and
-`matchFilter` silently ignores unknown keys today, so a camelCase or typo'd
-key fails OPEN (the restriction simply doesn't enforce; no boot error).
+`max_power`/`min_power`, `not_token`, `not_symmetric`, `type`/`not_type`.
+`not_symmetric` rejects a creature when its live power, live toughness, and
+currently stored total mana cost are all equal (Symmetricize); temporary and
+static P/T changes therefore affect legality, while cost stickers are reflected
+in the stored cost. The taxonomy kind covers the type + controller axis;
+`target_filter` covers everything else.
+**Keys are snake_case** (the same sweep as the §3.2 naming rule). Runtime
+`matchFilter` ignores unknown keys, so a camelCase or typo'd key would fail open;
+the boot validator reports unknown keys loudly before play.
 
 **`graveyard_card` filter axes.** This kind reads its whole shape from
 `target_filter`:

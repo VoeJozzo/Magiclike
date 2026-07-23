@@ -7,6 +7,9 @@
     "C": 1
   },
   "target": "creature",
+  "target_filter": {
+    "not_symmetric": true
+  },
   "effects": [
     {
       "kind": "symmetricize"
