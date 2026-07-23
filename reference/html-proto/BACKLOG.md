@@ -36,8 +36,6 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 
 - **Stats button on main menu does not work** — the stats button isn't functional.
 
-- **Boons do not appear in the deck graph preview when adding buckets** — boons are missing from the graph visualization, possibly in other places as well.
-
 - **Check to confirm boon pull rules work** — verify that boon pulling rules are functioning correctly, particularly for Elystra which is not pulling buff effects highly.
 
 - **Should transform reward use bucket weights?** — evaluate whether reward transforms should use bucket weights in their selection logic.
@@ -86,6 +84,8 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 - **Reinforcements retirement package** — SHIPPED as v2.2.26 (fallback 0.0%, value seat never fires at current pool density — insurance only). Original plan: — the fallback's founding rationale died with the theme labels (v2.2.22): it existed so incoherent buckets wouldn't ship wearing a lying theme name, but an unlabeled weak bucket now tells an honest weak story. The plan, in Joe's design: (1) **delete `MIN_COHERENCE`** — every seed ships its honest bucket, the player reads three weak reasons and declines with open eyes; (2) **per-slot value fill replaces whole-bucket fallback** (Joe's design: "duplicate the logic, but in the smaller case") — when growth strands below 3 cards, keep the seed + grown recruits and fill only the empty seat(s) with the Reinforcements sampling logic (value-weighted, color-fenced, not-owned); story line for the filled seat is a value-type reason ("joins as a solid card in your colors"); (3) **whole-bucket Reinforcements survives only for true pool exhaustion** (can't even seed — near-unreachable at 341 cards). Notably (2) is a natural tail seat: a value-sampled slot that fires exactly when synergy is exhausted — the honest micro-form of the value channel the ε experiments failed to build (plan-bucket-draft §8b). Also killed in discussion: "lean into the fallback as the value channel" — a channel whose bandwidth shrinks as the graph improves is exhaust, not a channel (Joe: "we've deliberately set it up to fire as rarely as possible"). Dials for the build: coherence distribution of shipped buckets, answer-card exposure before/after, PICKLOG pick-rate of low-coherence tiles (the v2.2.22 fallback flag already logs what's needed — a few of Joe's runs first would inform whether players ever pick goodstuff tiles at all).
 
 ## Recently done
+
+- **v2.2.46 — pre-run bucket graph previews now include the picked nonland boon.** The Growing Deck draft keeps its pick-#0 boon in `state.boon` beside `youPicks`; Constellation had read only `youPicks` until `RUN.start` moved every card into slots. The preview now combines both stores. Active-run previews, BUCKETS analysis, and active addBucket reward construction were already boon-aware. City of Brass and Phylactery remain intentionally absent from every constellation view because they are lands; the five nonland boons render.
 
 - **v2.2.37 — audit A3 closed (post flake-merge)**: rollBucket demoted from
   public API to the `_rollBucketForTest` seam rather than deleted — the flake

@@ -33,6 +33,20 @@ function pickThroughBoonPhase() {
   check('boon pick ends the boon phase', !DRAFT.isBoonPhase());
   check('growing draft starts with a 3-bucket offer', DRAFT.getBucketOffer().length === 3);
   check('growing draft has no card pack', DRAFT.getPlayerPack().length === 0);
+
+  const draftState = DRAFT._state();
+  const pickedBoon = draftState.boon;
+  const previewCards = DRAFT.getBucketOffer()[0].cards;
+  draftState.boon = 'elystra_the_immortal';
+  const nonlandPreviewIds = CONSTELLATION._offerGraphForTest(previewCards).nodes.map(n => n.id);
+  check('pre-run bucket preview includes the pick-#0 nonland boon',
+    nonlandPreviewIds.includes('elystra_the_immortal'));
+  draftState.boon = 'city_of_brass';
+  const landPreviewIds = CONSTELLATION._offerGraphForTest(previewCards).nodes.map(n => n.id);
+  check('pre-run bucket preview preserves intentional land exclusion',
+    !landPreviewIds.includes('city_of_brass'));
+  draftState.boon = pickedBoon;
+
   check('progress counts buckets: 0/5', (() => {
     const p = DRAFT.getProgress();
     return p.picked === 0 && p.total === 5;
