@@ -90,17 +90,27 @@ else {
     check('positive gain_life targets OUR face', gain && gain.who === 'you', JSON.stringify(gain));
   })();
 
-  console.log('\n=== #10c rider: damageFace encodes target:player; the heuristic makes the "opponent" text true ===');
+  console.log('\n=== #10c rider: damageFace resolves through the canonical opponent-only target ===');
   (() => {
-    // A behavior fork (target:'opp') is a separate decision.
     const fac = GENERATOR_EFFECTS.find(e => e.id === 'damageFace');
-    check('generator damageFace exists and encodes target:player (free choice)',
-      !!fac && fac.roll()[0].target === 'player', fac ? JSON.stringify(fac.roll()[0]) : 'no damageFace');
+    const effect = fac && fac.roll()[0];
+    check('generator damageFace encodes target:opp',
+      !!effect && effect.target === 'opp', effect ? JSON.stringify(effect) : 'no damageFace');
     newGame();
-    const valid = [{ kind: 'player', who: 'you' }, { kind: 'player', who: 'opp' }];
-    const pick = ENGINE.pickBestTriggerTarget({ kind: 'damage', target: 'player', amount: 1 }, valid, 'you');
-    check('the heuristic routes free-choice face damage to the OPPONENT (text/behavior agree only via #3)',
-      pick && pick.who === 'opp', JSON.stringify(pick));
+    const youLegal = ENGINE.getValidTargets(effect, 'you');
+    check('you-controlled damageFace resolves only the opponent as legal',
+      youLegal.length === 1 && youLegal[0].kind === 'player' && youLegal[0].who === 'opp',
+      JSON.stringify(youLegal));
+    const oppLegal = ENGINE.getValidTargets(effect, 'opp');
+    check('opp-controlled damageFace resolves only you as legal',
+      oppLegal.length === 1 && oppLegal[0].kind === 'player' && oppLegal[0].who === 'you',
+      JSON.stringify(oppLegal));
+    const assembled = assembleTrigger(
+      GENERATOR_CONDITIONS.find(c => c.id === 'thisEnters'),
+      {effId: fac.id, effects: [effect], describe: fac.describe(effect)});
+    const probe = ENGINE.probeTargetsForObject(assembled, 'you');
+    check('assembled damageFace legality probe auto-fills the opponent, never self',
+      probe && probe.length === 1 && probe[0].who === 'opp', JSON.stringify(probe));
   })();
 }
 

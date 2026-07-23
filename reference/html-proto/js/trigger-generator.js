@@ -20,7 +20,7 @@ const GENERATOR_EFFECTS = [
     id: 'damageFace',
     weight: 4,
     needsLiveSource: false,
-    roll: () => [{kind: 'damage', target: 'player', amount: _genWeightedInt([5, 3, 1])}],
+    roll: () => [{kind: 'damage', target: 'opp', amount: _genWeightedInt([5, 3, 1])}],
     describe: (eff) => `deal ${eff.amount} damage to opponent`,
   },
   {
