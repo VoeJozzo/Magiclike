@@ -59,8 +59,6 @@ console.log('=== card data: the two flagged cards carry distinct_targets; the pe
 console.log('\n=== generated text: "another target creature" iff flagged ===');
 (() => {
   const r = id => describeCardText(JSON.parse(JSON.stringify(CARDS[id])));
-  // The controller filters render into the text too (an opponent controls / you
-  // control), so "another" rides alongside the controller clause.
   check('roots_and_branches reads "...an opponent controls. Another target creature you control..."',
     r('roots_and_branches') === 'Tap target creature an opponent controls. Another target creature you control gets +1/+1 until end of turn.',
     r('roots_and_branches'));
@@ -74,8 +72,7 @@ console.log('\n=== generated text: "another target creature" iff flagged ===');
 console.log('\n=== legality: controller-gated cards take a distinct opp×self pair; permissive cards stack ===');
 (() => {
   // Roots and Branches / Sword and Sorcery are CONTROLLER-gated, so their two slots
-  // are inherently cross-controller (and thus distinct). Feed one creature per side
-  // and build each slot's target from its declared controller filter.
+  // are inherently cross-controller (and thus distinct).
   const pairFor = (id, youC, oppC) => CARDS[id].target_slots.map(s =>
     (s.filter && s.filter.controller === 'opp') ? t(oppC) : t(youC));
   for (const id of ['roots_and_branches', 'sword_and_sorcery']) {
@@ -91,7 +88,6 @@ console.log('\n=== legality: controller-gated cards take a distinct opp×self pa
     check(id + ' same-creature-both-slots cast is rejected',
       ENGINE.isLegalAction('you', { ...base, targets: [t(youC), t(youC)] }) === false);
   }
-  // Permissive cards (no distinct flag): two of your own creatures; same-target OK.
   for (const id of ['twin_strike', 'branching_bolt']) {
     const G = newGame();
     const spell = mk(id, 'you'); G.you.hand.push(spell);
@@ -110,7 +106,7 @@ console.log('\n=== distinct_targets in isolation: two DIFFERENT creatures you co
   // No SHIPPING card needs distinct WITHOUT controller-gating today, but the rule
   // exists for the "two target creatures you control ..." shape — both slots self,
   // so the controller split can't imply distinctness and distinct_targets does the
-  // real work. Synthesize it from Twin Strike (two self-slots) + the flag.
+  // real work.
   const G = newGame();
   const spell = mk('twin_strike', 'you'); spell.distinct_targets = true;
   G.you.hand.push(spell);
@@ -125,13 +121,9 @@ console.log('\n=== distinct_targets in isolation: two DIFFERENT creatures you co
 
 console.log('\n=== real instantiation path: ENGINE.makeCard carries the flag (cast-enforcement regression) ===');
 (() => {
-  // The REAL game builds cards through ENGINE.makeCard — a whitelist copy. A prior
-  // bug omitted distinct_targets from that whitelist, so the live instance had no
-  // flag and the forbidden same-target cast was ALLOWED in-game while clone-based
-  // tests stayed green. Pin the real path: the flag survives makeCard, and the
-  // distinct rule it powers rejects a same-creature pick. (The two real cards are
-  // controller-gated above, where distinct can't be isolated; here we re-flag a
-  // makeCard instance with same-controller slots to exercise the rule on the real path.)
+  // The two real cards are controller-gated above, where distinct can't be
+  // isolated; here a makeCard instance is re-flagged with same-controller
+  // slots to exercise the rule.
   for (const id of ['roots_and_branches', 'sword_and_sorcery']) {
     const made = ENGINE.makeCard(id, [], 0);
     check(id + ' makeCard instance carries distinct_targets',
@@ -186,7 +178,7 @@ console.log('\n=== castability: a controller-gated card needs a creature on EACH
 (() => {
   const G = newGame();
   const spell = mk('roots_and_branches', 'you'); G.you.hand.push(spell);
-  G.you.battlefield.push(mk('savannah_lions', 'you')); // no opponent creature
+  G.you.battlefield.push(mk('savannah_lions', 'you'));
   const castable = ENGINE.getLegalActions('you')
     .some(x => x.type === 'castSpell' && x.cardIid === spell.iid);
   check('roots_and_branches with no opponent creature is UNCASTABLE', castable === false, 'castable=' + castable);
@@ -194,7 +186,6 @@ console.log('\n=== castability: a controller-gated card needs a creature on EACH
 
 console.log('\n=== castability: a permissive card casts with even one creature ===');
 (() => {
-  // Twin Strike isn't distinct — one creature suffices (stack both pumps on it).
   const G = newGame();
   const spell = mk('twin_strike', 'you'); G.you.hand.push(spell);
   G.you.battlefield.push(mk('savannah_lions', 'you'));
@@ -205,10 +196,8 @@ console.log('\n=== castability: a permissive card casts with even one creature =
 
 console.log('\n=== stapled distinct card carries its rule onto the ETB ===');
 (() => {
-  // Stapling a distinct_targets spell onto a permanent turns it into an ETB
-  // trigger; the rule now rides along (the trigger path enforces cross-slot
-  // constraints), so the stapled card keeps "another target creature" semantics
-  // instead of silently going permissive.
+  // Staple turns the spell into an ETB trigger; the trigger path enforces the
+  // distinct constraint too, so the flag must survive onto the trigger event.
   const staple = ENGINE.makeCard('clockwork_beetle', [], 0, null, null, ['roots_and_branches']);
   const etb = (staple.triggers || []).find(t => t.event === 'card_zone_change');
   check('staple ETB carries distinct_targets', !!etb && etb.distinct_targets === true,
@@ -219,13 +208,9 @@ console.log('\n=== stapled distinct card carries its rule onto the ETB ===');
 
 console.log('\n=== regression guard: makeCard preserves EVERY card-level targeting flag for ALL templates ===');
 (() => {
-  // The cast-enforcement bug existed because makeCard used to copy card-level
-  // fields through an explicit whitelist, and a newly-added flag
-  // (distinct_targets) was left off it — silently dropped on the real game path
-  // while clone-based tests (JSON.parse(JSON.stringify(...))) stayed green.
-  // makeCard is copy-by-default now (denylist of runtime-only keys), so this
-  // guard is belt-and-suspenders for the targeting flags specifically; the
-  // section below pins the copy-by-default rule for EVERY template field.
+  // makeCard is copy-by-default (denylist of runtime-only keys), so this guard
+  // is belt-and-suspenders for the targeting flags specifically; the section
+  // below pins the copy-by-default rule for EVERY template field.
   const TARGETING_FLAGS = ['target', 'target_filter', 'target_slots', 'distinct_targets'];
   const present = v => Array.isArray(v) ? v.length > 0 : (v !== undefined && v !== null && v !== false && v !== '');
   const dropped = [];
@@ -277,16 +262,16 @@ console.log('\n=== denylist guard: a template CANNOT inject runtime-only fields 
   // The copy-by-default loop's counterpart risk: a template declaring a
   // runtime instance field must be ignored (with a console.warn), not
   // deep-copied — e.g. a truthy copyOf would trip resetInPlayState's
-  // copy-revert path. Probe with a synthetic template carrying one key from
-  // each runtime system that writes card fields outside makeCard, plus one
-  // literal-initialized key (damage). Registered AFTER the all-template
-  // sweeps above so they never see it; removed again in finally.
+  // copy-revert path. Probe with one key from each runtime system that
+  // writes card fields outside makeCard, plus one literal-initialized key
+  // (damage). Registered AFTER the all-template sweeps above so those
+  // exhaustive-field checks never see it.
   CARDS.__denylist_probe__ = {
     name: 'Denylist Probe', types: ['Creature'], cost: { R: 1 },
     power: 1, toughness: 1,
     copyOf: 'grizzly_bears', copySourceIid: 123, tempControlUntilEot: true,
     bargainsNum: 7, chargesLeft: 9, _builtThisGame: true, damage: 5,
-    stickerTypes: ['Zombie'],   // additive recorder — injection wouldn't be rebuilt away
+    stickerTypes: ['Zombie'],
   };
   try {
     const made = ENGINE.makeCard('__denylist_probe__');

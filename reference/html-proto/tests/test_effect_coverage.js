@@ -1,10 +1,8 @@
-// §7b coverage assertion (plan-effects-refactor §8.1 + §12.12): every kind in
-// the EFFECTS dispatch table must be CLASSIFIED for AI valuation (a real scoring
-// branch, or consciously unscored) and must have card-text (a describeEffect
-// case, or be a documented idiom-only kind). This converts the "stringly-typed
-// consumer drifted out of sync with HANDLERS" silent-regression class into a
-// caught-at-boot failure. The §12.12 regression proves the net actually fires:
-// a throwaway HANDLERS kind with no valuation/text is flagged.
+// Every kind in the EFFECTS dispatch table must be CLASSIFIED for AI valuation
+// (a real scoring branch, or consciously unscored) and must have card-text (a
+// describeEffect case, or a documented idiom-only kind). This turns a
+// consumer silently drifting out of sync with HANDLERS into a caught-at-boot
+// failure.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -50,7 +48,7 @@ console.log('\n=== §12.12 regression: an unhandled HANDLERS kind is CAUGHT ==='
 (() => {
   const EFFECTS = ENGINE.EFFECTS;
   const FAKE = '__coverage_probe_kind__';
-  EFFECTS[FAKE] = function () {};   // register a throwaway handler, no valuation/text
+  EFFECTS[FAKE] = function () {};
   try {
     const cov = ENGINE.effectCoverageReport();
     check('unclassified valuation flags the fake kind', cov.unclassifiedValuation.includes(FAKE),
@@ -62,7 +60,6 @@ console.log('\n=== §12.12 regression: an unhandled HANDLERS kind is CAUGHT ==='
   } finally {
     delete EFFECTS[FAKE];   // restore — don't leak into later test files
   }
-  // Sanity: removing it restores a clean report.
   const after = ENGINE.effectCoverageReport();
   check('report is clean again after removing the probe',
     after.unclassifiedValuation.length === 0 && after.missingText.length === 0
@@ -73,7 +70,7 @@ console.log('\n=== a stale valuation entry (registered kind with no handler) is 
 (() => {
   const valued = AI.VALUED_EFFECT_KINDS;
   const GHOST = '__ghost_removed_handler__';
-  valued.add(GHOST);   // simulate: handler deleted but its registration left behind
+  valued.add(GHOST);
   try {
     const cov = ENGINE.effectCoverageReport();
     check('stale valuation entry is reported', cov.staleValuation.includes(GHOST), cov.staleValuation.join(','));
@@ -84,15 +81,12 @@ console.log('\n=== a stale valuation entry (registered kind with no handler) is 
 
 console.log('\n=== A7-2: a VALUED kind with no cast-scorer branch is CAUGHT (unscoredValuation) ===');
 (() => {
-  // The net fires: a VALUED-claimed kind with a HANDLERS entry but NO
-  // spellValueForEffects branch must surface — the exact A7-2 bug class
-  // (add_counter was VALUED-claimed yet cast-scored 0, and the old set-algebra
-  // report could not see it).
+  // The cast-scorer branch lives in spellValueForEffects (ai.js).
   const EFFECTS = ENGINE.EFFECTS;
   const valued = AI.VALUED_EFFECT_KINDS;
   const FAKE = '__unscored_probe_kind__';
   EFFECTS[FAKE] = function () {};   // a real handler (so not 'stale'/'unclassified')
-  valued.add(FAKE);                 // ...claimed VALUED, but no cast-scorer branch exists
+  valued.add(FAKE);
   try {
     const cov = ENGINE.effectCoverageReport();
     check('a VALUED kind with no cast-scorer branch is flagged in unscoredValuation',
@@ -102,8 +96,7 @@ console.log('\n=== A7-2: a VALUED kind with no cast-scorer branch is CAUGHT (uns
     valued.delete(FAKE);
   }
   const after = ENGINE.effectCoverageReport();
-  // Documented zero-price exception: 'sacrifice' prices 0 on the cast path ON
-  // PURPOSE (its value rides the edict `chooses`) — must NOT be flagged.
+  // 'sacrifice' rides the edict `chooses` for its value, not the cast-scorer.
   check("'sacrifice' (zero-price by design) is NOT flagged", !after.unscoredValuation.includes('sacrifice'),
     after.unscoredValuation.join(','));
   check('live pool clean: no VALUED kind lacks a real cast-scorer branch',

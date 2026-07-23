@@ -1,12 +1,4 @@
-// Audit A9-2 + A9-3 — the run-slot removal contract. (A9-2) EFFECTS.rip (Vile
-// Edict) stripped the run slot via a bare RUN.removeSlotByIdx, skipping the
-// slotIdx caller-contract, so cached slotIdx pointers on in-game cards went
-// stale and later slot-persisting writes hit the WRONG saved slot. (A9-3) NO
-// removal site remapped playedSlotIdxs (the per-game played-slots record the
-// win-reward sticker filter reads), so rewards mis-targeted. Fix: route
-// EFFECTS.rip through ripSlotByIdx, plus one shared fixupSlotPointersAfterRemoval
-// helper that decrements slotIdx AND remaps playedSlotIdxs (drop-at +
-// decrement-above), used by every contract-honoring rip site.
+// Exercises the removeSlotByIdx caller contract (js/run.js).
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -44,8 +36,6 @@ const ripCtx = { controller: 'you', sourceName: 'Vile Edict', sourceIid: null };
 console.log('=== A9-2 + A9-3: EFFECTS.rip honors the slot-removal contract (slotIdx + playedSlotIdxs) ===');
 (() => {
   const G = newGame();
-  // Victim in run slot 0, a bystander in run slot 1 (both creatures in play).
-  // The bystander's slot was played this game.
   const victim = mk('gray_ogre', 'you'); victim.slotIdx = 0;
   const bystander = mk('gray_ogre', 'you'); bystander.slotIdx = 1;
   G.you.battlefield = [victim, bystander];
@@ -66,7 +56,6 @@ console.log('\n=== A9-3: the REMOVED index is dropped, not just decremented ==='
   const victim = mk('gray_ogre', 'you'); victim.slotIdx = 0;
   const bystander = mk('gray_ogre', 'you'); bystander.slotIdx = 1;
   G.you.battlefield = [victim, bystander];
-  // BOTH slots played: ripping slot 0 must DROP index 0 and DECREMENT 1 -> 0.
   G.you.playedSlotIdxs.add(0); G.you.playedSlotIdxs.add(1);
 
   ENGINE.applyEffect(ripCtx, { kind: 'rip' }, { controller: 'you', slotIdx: 0, iid: victim.iid, label: 'Victim' });

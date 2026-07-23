@@ -3,7 +3,7 @@ type: index
 tags: [magiclike, wiki]
 aliases: ["Concept wiki hub"]
 created: 2026-06-02
-updated: 2026-07-13
+updated: 2026-07-18
 ---
 
 # Magiclike — durable concepts wiki
@@ -21,6 +21,7 @@ It is **docs-as-code, in wiki form** — co-located with the code (so it's versi
 - [composable-predicates.md](composable-predicates.md) — atomic predicates composed into trigger conditions (the proto's richer model).
 - [type-identity.md](type-identity.md) — a card's type line as one `types[]` array behind one accessor layer (governing-type fork, live `typeGrants`, `addType`).
 - [procedural-card-text.md](procedural-card-text.md) — oracle text generated from a card's effects, never hand-authored.
+- [comment-doctrine.md](comment-doctrine.md) — comments state what code cannot; the eternal-present litmus + the five noise patterns.
 
 **Engine resolution core**
 - [atomic-effects.md](atomic-effects.md) — card behavior as a closed registry of composable primitives.
@@ -39,6 +40,7 @@ It is **docs-as-code, in wiki form** — co-located with the code (so it's versi
 
 **Cross-engine**
 - [cross-engine-port.md](cross-engine-port.md) — the durable Godot ↔ html-proto relationship.
+- [ui-asset-layer.md](ui-asset-layer.md) — how pixel chrome reaches the screen (bake → lint → consume), and the two rules that keep it from drifting: generated assets publish their consumption contract; presentation lives in the stylesheet, not the DOM-building code.
 - [html-proto.md](html-proto.md) — the reference implementation, in brief.
 
 **Canon (the rulebook)**

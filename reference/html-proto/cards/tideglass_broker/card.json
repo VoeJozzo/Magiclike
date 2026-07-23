@@ -1,0 +1,47 @@
+{
+  "card_id": "tideglass_broker",
+  "art": "🫧",
+  "cost": {
+    "U": 1,
+    "C": 2
+  },
+  "keywords": [
+    "flash",
+    "flying"
+  ],
+  "name": "Tideglass Broker",
+  "power": 1,
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "target": "your_creature",
+      "target_filter": {
+        "another": true
+      },
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "battlefield",
+          "to_zone": "exile",
+          "selector": "target"
+        },
+        {
+          "kind": "move_card",
+          "from_zone": "exile",
+          "to_zone": "battlefield",
+          "selector": "target"
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Faerie",
+    "Rogue"
+  ]
+}

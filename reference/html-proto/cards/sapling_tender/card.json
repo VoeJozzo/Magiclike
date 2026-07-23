@@ -1,0 +1,29 @@
+{
+  "card_id": "sapling_tender",
+  "name": "Sapling Tender",
+  "art": "🌱",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "power": 1,
+  "toughness": 2,
+  "types": [
+    "Creature",
+    "Elf",
+    "Druid"
+  ],
+  "spell_riders": [
+    {
+      "rider_scope": "your_creature_targets",
+      "effects": [
+        {
+          "kind": "pump",
+          "duration": "permanent",
+          "power": 1,
+          "toughness": 1
+        }
+      ]
+    }
+  ]
+}

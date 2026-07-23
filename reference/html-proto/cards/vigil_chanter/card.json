@@ -1,0 +1,28 @@
+{
+  "card_id": "vigil_chanter",
+  "name": "Vigil Chanter",
+  "art": "🕯️",
+  "cost": {
+    "W": 1,
+    "C": 2
+  },
+  "power": 2,
+  "toughness": 3,
+  "types": [
+    "Creature",
+    "Human",
+    "Cleric"
+  ],
+  "spell_riders": [
+    {
+      "rider_scope": "creature_targets",
+      "effects": [
+        {
+          "kind": "grant_keyword",
+          "keyword": "vigilance",
+          "duration": "eot"
+        }
+      ]
+    }
+  ]
+}

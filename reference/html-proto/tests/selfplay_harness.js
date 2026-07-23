@@ -20,7 +20,6 @@
 //
 // Usage: node selfplay_harness.js [numGames] [mode]
 //
-// Adapted from the prior-session bundle.
 // =============================================================================
 
 const setup = require('./_setup');
@@ -224,7 +223,7 @@ function runOneGame(gameIdx) {
         if (!native) continue;
         for (const c of ['W','U','B','R','G']) {
           if (c === native) continue;
-          RUN.applyStickerToSlot(i, 'landColor_' + c);
+          RUN.applyStickerToSlot(i, 'land_color_' + c.toLowerCase());
         }
       }
     }

@@ -1,9 +1,6 @@
-// Audit A2-6 — residual combat-coverage battery. The first-strike / trample /
-// duplicate-attacker / change-control / deathtouch-lifelink cases already have
-// dedicated files; sick (A2-13) and menace (A2-15) are split out. This covers
-// the remaining dark live behavior: VIGILANCE no-tap on declaration and
-// MULTI-BLOCK damage (both the all-die exchange and the kill-value ordering when
-// the attacker can't kill every blocker). Tests only; behavior-neutral.
+// First-strike, trample, duplicate-attacker, change-control, and
+// deathtouch-lifelink cases have dedicated test files; sick and menace are
+// split out separately.
 const setup = require('./_setup');
 setup.loadEngine();
 
@@ -67,10 +64,10 @@ else {
   console.log('=== A2-6: multi-block kill-value ordering (2-power attacker can kill only one) ===');
   {
     const G = newGame();
-    const A = mk(VANILLA,'you'); A.power=2; A.toughness=5; A.sick=false; // survives
+    const A = mk(VANILLA,'you'); A.power=2; A.toughness=5; A.sick=false;
     G.you.battlefield.push(A); giveHold(G,'you'); readyMain(G,'you');
-    const small = mk(VANILLA,'opp'); small.power=1; small.toughness=1; small.sick=false; // declared FIRST
-    const big   = mk(VANILLA,'opp'); big.power=1; big.toughness=2; big.sick=false;       // declared second
+    const small = mk(VANILLA,'opp'); small.power=1; small.toughness=1; small.sick=false;
+    const big   = mk(VANILLA,'opp'); big.power=1; big.toughness=2; big.sick=false;
     G.opp.battlefield.push(small, big); giveHold(G,'opp');
     passUntil(G, ()=>G.phase==='COMBAT_ATTACK');
     ENGINE.executeAction('you', { type:'declareAttackers', cardIids:[A.iid] });
@@ -78,9 +75,8 @@ else {
     ENGINE.executeAction('opp', { type:'declareBlockers', blockMap:new Map([[small.iid, A.iid],[big.iid, A.iid]]) });
     passUntil(G, ()=>G.phase==='MAIN2' || G.gameOver, 40);
     check('attacker survived (toughness 5 > 1+1 incoming)', alive(G,'you',A.iid));
-    // Characterization: with 2 power vs a 1/1 + 1/2, the engine assigns lethal by
-    // its kill-value re-sort. Pin the OBSERVED outcome so a kill-value retune that
-    // silently changes RULES behavior red-flags. (Exactly one blocker dies.)
+    // Characterization: pins the observed kill-value ordering so a retune that
+    // silently changes RULES behavior is caught here.
     const smallAlive = alive(G,'opp',small.iid), bigAlive = alive(G,'opp',big.iid);
     check('exactly one of the two blockers died', smallAlive !== bigAlive,
       'small.alive='+smallAlive+' big.alive='+bigAlive);

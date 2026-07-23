@@ -1,22 +1,9 @@
-// Audit fix A1-10 — tapLandForMana is illegal during the cleanup discard.
-//
 // Canon: §605 closes the cleanup-discard window ("no spells or abilities can
 // be cast or activated"); §705's mana-ability exception requires a window
 // where mana could actually be paid — nothing is castable during CLEANUP and
 // setPhase('UNTAP') zeroes the pool, so the mana is unusable by construction.
 // Worse, UNTAP untaps only the NEW active player's permanents, so a land
 // tapped here stays tapped through the opponent's entire turn.
-//
-// Before the fix, whoHasPriority() had a blanket cleanupDiscarding clause
-// granting the active player "priority", which the tapLandForMana legality
-// check consumed — so a misclick mid-discard wasted the land for a turn.
-//
-// This file pins:
-//   1. tapLandForMana is NOT legal while cleanupDiscarding is set
-//   2. executeAction rejects it (land stays untapped, no mana floats)
-//   3. getLegalActions does not enumerate tap actions in that window
-//   4. discard is STILL legal during the window (the gate that must survive)
-//   5. after the discard completes, tapping the land works again
 //
 // The cleanup-discard window is reached by REAL PLAY (endTurn -> the engine
 // sets cleanupDiscarding itself at CLEANUP when hand>7), not by hand-posing
@@ -54,8 +41,6 @@ G.you.battlefield.push(land);
 // Stuff your hand to 9 so the ENGINE's own cleanup-discard pause engages.
 while (G.you.hand.length < 9) { const c = G.you.library.pop(); if (!c) break; G.you.hand.push(c); }
 
-// Reach YOUR cleanup-discard window via real play: endTurn fast-forwards your
-// turn; at CLEANUP with hand>7 the engine sets cleanupDiscarding and pauses.
 ENGINE.executeAction('you', { type: 'endTurn' });
 let drive = 300;
 while (drive-- > 0 && !G.cleanupDiscarding && !G.gameOver) {
@@ -92,17 +77,16 @@ check('getLegalActions still enumerates discards',
   typesDuring.includes('discard'), 'actions=' + typesDuring.join(','));
 
 console.log('\n=== after the discard completes, tapping works again ===');
-// Discard down to 7 through the real action path; the engine clears
-// cleanupDiscarding when hand.length <= 7.
+// The engine clears cleanupDiscarding once hand.length <= 7.
 let safety = 6;
 while (G.cleanupDiscarding && G.you.hand.length > 7 && safety-- > 0) {
   ENGINE.executeAction('you', { type: 'discard', cardIid: G.you.hand[0].iid });
 }
 check('cleanup discard completed (flag cleared)', !G.cleanupDiscarding,
   'hand=' + G.you.hand.length);
-// Hand the player a fresh main-phase window and tap (the rolled-over turn
-// emptied the pool and the land is still untapped after UNTAP only ran for the
-// active player — here we just re-open a clean MAIN1 for the assertion).
+// The rolled-over turn emptied the pool and the land is still untapped after
+// UNTAP only ran for the active player — here we just re-open a clean MAIN1
+// for the assertion.
 land.tapped = false;
 setup.startMainPhase('you');
 check('tapLandForMana is legal again after the discard',

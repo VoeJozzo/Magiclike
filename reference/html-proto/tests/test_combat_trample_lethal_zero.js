@@ -1,27 +1,16 @@
-// Audit fix A2-2 — trample vs a blocker whose lethalNeeded is already 0.
+// Trample vs a blocker whose lethalNeeded is already 0.
 //
-// dealCombatDamage asks "how much more damage does this blocker need?"
-// (`lethalNeeded = max(0, toughness - marked damage)`). A LIVING blocker can
-// answer 0 — a fully-marked indestructible (F2 retains marked damage on
-// indestructibles). Before this fix the satisfied branch required
-// `lethalNeeded > 0`, so a zero-need blocker was classed UNSATISFIED, which
-// (a) suppressed ALL trample carryover to the defending player and
-// (b) dumped the attacker's entire remainder onto a creature needing 0 more.
+// dealCombatDamage's lethalNeeded = max(0, toughness - marked damage) is the
+// per-blocker remaining-damage figure. A LIVING blocker can answer 0 — a
+// fully-marked indestructible retains marked damage, so lethalNeeded can hit
+// 0 while the blocker is still alive.
 // Canon §803: with trample the attacker need only assign each blocker's
 // REMAINING toughness (0 ⇒ satisfied with 0) before the rest spills over.
 //
-// Fix: `remaining >= lethalNeeded` decides satisfied; the `lethalNeeded > 0`
-// guard moves INSIDE the satisfied arm (its legitimate job: no 0-damage
-// recordDamage falsely staking a kill claim). ai.js's simulateCombat mirrors
-// the same restructure so AI prediction stays in lockstep with the engine.
-//
-// This file pins (chunk-2 self-QA scenario + packet controls):
-//   1. Iron Statue (0/5 indestructible) pre-marked 5, blocking a 6/6
-//      trampler → defender takes 6, statue takes 0 extra, statue survives
-//   2. boundary control: statue pre-marked 3 (lethalNeeded 2) → assign 2,
-//      spill 4 — partial marking still respected
-//   3. guard (green before AND after): no trample, fully-marked statue →
-//      leftover is wasted, NOT dumped, and nothing hits the face
+// `remaining >= lethalNeeded` decides satisfied; the `lethalNeeded > 0` check
+// applies only inside that satisfied arm, so a 0-damage recordDamage never
+// falsely stakes a kill claim. ai.js's simulateCombat mirrors the same
+// comparison, keeping AI prediction in lockstep with the engine.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -50,7 +39,6 @@ function newGame() {
 function readyMain(G, who) {
   setup.startMainPhase(who);
 }
-// Pass priority with whoever the engine expects until `done()` or safety.
 function passUntil(G, done, max) {
   let safety = max || 40;
   while (!done() && safety-- > 0) {
@@ -65,9 +53,6 @@ const VANILLA = (() => {
   return null;
 })();
 
-// Drive one full combat: `you` attacks with a 6/6 (trample optional) into an
-// Iron Statue pre-marked with `preMark` damage; the statue blocks. Returns
-// observations for the assertions.
 function runCombat({ trample, preMark }) {
   const G = newGame();
   const atk = mk(VANILLA, 'you');
@@ -76,7 +61,7 @@ function runCombat({ trample, preMark }) {
   G.you.battlefield.push(atk);
   const statue = mk('iron_statue', 'opp');
   statue.sick = false;
-  statue.damage = preMark;   // pre-marked damage (F2: indestructibles retain it)
+  statue.damage = preMark;   // indestructibles retain marked damage
   G.opp.battlefield.push(statue);
   readyMain(G, 'you');
   const oppLifeAtStart = G.opp.life;

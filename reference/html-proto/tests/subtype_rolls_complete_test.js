@@ -1,7 +1,3 @@
-// Sticker subtype rolls: applyStickerToSlot populates subtypeRolls, and
-// the rolled subtype propagates onto the card at ENGINE.init time.
-// Adapted from the prior-session test bundle.
-
 const setup = require('./_setup');
 setup.loadEngine();
 

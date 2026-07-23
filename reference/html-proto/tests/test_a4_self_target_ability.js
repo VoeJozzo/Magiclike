@@ -1,16 +1,8 @@
-// Audit A4-13 — doActivateAbility's scope:'self' branch lacked the
-// creature-vs-player fork BOTH sibling resolvers carry (the v0.99.29 Final
-// Strike bug class, fixed in the spell + trigger loops, missed in the third
-// hand-synced copy): 'self' means the SOURCE CREATURE for creature-operating
-// effects and the SOURCE'S CONTROLLER for player-operating ones (damage =
-// "you lose N", gain_life, draw, ...). The ability copy routed EVERY self to
-// the creature, so the first "T: deal 1 to you" ability would silently burn
-// the creature instead.
-//
-// Fix: one shared resolveSelfTarget() helper consumed by all three loops,
-// and add_type/set_types added to CREATURE_EFFECT_KINDS (the fix-design trap
-// the verifier flagged: artifice_triumphant grants an `add_type scope:'self'`
-// ability that must STAY creature-routed).
+// scope:'self' on an ability effect resolves to the SOURCE CREATURE for
+// creature-operating effects (pump, add_type, ...) and to the SOURCE'S
+// CONTROLLER for player-operating effects (damage, gain_life, draw, ...).
+// add_type/set_types are in CREATURE_EFFECT_KINDS: artifice_triumphant's
+// `add_type scope:'self'` ability must stay creature-routed.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -91,11 +83,9 @@ console.log('\n=== control: creature-operating self (pump) unchanged ===');
 
 console.log('\n=== control: trigger + spell self forks unchanged (shared helper) ===');
 (() => {
-  // The trigger resolver already had the fork — patient_saint-style gain_life
-  // self → controller. Drive it through the trigger effects runner shape via
-  // a direct applyEffect equivalence check: effectOperatesOnCreature is not
-  // exported, so we assert through the gain_life route that the LOOPS share:
-  // a gain_life scope:'self' in an ability must hit the controller.
+  // effectOperatesOnCreature is not exported, so this asserts through the
+  // shared gain_life route: an ability's gain_life scope:'self' must hit
+  // the controller, same as patient_saint's own tap ability.
   const G = newGame();
   const saint = mk('gray_ogre', 'you');
   saint.abilities = [{ cost: { tap: true },

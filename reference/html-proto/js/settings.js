@@ -5,42 +5,30 @@
 // don't need an explicit migration path. Removing a setting orphans its
 // stored value but doesn't break anything.
 //
-// Public API: SETTINGS.get(key), SETTINGS.set(key, value), SETTINGS.getAll(),
-// SETTINGS.applyFontsToRoot(), SETTINGS.FONT_OPTIONS, SETTINGS.FONT_PRESETS,
-// SETTINGS.CARD_FONT_ELEMENTS, SETTINGS.FONT_SIZE_OPTIONS_*.
 // `set` writes through to localStorage immediately and (for font keys) pushes
 // the new value into the matching CSS custom property on :root.
-//
-// Settings history:
-// - v1.0.147: cardFrameStyle ('new' | 'classic') — removed v1.0.180 (v1 wireframe gone)
-// - v1.0.153: cardFontTitle / -Body / -Pip (slot-based fonts, deprecated v1.0.158)
-// - v1.0.154: cardFontSizeTitle / -Body / -Pip (slot-based size multipliers, deprecated v1.0.158)
-// - v1.0.158: per-element font + size keys (name, type, pt, damage, text,
-//   stickers, pip, bumped). One-shot migration walks any old slot keys
-//   into the matching per-element keys on load.
 const SETTINGS = (function() {
 
 const STORAGE_KEY = 'magiclike_settings_v1';
 
-// Per-element baseline px sizes (at --scale 1). Drives the size dropdown
-// labels in the settings UI and the buildSizeOptions() helper below.
-// Element names match the suffix on each CSS custom property
-// (--card-font-NAME / --card-fsize-NAME / etc.) and the .frame-NAME class.
+// Settings-UI rows for the per-element font controls. Element names match
+// the suffix on each CSS custom property (--card-font-NAME /
+// --card-fsize-NAME / etc.) and the .frame-NAME class. Baseline px sizes
+// live as literal args at the buildSizeOptions() call sites.
 const CARD_FONT_ELEMENTS = [
-  { key: 'name',     label: 'Name',          baseline: 7, slot: 'title' },
-  { key: 'type',     label: 'Type line',     baseline: 5, slot: 'title' },
-  { key: 'pt',       label: 'P/T',           baseline: 5, slot: 'title' },
-  { key: 'damage',   label: 'Damage marker', baseline: 5, slot: 'title' },
-  { key: 'text',     label: 'Oracle text',   baseline: 6, slot: 'body' },
-  { key: 'stickers', label: 'Stickers',      baseline: 5, slot: 'body' },
-  { key: 'pip',      label: 'Mana pip',      baseline: 3, slot: 'pip' },
-  { key: 'bumped',   label: 'Cost arrow',    baseline: 4, slot: 'pip' },
+  { key: 'name',     label: 'Name',          slot: 'title' },
+  { key: 'type',     label: 'Type line',     slot: 'title' },
+  { key: 'pt',       label: 'P/T',           slot: 'title' },
+  { key: 'damage',   label: 'Damage marker', slot: 'title' },
+  { key: 'text',     label: 'Oracle text',   slot: 'body' },
+  { key: 'stickers', label: 'Stickers',      slot: 'body' },
+  { key: 'pip',      label: 'Mana pip',      slot: 'pip' },
+  { key: 'bumped',   label: 'Cost arrow',    slot: 'pip' },
 ];
 
 const DEFAULTS = {
-  // Baseline tuned for mobile (Pixel 8 / DPR 2.625) per a v1.0.177 session
-  // dump. Almendra everywhere; size multipliers landed on the values below.
-  // Existing users keep their localStorage tuning; fresh installs start here.
+  // Baseline tuned for mobile (Pixel 8 / DPR 2.625). Existing users keep
+  // their localStorage tuning; fresh installs start here.
   cardFontName:     "'Almendra', Georgia, serif",
   cardFontType:     "'Almendra', Georgia, serif",
   cardFontPt:       "'Almendra', Georgia, serif",
@@ -174,11 +162,10 @@ function buildSizeOptions(baseline, sizes) {
     value: px / baseline,
   }));
 }
-// Slot-shaped size option arrays. Each element in a slot gets the same
-// dropdown choices (e.g. both 'pt' and 'damage' use the title-slot sizes
-// since they share the 5px baseline). Each label is computed against the
-// ELEMENT's baseline (in CARD_FONT_ELEMENTS), so a 7px label means 7px
-// for that element at 1x scale.
+// Size-option arrays keyed by px baseline: an element uses the array whose
+// baseline matches its own (in CARD_FONT_ELEMENTS), so elements sharing a
+// baseline share an array (type/pt/damage/stickers all use SECONDARY at 5px).
+// Each label is the raw px, so a 7px label means 7px for that element at 1x scale.
 const FONT_SIZE_OPTIONS_TITLE   = buildSizeOptions(7, [4, 5, 6, 7, 8, 9, 10, 12, 14]);
 const FONT_SIZE_OPTIONS_SECONDARY = buildSizeOptions(5, [3, 4, 5, 6, 7, 8, 10]);
 const FONT_SIZE_OPTIONS_BODY    = buildSizeOptions(6, [3, 4, 5, 6, 7, 8, 9, 10, 12]);
@@ -198,9 +185,8 @@ const FONT_SIZE_OPTIONS_BY_ELEMENT = {
   bumped:   FONT_SIZE_OPTIONS_BUMPED,
 };
 
-// CSS var names for each element. Used by applyFontsToRoot + set(). The
-// key matches the suffix on the var, capitalized in the settings keys:
-// cardFontName -> --card-font-name, cardFontSizeName -> --card-fsize-name.
+// Used by applyFontsToRoot() and set() to derive each element's CSS var
+// and settings-key names.
 function cssVarFont(elementKey)  { return `--card-font-${elementKey}`; }
 function cssVarFsize(elementKey) { return `--card-fsize-${elementKey}`; }
 function settingsKeyFont(elementKey)  { return `cardFont${elementKey.charAt(0).toUpperCase()}${elementKey.slice(1)}`; }
@@ -214,7 +200,6 @@ function ensureSettingsLoaded() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) { data = { ...DEFAULTS }; return; }
     const blob = JSON.parse(raw);
-    migrateLegacySlotKeys(blob);
     data = { ...DEFAULTS, ...blob };
   } catch (e) {
     console.warn('Settings load failed; using defaults:', e);
@@ -222,29 +207,6 @@ function ensureSettingsLoaded() {
   }
 }
 
-// One-shot migration: pre-v1.0.158 stored slot keys (cardFontTitle/Body/Pip
-// + size variants). Walk those into the matching per-element keys when no
-// per-element value is already present. Don't delete the old keys --
-// they're harmless and a future user reverting to an older version would
-// still see them.
-function migrateLegacySlotKeys(blob) {
-  const slotToElements = {
-    title: ['name', 'type', 'pt', 'damage'],
-    body:  ['text', 'stickers'],
-    pip:   ['pip', 'bumped'],
-  };
-  const slotNames = { title: 'Title', body: 'Body', pip: 'Pip' };
-  for (const [slot, elements] of Object.entries(slotToElements)) {
-    const oldFont = blob[`cardFont${slotNames[slot]}`];
-    const oldSize = blob[`cardFontSize${slotNames[slot]}`];
-    for (const el of elements) {
-      const fKey = settingsKeyFont(el);
-      const sKey = settingsKeyFsize(el);
-      if (oldFont !== undefined && blob[fKey] === undefined) blob[fKey] = oldFont;
-      if (oldSize !== undefined && blob[sKey] === undefined) blob[sKey] = oldSize;
-    }
-  }
-}
 
 function get(key) {
   ensureSettingsLoaded();
@@ -276,7 +238,6 @@ function set(key, value) {
     console.warn('Settings save failed:', e);
   }
   if (typeof document !== 'undefined' && document.documentElement) {
-    // For per-element font/size keys, push the change to :root immediately.
     for (const el of CARD_FONT_ELEMENTS) {
       if (key === settingsKeyFont(el.key))  document.documentElement.style.setProperty(cssVarFont(el.key), value);
       if (key === settingsKeyFsize(el.key)) document.documentElement.style.setProperty(cssVarFsize(el.key), value);

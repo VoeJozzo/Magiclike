@@ -1,7 +1,6 @@
 // Card-text regression test. Locks in the rendered output of the
-// describe* family (extracted from engine.js to js/card-text.js in
-// v1.0.134) so future edits can't silently change what shows up on
-// cards in the browser.
+// describe* family so future edits can't silently change what shows up
+// on cards in the browser.
 //
 // Two layers:
 //
@@ -38,7 +37,6 @@ function eqText(actual, expected, label) {
   check(label, ok, ok ? '' : 'got "' + actual + '"');
 }
 
-// ─── describeAmount ───────────────────────────────────────────────────
 console.log('=== describeAmount ===');
 eqText(describeAmount(3), '3', 'integer passes through');
 eqText(describeAmount({ from: 'target_power' }), "the target's power",
@@ -46,7 +44,6 @@ eqText(describeAmount({ from: 'target_power' }), "the target's power",
 eqText(describeAmount({ from: 'unknownThing' }), 'X (unknownThing)',
        'unknown dynamic value falls back to "X (id)"');
 
-// ─── describeEffect cases ─────────────────────────────────────────────
 console.log('\n=== describeEffect: damage / damageAll / gain_life ===');
 eqText(segsToText(describeEffect({ kind: 'damage', target: 'creature', amount: 3 })),
        'deal 3 damage to target creature', 'damage to creature');
@@ -82,12 +79,12 @@ eqText(segsToText(describeEffect({ kind: 'pump', target: 'creature', power: -2, 
        'target creature gets -2/-2 until end of turn', 'signed pump (weaken)');
 eqText(segsToText(describeEffect({ kind: 'add_counter', scope: 'self', power: 1, toughness: 1 })),
        'put a +1/+1 counter on this', 'counter on self');
-// permanent +N/+N pump → N +1/+1 counters (counters come in +1/+1 units).
+// Counters always come in +1/+1 units.
 eqText(segsToText(describeEffect({ kind: 'pump', duration: 'permanent', scope: 'self', power: 1, toughness: 1 })),
        'put a +1/+1 counter on this', 'permanent +1/+1 → a counter');
 eqText(segsToText(describeEffect({ kind: 'pump', duration: 'permanent', target: 'creature', power: 2, toughness: 2 })),
        'put two +1/+1 counters on target creature', 'permanent +2/+2 → two counters');
-// signed-zero takes the pump's direction: a debuff reads "-2/-0", not "-2/+0".
+// The zero's sign follows the pump's overall direction, not a literal +0.
 eqText(segsToText(describeEffect({ kind: 'pump', target: 'creature', power: -2, toughness: 0 })),
        'target creature gets -2/-0 until end of turn', 'debuff signed-zero (-0 not +0)');
 // non-eot keyword grant is source-linked for your_creature/opp_creature too.
@@ -108,7 +105,6 @@ eqText(segsToText(describeEffectList(
   [{ kind: 'grant_keyword', keyword: 'haste', duration: 'eot' },
    { kind: 'grant_keyword', keyword: 'trample', duration: 'eot' }], null, null, 'creature')),
   'Target creature gains haste and trample until end of turn.', 'predatorsSpeed coalesce (two grants)');
-// Multi-target (target_slot) must NOT coalesce — they're distinct targets.
 eqText(segsToText(describeEffectList(
   [{ kind: 'pump', target: 'creature', power: 1, toughness: 1 },
    { kind: 'pump', target: 'creature', power: 1, toughness: 1, target_slot: 1 }], null, null)),
@@ -154,22 +150,19 @@ eqText(segsToText(describeEffect({ kind: 'grant_cast_permission', from_zone: 'ex
        'grant_cast_permission from exile through EOT');
 
 console.log('\n=== describeEffect: tokens (count-bumped wording) ===');
-// No TOKENS lookup → falls back to "1/1 creature" stats with a sensible
-// default niceName. Word count: "one", "two", ...
-eqText(segsToText(describeEffect({ kind: 'create_tokens', count: 1, token_id: 'goblin' })),
-       'create a 1/1 Goblin token', 'create 1 token uses "a"');
-eqText(segsToText(describeEffect({ kind: 'create_tokens', count: 2, token_id: 'goblin' })),
-       'create two 1/1 Goblin tokens', 'create N>1 uses word count');
+// Canonical token ids resolve the TOKENS template, so the full token
+// description (color, stats, keywords) renders.
+eqText(segsToText(describeEffect({ kind: 'create_tokens', count: 1, token_id: 'goblin_r_1_1' })),
+       'create a red 1/1 Goblin token with haste', 'create 1 token uses "a"');
+eqText(segsToText(describeEffect({ kind: 'create_tokens', count: 2, token_id: 'goblin_r_1_1' })),
+       'create two red 1/1 Goblin tokens with haste', 'create N>1 uses word count');
 
 console.log('\n=== describeEffect: edge cases ===');
 eqText(segsToText(describeEffect({ kind: 'totallyUnknownEffect' })),
        '[totallyUnknownEffect]', 'unknown kind → debug fallback');
 
-// ─── withFilter / targetPhrase ────────────────────────────────────────
 console.log('\n=== targetPhrase + withFilter ===');
 eqText(targetPhrase({ target: 'creature' }), 'target creature', 'creature target');
-// Accurate, kind-independent mapping: 'opp' (opponent-only) → "target opponent";
-// 'player' (choose-any) → "target player". No more guessing from the effect kind.
 eqText(targetPhrase({ target: 'opp', kind: 'damage' }), 'target opponent', 'opp → "target opponent"');
 eqText(targetPhrase({ target: 'opp', kind: 'gain_life', amount: -2 }), 'target opponent', 'opp drain → "target opponent"');
 eqText(targetPhrase({ target: 'player', kind: 'gain_life' }), 'target player', 'player → "target player"');
@@ -183,7 +176,6 @@ eqText(withFilter(targetPhrase({ target: 'graveyard_card' }), { target: 'graveya
        "target nonland card from an opponent's graveyard",
        'graveyard_card + nonland + opp graveyard');
 
-// ─── bumpedSeg highlight detection ────────────────────────────────────
 console.log('\n=== bumpedSeg highlight flag ===');
 {
   const eff = { amount: 5 };
@@ -196,7 +188,6 @@ console.log('\n=== bumpedSeg highlight flag ===');
   check('no tpl baseline → highlight=false', segNoTpl.highlight === false);
 }
 
-// ─── describeStaticBuff (lord text) ───────────────────────────────────
 console.log('\n=== describeStaticBuff ===');
 eqText(describeStaticBuff({ subtype: 'Goblin', power: 1, toughness: 1,
                             filter: { controller: 'self' } }),
@@ -205,8 +196,32 @@ eqText(describeStaticBuff({ subtype: 'Spirit', filter: { controller: 'self' },
                             keywords: ['flying'] }),
        'Other Spirits you control have flying.', 'lord granting flying');
 eqText(describeStaticBuff({}), '', 'empty buff → empty string');
+// Pinned against real shipped templates: signed stats (Rakdos Underboss,
+// a Demon — "Other" honest) and the "Other" honesty check itself
+// (Ironbrand Marshal buffs Artifact creatures but is not one — he buffs
+// EVERY artifact creature, so no "Other").
+eqText(describeStaticBuff(CARDS['rakdos_underboss'].static_buffs[0], CARDS['rakdos_underboss']),
+       'Other Demons you control get +1/-1.', 'signed stats +1/-1 (Rakdos Underboss)');
+eqText(describeStaticBuff(CARDS['ironbrand_marshal'].static_buffs[0], CARDS['ironbrand_marshal']),
+       'Artifact creatures you control get +1/+1.',
+       'type-tag phrasing, no "Other" when the lord does not match (Ironbrand Marshal)');
+const angelLord = { name: 'Wing Commander', types: ['Creature', 'Angel', 'Soldier'] };
+eqText(describeStaticBuff({ filter: { controller: 'self', has_keyword: 'flying' },
+                            power: 1, toughness: 1 }, angelLord),
+       'Other creatures you control with flying get +1/+1.',
+       'keyword filter renders; subtype-implied flying keeps "Other" honest');
+eqText(describeStaticBuff({ filter: { controller: 'self', has_keyword: 'flying' },
+                            power: 1, toughness: 1 },
+                          { name: 'Grounded Sergeant', types: ['Creature', 'Human'] }),
+       'Creatures you control with flying get +1/+1.',
+       'non-flying lord: filter renders, no "Other" (he buffs every flier)');
+eqText(describeStaticBuff({ filter: { controller: 'self', has_keyword: 'first_strike' },
+                            power: 1, toughness: 0 },
+                          { name: 'Duelist', types: ['Creature', 'Human'],
+                            keywords: ['first_strike'] }),
+       'Other creatures you control with first strike get +1/+0.',
+       'keyword display name mapping (first_strike → "first strike")');
 
-// ─── describeAbility / describeTrigger preamble ───────────────────────
 console.log('\n=== describeAbility ===');
 eqText(segsToText(describeAbility({ cost: { tap: true },
                                     effects: [{ kind: 'add_mana', mana: '{R}' }] })),
@@ -243,7 +258,6 @@ eqText(segsToText(describeTrigger({ event: 'attacks',
                                     effects: [{ kind: 'damage', target: 'opp', amount: 1 }] })),
        'When this attacks, deal 1 damage to target opponent.', 'attacks → damage');
 
-// ─── describeModalSegs ────────────────────────────────────────────────
 eqText(segsToText(describeTrigger({ event: 'combat_damage',
                                     condition: ['this_card', 'affected_player_is(opp)'],
                                     target: 'graveyard_card',
@@ -276,16 +290,15 @@ console.log('\n=== describeModalSegs ===');
         out.endsWith('.'), 'got "' + out + '"');
 }
 
-// ─── End-to-end: real card from CARDS ─────────────────────────────────
 console.log('\n=== describeEffect: move_card library search text ===');
 eqText(segsToText(describeEffect({ kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'library_search', filter: 'creature' })),
-       'search your library for a creature card and put it into your hand',
+       'search your library for a creature card and draw it',
        'string creature filter renders as creature card');
 eqText(segsToText(describeEffect({ kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'library_search', filter: { type: 'Artifact' } })),
-       'search your library for an artifact card and put it into your hand',
+       'search your library for an artifact card and draw it',
        'object artifact filter renders with article');
 eqText(segsToText(describeEffect({ kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'library_search' })),
-       'search your library for a card and put it into your hand',
+       'search your library for a card and draw it',
        'unfiltered library search renders as a card');
 eqText(segsToText(describeEffect({ kind: 'move_card', from_zone: 'library', to_zone: 'battlefield', selector: 'library_search', filter: 'land', post: { tap: true } })),
        'search your library for a land and put it onto the battlefield tapped',
@@ -307,10 +320,8 @@ console.log('\n=== describeCardSegments end-to-end on real cards ===');
     check('Bolt text references "any target"',
           /any target/.test(text), 'got "' + text + '"');
   }
-  // Mountain — basic land with no rules content. describeCardText
-  // should return empty string (no preamble, no effects, no abilities
-  // on the template). The browser shows just art + type, which is
-  // correct MTG-style for a basic land.
+  // Mountain's template has no preamble, no effects, no abilities —
+  // describeCardText returns ''.
   const mtn = CARDS.mountain;
   if (mtn) {
     const card = ENGINE.makeCard('mountain');
@@ -320,7 +331,6 @@ console.log('\n=== describeCardSegments end-to-end on real cards ===');
   }
 }
 
-// ─── End-to-end: bumped value produces highlight=true segment ─────────
 // We sidestep the empower-roll machinery (applyEmpowerRoll has a
 // {location, subIdx, effIdx, field} shape that varies by card shape)
 // and just mutate the live card's effect amount directly. The
@@ -344,12 +354,12 @@ console.log('\n=== bumped value → highlight=true on the bumped segment ===');
   }
 }
 
-// ─── §305.6 mana-ability suppression (PR #93 review item 4) ────────────────
+// ─── §305.6 mana-ability suppression ──────────────────────────────────────
 // A land whose tap-for-mana is fully conveyed by its basic-land subtypes
 // renders NO ability text (the type line + big mana symbol carry it); a land
 // whose production is NOT conveyed keeps its text. Pins both halves of the
 // rule plus the unit-amount guard ({C}{C} out-produces what a subtype could
-// promise) and the everything-else-stays case (Phylactery keeps its triggers).
+// promise).
 console.log('\n=== basic-land mana-ability suppression ===');
 {
   const txt = (id) => describeCardText(ENGINE.makeCard(id));

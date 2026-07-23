@@ -17,6 +17,8 @@ Tests are runnable scenes in `tests/` — one per port phase (e.g., `test_phase4
 
 Run it from the root of the checkout you are working in — **your worktree, not the main checkout** — or `--path` will test someone else's code.
 
+**Fresh worktree: run `--import -v` first** (same binary, `--headless --path . --import -v`). Otherwise the first test scene triggers the full asset import silently — minutes of zero output, indistinguishable from a hang.
+
 Each test prints assertion results and exits with code 0 (pass) / 1 (fail). Roughly 30 seconds per scene. A change is "done" when the whole `tests/` suite passes and the change itself is exercised by a test — extending an existing scene beats adding a new one.
 
 ## Durable concepts wiki (`docs/wiki/`)
@@ -46,6 +48,10 @@ Port the **behavior**, not the implementation shape — the prototype's engine h
 - **Don't model per-instance state as dynamically-attached dictionary fields.** Use typed properties on `CardInstance` / `Player`; the `duplicate_deep()` overrides exist to prevent that class of bug. → [`docs/wiki/magiclike-architecture.md`](docs/wiki/magiclike-architecture.md)
 - **Don't let the engine call the text generator.** Keep the engine UI-free — emit a structured "trigger fired" signal; the presentation layer renders the log/text. → [`docs/wiki/magiclike-architecture.md`](docs/wiki/magiclike-architecture.md)
 
+## Comments
+
+A comment must state something the code cannot: a constraint, invariant, rule citation, caller contract, or external data shape. Write in the eternal present — no diff narration ("removed", "the old X", version stamps), no port-phase labels, no "verified"-style claims (pin those with a test), no features that don't exist. In test files, assertion labels are the spec: a comment dominated by an adjacent check/assert label is noise. Shortest true form; when editing code, update or delete the comments it touches. *(Why + the failure taxonomy: [`docs/wiki/comment-doctrine.md`](docs/wiki/comment-doctrine.md).)*
+
 ## Risks and gotchas
 
 - **`addons/card-framework/` is vendored — never edit it in place.**
@@ -64,10 +70,11 @@ Port the **behavior**, not the implementation shape — the prototype's engine h
 
 ## Verification discipline
 
-Two checkable rules. They exist because they are a recurring, costly failure mode (false-green commits; fabricated counts re-fixed two and three times) — not abstract caution.
+Three checkable rules. They exist because they are a recurring, costly failure mode (false-green commits; fabricated counts re-fixed two and three times) — not abstract caution.
 
 - **Confirm green before committing or claiming a pass.** Read the test runner's actual summary/total line — never a truncated `tail` that can hide the count. A commit that says "N green" must cite a number you saw this session, not an assumption.
 - **Copy facts; don't recall them.** Any number or identifier written into a commit message, PR body, or doc (diff counts, commit totals, SHAs, file paths) must be copied from verified tool output in this session, not typed from memory. When in doubt, re-query (`gh pr view`, `git rev-list --count`) and paste.
+- **After a compaction, decisions come from the transcript, not the summary.** The compaction summary is the assistant's own paraphrase — if the assistant misread a decision, the summary preserves the misreading and "verifying against it" (or against a plan doc the assistant wrote under the same misreading) is circular. Before acting on any recently-discussed decision post-compaction, re-read the raw transcript tail (`~/.claude/projects/.../<session>.jsonl`); if a user message admits more than one reading — especially a confirmation question like "we're good to build this, right?" whose referent is ambiguous — ask, don't resolve it in favor of your own standing recommendation. (Cost of the failure this rule exists for: Wave 2 shipped without `ability_triggered` after exactly this misreading, 2026-07-12.)
 
 ## Licenses & attributions
 

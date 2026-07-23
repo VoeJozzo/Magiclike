@@ -1,19 +1,10 @@
-// Audit fix A3-13 — generated/bonus triggers are attached as EXACT COPIES at
-// copy-time, then diverge independently (Joe's ruling, PR #98 round 4).
-//
-// Pre-fix, the consumer-side spreads deep-cloned `effects` per element but
-// spread the parent trigger — copying the `condition` ARRAY by reference:
-//   - makePlayer's Mercurial pool pick:   every game's Mercurial card aliased
-//     the module-level MERCURIAL_TRIGGER_POOL entry's condition array — one
-//     in-place mutation would contaminate the pool for every later game;
-//   - makeCard's bonusTrigger push:       the in-game card aliased the run-
-//     persistent slot trigger's condition;
-//   - finalizeBuild (Codex):              the slot write AND the live-card
-//     push both aliased the assembled trigger's condition (slot <-> card).
-// The source constructors (assembleTrigger, trigger-generator) deliberately
-// slice — this pins the consumer sites to the same discipline. Latent today
-// (nothing mutates trig.condition in place), but normalizeCardEffects already
-// rewrites the ADJACENT trig.effects field in place — the trap is one key away.
+// A3-13: generated/bonus triggers must be attached as copies, not aliases —
+// each site's `condition` array diverges independently after attach. The
+// source constructors (assembleTrigger, trigger-generator) deliberately
+// slice `condition`; this file pins the consumer sites to the same
+// discipline. Nothing mutates trig.condition in place today, but
+// normalizeCardEffects already mutates the adjacent trig.effects field in
+// place — the trap is one key away.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -59,7 +50,6 @@ console.log('=== A3-13 site 1: makePlayer Mercurial pool pick does not alias the
     const aliased = MERCURIAL_TRIGGER_POOL.some(e => e.condition === trig.condition);
     check('A3-13: card condition array is NOT reference-identical to any pool entry',
       !aliased, aliased ? 'aliases pool entry "' + trig.label + '"' : '');
-    // Contamination probe: mutate the card's copy in place; the pool must stay pristine.
     trig.condition.push('__contaminated__');
     const poolClean = JSON.stringify(MERCURIAL_TRIGGER_POOL.map(e => e.condition))
       === JSON.stringify(POOL_SNAPSHOT.map(e => e.condition));
@@ -67,7 +57,7 @@ console.log('=== A3-13 site 1: makePlayer Mercurial pool pick does not alias the
       poolClean,
       poolClean ? '' : 'pool entry now: ' + JSON.stringify(
         (MERCURIAL_TRIGGER_POOL.find(e => e.label === trig.label) || {}).condition));
-    restorePool(); // undo any pre-fix contamination so later arms see truth
+    restorePool();
   } else { fail += 2; console.log('  FAIL x2: (no trigger -- aliasing arms skipped)'); }
 })();
 

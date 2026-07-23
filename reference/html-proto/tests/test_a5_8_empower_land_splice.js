@@ -1,15 +1,11 @@
-// Audit A5-8 — an empower roll on a spell stapled onto a LAND base went inert.
+// mergeStapleInto folds a spell staple into an ETB trigger on any permanent
+// base (creature OR land). remapEmpowerRollForStaple must relocate an
+// effects[] roll to triggers[] whenever baseIsPermanent, or the roll targets
+// a card with no effects[] and applyEmpowerRoll silently no-ops.
 //
-// mergeStapleInto turns a spell staple into an ETB trigger on ANY permanent base
-// (Creature OR Land). But the empower-roll remap (remapEmpowerRollForStaple) only
-// relocated the roll from effects[] -> triggers[] for a CREATURE base; on a LAND
-// base it stayed location:'effects', and the merged card has no effects[] (the
-// spell collapsed into a trigger), so applyEmpowerRoll silently no-op'd — a paid
-// empower sticker evaporated. Fix: gate the relocation on baseIsPermanent
-// (creature OR land). Secondary: the prior-staple counts are now oracle-derived
-// (synthesizeStapledTemplate), so a prior SPELL staple on a land base is counted
-// as +1 trigger (it becomes an ETB), not +0 — a second spell's roll then lands
-// on its OWN trigger, not the prior spell's.
+// Prior-staple counts are oracle-derived (synthesizeStapledTemplate): a prior
+// SPELL staple on a land base counts as +1 trigger (it becomes an ETB), so a
+// later spell's roll lands on its own trigger index, not the prior spell's.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -36,7 +32,7 @@ console.log('=== A5-8: empower roll survives a spell-onto-LAND splice ===');
 
 (() => {
   // 2. End-to-end: merge a spell onto a land, synthesize, apply the empower roll
-  // -> the ETB trigger's damage is amplified (pre-fix it stayed 3).
+  // -> the ETB trigger's damage is amplified.
   const merged = mergeSpliceData(
     { tplId: LAND, empowerRolls: [], priorStaples: [] },
     { tplId: SPELL, empowerRolls: [effectsRoll()] });
@@ -65,8 +61,8 @@ console.log('=== A5-8: empower roll survives a spell-onto-LAND splice ===');
   // 4. Secondary chain leg: a land base with a PRIOR spell staple — the new
   // spell's roll must land on its OWN trigger (subIdx 1), not the prior spell's.
   const merged = mergeSpliceData(
-    { tplId: LAND, empowerRolls: [], priorStaples: [PRIOR] },   // mountain + [shock] prior
-    { tplId: SPELL, empowerRolls: [effectsRoll()] });           // + new lava_spike
+    { tplId: LAND, empowerRolls: [], priorStaples: [PRIOR] },
+    { tplId: SPELL, empowerRolls: [effectsRoll()] });
   check('chain: new spell roll lands on subIdx 1 (after the prior spell ETB)',
     merged.empowerRolls[0].subIdx === 1, JSON.stringify(merged.empowerRolls[0]));
   const card = JSON.parse(JSON.stringify(ENGINE.synthesizeStapledTemplate(LAND, merged.stapledTpls)));

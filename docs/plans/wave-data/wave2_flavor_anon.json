@@ -1,0 +1,226 @@
+[
+ {
+  "key": "GW_0-2",
+  "cost": "1WW",
+  "type": "Creature",
+  "stats": "2/3",
+  "rules": "When ~ enters, creatures you control gain vigilance until end of turn."
+ },
+ {
+  "key": "GW_3-1",
+  "cost": "2G",
+  "type": "Creature",
+  "stats": "1/2",
+  "rules": "Spells you cast that target creatures you control also put a +1/+1 counter on them."
+ },
+ {
+  "key": "WU_0-0",
+  "cost": "1U",
+  "type": "Sorcery",
+  "stats": null,
+  "rules": "Flash. Exile target creature you control, then return it to the battlefield."
+ },
+ {
+  "key": "WU_1-0",
+  "cost": "1WU",
+  "type": "Creature",
+  "stats": "2/3",
+  "rules": "Other creatures you control with flying get +1/+1."
+ },
+ {
+  "key": "WU_1-1",
+  "cost": "3W",
+  "type": "Creature",
+  "stats": "3/3",
+  "rules": "Whenever ~ attacks, tap target creature an opponent controls."
+ },
+ {
+  "key": "WU_1-2",
+  "cost": "1U",
+  "type": "Creature",
+  "stats": "1/2",
+  "rules": "Flash. Whenever you cast a spell with flash, put a +1/+1 counter on ~."
+ },
+ {
+  "key": "WU_2-2",
+  "cost": "1UR",
+  "type": "Creature",
+  "stats": "2/3",
+  "rules": "Whenever you cast a spell with flash, put a +1/+1 counter on ~."
+ },
+ {
+  "key": "WU_3-0",
+  "cost": "U",
+  "type": "Sorcery",
+  "stats": null,
+  "rules": "Flash. Target creature you control gains flying until end of turn."
+ },
+ {
+  "key": "WU_3-2",
+  "cost": "1U",
+  "type": "Sorcery",
+  "stats": null,
+  "rules": "Flash. Return target creature you control to its owner's hand. Draw a card."
+ },
+ {
+  "key": "GU_0-0",
+  "cost": "1GU",
+  "type": "Creature",
+  "stats": "2/3",
+  "rules": "Whenever another creature of either of TWO TRIBES OF YOUR CHOICE enters the battlefield under your control, put a +1/+1 counter on ~. (Propose the two tribes as part of the flavor — they are a design parameter.)"
+ },
+ {
+  "key": "GU_0-1",
+  "cost": "U",
+  "type": "Creature",
+  "stats": "1/1",
+  "rules": "Whenever you draw a card, ~ gets +1/+0 until end of turn."
+ },
+ {
+  "key": "GU_0-2",
+  "cost": "2U",
+  "type": "Creature",
+  "stats": "2/2",
+  "rules": "Whenever you cast a noncreature spell, ~ gains flying until end of turn."
+ },
+ {
+  "key": "GU_1-2",
+  "cost": "1U",
+  "type": "Creature",
+  "stats": "1/4",
+  "rules": "Whenever you cast a spell during an opponent's turn, draw a card."
+ },
+ {
+  "key": "GU_2-1",
+  "cost": "1U",
+  "type": "Sorcery",
+  "stats": null,
+  "rules": "Flash. Target creature you control gains hexproof and gets +0/+1 until end of turn."
+ },
+ {
+  "key": "GU_2-2",
+  "cost": "1G",
+  "type": "Creature",
+  "stats": "1/2",
+  "rules": "{G}, {T}: Target land becomes a 2/2 green Elemental creature until end of turn. It's still a land."
+ },
+ {
+  "key": "GW_1-2",
+  "cost": "1GW",
+  "type": "Creature",
+  "stats": "2/4",
+  "rules": "Vigilance. Lands you control that are creatures have vigilance."
+ },
+ {
+  "key": "GW_2-0",
+  "cost": "2G",
+  "type": "Creature",
+  "stats": "1/2",
+  "rules": "Whenever another creature enters the battlefield under your control, put a +1/+1 counter on ~."
+ },
+ {
+  "key": "GW_3-0",
+  "cost": "1BG",
+  "type": "Creature",
+  "stats": "2/3",
+  "rules": "Whenever a creature you control dies, put a +1/+1 counter on target creature you control."
+ },
+ {
+  "key": "RG_0-0",
+  "cost": "1R",
+  "type": "Creature",
+  "stats": "2/1",
+  "rules": "{T}, Sacrifice a creature: ~ deals 2 damage to any target."
+ },
+ {
+  "key": "RG_1-0",
+  "cost": "1RG",
+  "type": "Creature",
+  "stats": "2/2",
+  "rules": "Spells you cast also deal 1 damage to their targets."
+ },
+ {
+  "key": "RG_1-1",
+  "cost": "1R",
+  "type": "Creature",
+  "stats": "2/1",
+  "rules": "Whenever another creature you control attacks, ~ gets +1/+0 until end of turn."
+ },
+ {
+  "key": "RG_2-2",
+  "cost": "1G",
+  "type": "Creature",
+  "stats": "1/1",
+  "rules": "Whenever a land enters the battlefield under your control, put a +1/+1 counter on ~."
+ },
+ {
+  "key": "RG_3-0",
+  "cost": "1RG",
+  "type": "Creature",
+  "stats": "2/3",
+  "rules": "Whenever you cast a sorcery that deals damage, put a +1/+1 counter on ~."
+ },
+ {
+  "key": "RW_2-2",
+  "cost": "R",
+  "type": "Sorcery",
+  "stats": null,
+  "rules": "Flash. Destroy target artifact."
+ },
+ {
+  "key": "RW_3-2",
+  "cost": "1R",
+  "type": "Creature",
+  "stats": "2/1",
+  "rules": "Whenever you activate an ability of a creature you control, ~ deals 1 damage to target opponent."
+ },
+ {
+  "key": "GW_2-1",
+  "cost": "G",
+  "type": "Creature",
+  "stats": "1/1",
+  "rules": "Whenever a land enters the battlefield under your control, ~ gets +1/+1 until end of turn."
+ },
+ {
+  "key": "GW_2-2",
+  "cost": "2W",
+  "type": "Creature",
+  "stats": "2/3",
+  "rules": "Whenever you cast a spell, each creature it targets gains vigilance until end of turn."
+ },
+ {
+  "key": "GU_3-0",
+  "cost": "1WU",
+  "type": "Sorcery",
+  "stats": null,
+  "rules": "Flash. Untap target creature you control. It gains vigilance until end of turn."
+ },
+ {
+  "key": "RW_0-1",
+  "cost": "1WW",
+  "type": "Creature",
+  "stats": "1/1",
+  "rules": "Whenever another creature of ONE TRIBE OF YOUR CHOICE enters the battlefield under your control, put a +1/+1 counter on ~. (Propose the tribe — note it should be a POPULOUS one for the card to function; propose responsibly.)"
+ },
+ {
+  "key": "RW_1-1",
+  "cost": "2WR",
+  "type": "Creature",
+  "stats": "2/2",
+  "rules": "Other creatures you control get +1/+0."
+ },
+ {
+  "key": "RW_2-1",
+  "cost": "2W",
+  "type": "Creature",
+  "stats": "2/2",
+  "rules": "Flying. Whenever you cast a spell, target creature you control gains flying until end of turn."
+ },
+ {
+  "key": "RW_3-0",
+  "cost": "1W",
+  "type": "Creature",
+  "stats": "2/2",
+  "rules": "Whenever another creature with an enters-the-battlefield damage ability enters the battlefield under your control, you gain 2 life."
+ }
+]

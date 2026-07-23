@@ -1,11 +1,9 @@
-// Audit A6-7 — multi-sticker cost resolution is apply-order (= acquisition-order)
-// dependent: a cost_mod floor vs a set_color('C') pip-fold give different final
-// generic cost depending on which sticker applied first. Canon is silent and the
-// case is P3-rare (one slot carrying BOTH cost_minus_1 AND Bleach), so the chosen
-// remediation is fork (b): DOCUMENT acquisition-order as canonical + pin it here.
-// (Fork (a), order-independent resolution, would change the castable cost and
-// needs a design ruling — see the audit note. If taken, flip the two divergence
-// asserts below to assertEqual.)
+// Multi-sticker cost resolution is apply-order dependent: a cost_mod floor vs a
+// set_color pip-fold give different final generic cost depending on which sticker
+// applied first. Canon is silent; acquisition order is canonical here (fork b).
+// Fork (a) (order-independent resolution) would change the castable cost and
+// needs a design ruling first — if adopted, flip the two divergence asserts
+// below to assertEqual.
 const setup = require('./_setup');
 setup.loadEngine();
 

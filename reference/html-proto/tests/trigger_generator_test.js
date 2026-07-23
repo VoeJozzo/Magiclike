@@ -7,7 +7,7 @@
 //      Mismatch = self-targeting effect resolves against a graveyard
 //      source and crashes / no-ops.
 //   3. Two-step build flow — the (3 conditions, then 3 effects)
-//      Mercurial Adept UX path produces well-formed picks.
+//      Architect's Codex UX path produces well-formed picks.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -37,7 +37,6 @@ for (const eff of GENERATOR_EFFECTS) {
     typeof eff.needsLiveSource === 'boolean');
   check(desc + ': roll() is a function', typeof eff.roll === 'function');
   check(desc + ': describe() is a function', typeof eff.describe === 'function');
-  // Smoke: rolling produces an effects array with a kind.
   const rolled = eff.roll();
   check(desc + ': roll() returns non-empty array',
     Array.isArray(rolled) && rolled.length > 0);
@@ -54,8 +53,6 @@ for (const cond of GENERATOR_CONDITIONS) {
   check(desc + ': has sourceLive boolean',
     typeof cond.sourceLive === 'boolean');
   check(desc + ': has text', typeof cond.text === 'string' && cond.text.length > 0);
-  // Composable shape (Slice 2 / E2): valid event + a condition array that
-  // classifies back to its archetype id.
   check(desc + ': event is a recognized trigger event',
     VALID_TRIGGER_EVENTS.has(cond.event));
   check(desc + ': condition is an array', Array.isArray(cond.condition));
@@ -63,9 +60,7 @@ for (const cond of GENERATOR_CONDITIONS) {
     triggerArchetype({event: cond.event, condition: cond.condition}) === cond.id);
 }
 
-// One roll through the REAL build flow (the only production path since the
-// generateRandomTrigger twin was deleted — audit A3-7): pick a condition from
-// the offered three, then an effect from the three offered for it, assemble.
+// The only production path for assembling a generated trigger.
 function rollAssembled() {
   const conds = generateConditionOptions();
   const cond = conds[Math.floor(Math.random() * conds.length)];
@@ -102,20 +97,17 @@ console.log('\n=== three-step build flow output shape (200 rolls) ===');
     'missingText=' + missingText);
   console.log('  effect kinds observed:', [...VALID_KIND].join(', '));
   check('multiple effect kinds rolled (not stuck on one)', VALID_KIND.size >= 4);
-  // Every production-built trigger carries the anti-cascade-loop guard (the
-  // deleted twin's missing flag was A3-7's whole point).
+  // noSelfCascade prevents a generated trigger from retriggering itself in a cascade.
   check('all 200 rolls carry noSelfCascade', missingGuard === 0,
     'missing=' + missingGuard);
 }
 
 console.log('\n=== Hard-break filter: needsLiveSource never pairs with !sourceLive (A3-9 #1, literal pins) ===');
 {
-  // GREEN-THEATER FIX (audit A3-9 #1): the previous version derived BOTH the
-  // "dead conditions" set AND the "live-source kinds" set from the very flags it
-  // was testing, so a needsLiveSource true->false flip (the dangerous direction —
-  // it would let the generator roll a self-targeting buff under a dead-source
-  // condition where ~ no longer exists) moved spec and assertion together and
-  // stayed green. Pin against HARDCODED literal flag sets so a flip goes RED.
+  // Hardcoded literal flag sets, not derived from needsLiveSource/sourceLive:
+  // deriving both sides from the same flags under test would let a
+  // needsLiveSource true->false flip move spec and assertion together and
+  // stay green instead of catching the regression.
   const liveEffectIds = GENERATOR_EFFECTS.filter(e => e.needsLiveSource).map(e => e.id).sort();
   check('live-source effects are EXACTLY {addCounterSelf, pumpSelf}',
     JSON.stringify(liveEffectIds) === JSON.stringify(['addCounterSelf', 'pumpSelf']),
@@ -125,9 +117,7 @@ console.log('\n=== Hard-break filter: needsLiveSource never pairs with !sourceLi
     JSON.stringify(deadCondIds) === JSON.stringify(['anyCardDies', 'thisDies']),
     JSON.stringify(deadCondIds));
 
-  // Behavioral pin: a dead-source condition is NEVER offered a live-source effect
-  // (the hard-break guard in generateEffectOptions). Hardcode the dead cond so
-  // the assertion doesn't ride the flag under test.
+  // Hardcode the dead cond so the assertion doesn't ride the flag under test.
   const DEAD = { id: 'literalDead', sourceLive: false, event: 'card_zone_change',
                  condition: ['this_card', 'card_moves(battlefield, graveyard)'], text: 'x' };
   let leaked = 0;
@@ -171,8 +161,6 @@ console.log('\n=== Two-step build flow: effect options (dead-source condition) =
     const effOpts = generateEffectOptions(deadCond);
     check('returns 3 effect options for ' + deadCond.id,
       effOpts.length === 3);
-    // Every offered effect, when picked, must NOT be a needsLiveSource one
-    // (since the chosen condition has sourceLive=false).
     let liveOffered = 0;
     for (const eo of effOpts) {
       const tpl = GENERATOR_EFFECTS.find(e => e.id === eo.effId);
@@ -195,9 +183,7 @@ console.log('\n=== Two-step build flow: assembleTrigger output ===');
     Array.isArray(trig.effects) && trig.effects.length > 0);
   check('assembled trigger marked generated', trig.generated === true);
   check('assembled trigger has noSelfCascade guard', trig.noSelfCascade === true);
-  // The effects in the assembled trigger should be FRESH COPIES — mutating
-  // them must not affect the chosenEffect's original array (otherwise the
-  // condition-pick view could see post-resolution state).
+  // Otherwise the condition-pick view could see post-resolution mutations.
   trig.effects[0].amount = 999;
   const stillOriginal = effOpts[0].effects[0].amount !== 999;
   check('assembled trigger effects are copies (not shared refs)', stillOriginal);
@@ -214,8 +200,6 @@ console.log('\n=== Mercurial Adept template + deck-build integration ===');
     check("Adept marked with trigger_pool_seed='mercurial'",
       tpl.trigger_pool_seed === 'mercurial');
 
-    // Deck-build integration: construct a game with Adept in the deck
-    // and verify the resulting card has a bonusTrigger.
     RUN.start({cards:['mercurial_adept','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['U']}, null);
     RUN.load();
     ENGINE.init(RUN.getSlots(), ['mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain']);
@@ -224,7 +208,7 @@ console.log('\n=== Mercurial Adept template + deck-build integration ===');
     check('Adept appears in the player game state', !!adept);
     if (adept) {
       // The bonusTrigger is appended onto card.triggers at makeCard time
-      // (see engine.js:1868-1877) rather than stored as a separate field.
+      // rather than stored as a separate field.
       // Adept's template has no intrinsic triggers, so the one trigger we
       // see IS the rolled boon.
       check('Adept has a trigger rolled from the pool',
@@ -246,12 +230,12 @@ console.log("\n=== Architect's Codex template (build_on_draw / procedural path) 
 {
   // Codex is the procedural-generator variant: build_on_draw triggers the
   // generateConditionOptions -> generateEffectOptions -> assembleTrigger
-  // flow controller-side. Template should be tagged appropriately.
+  // flow controller-side.
   const tpl = CARDS['architects_codex'];
   if (tpl) {
     check('Codex template exists', !!tpl);
     check('Codex has build_on_draw flag', tpl.build_on_draw === true);
-    check('Codex marked special', tpl.special === true);
+    check('Codex marked as a boon (undraftable)', tpl.boon === true);
   } else {
     console.log('  (architectsCodex not in CARDS -- skipping)');
   }

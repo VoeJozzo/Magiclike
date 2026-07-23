@@ -1,10 +1,5 @@
-// Castable-card highlight (render canPlayFromUI). The §3.5 targeting migration
-// moved single-target spells to a top-level target() step with bare effects, but
-// canPlayFromUI still only checked per-effect targets (effectNeedsTarget) — so it
-// probed a target-LESS cast for every migrated spell, isLegalAction rejected it,
-// and the card never got the .castable glow. (Same class as the clickHand and
-// trigger-prompt bugs.) This locks: migrated single-target spells highlight when
-// castable, and the gates (mana, no-legal-target, target_filter) still apply.
+// Castable-card highlight (render canPlayFromUI): migrated single-target spells
+// highlight when castable, and the gates (mana, no-legal-target, target_filter) still apply.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -42,7 +37,7 @@ function inHand(G, tpl) { const c = mk(tpl, 'you'); G.you.hand.push(c); return c
 console.log('=== migrated single-target spells highlight as castable ===');
 (() => {
   const G = game();
-  G.opp.battlefield.push(mkCreature('opp', { color: 'W', colors: ['W'] }));   // a non-black creature
+  G.opp.battlefield.push(mkCreature('opp', { color: 'W', colors: ['W'] }));
   for (const t of ['lightning_bolt', 'doom_blade', 'murder', 'swords_to_plowshares', 'mind_control']) {
     check(t + ' is castable-highlighted', canPlayFromUI('you', inHand(G, t)));
   }
@@ -52,30 +47,26 @@ console.log('\n=== gates still apply (no false highlight) ===');
 (() => {
   const G = game();
   G.opp.battlefield.push(mkCreature('opp', { color: 'W', colors: ['W'] }));
-  // No mana → not castable.
   G.you.mana = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
   check('doomBlade NOT highlighted with no mana', !canPlayFromUI('you', inHand(G, 'doom_blade')));
 })();
 (() => {
   const G = game();
-  // Only a BLACK creature on board → Doom Blade (non-black) has no legal target.
   G.opp.battlefield.push(mkCreature('opp', { color: 'B', colors: ['B'] }));
   check('doomBlade NOT highlighted when only a black creature exists (target_filter)',
     !canPlayFromUI('you', inHand(G, 'doom_blade')));
 })();
 (() => {
   const G = game();
-  // Empty board → a creature-only removal spell has no legal target.
-  check('terror NOT highlighted with no creatures on board', !canPlayFromUI('you', inHand(G, 'murder')));
+  check('murder NOT highlighted with no creatures on board', !canPlayFromUI('you', inHand(G, 'murder')));
 })();
 
 console.log('\n=== restricted target highlights only when a legal target exists ===');
 (() => {
   const G = game();
-  // Vine Strangle: opp creature WITH flying.
-  G.opp.battlefield.push(mkCreature('opp', { keywords: [] }));            // ground only
+  G.opp.battlefield.push(mkCreature('opp', { keywords: [] }));
   check('vinestrangle NOT highlighted vs a ground opp creature', !canPlayFromUI('you', inHand(G, 'vine_strangle')));
-  G.opp.battlefield.push(mkCreature('opp', { keywords: ['flying'] }));    // now a flyer exists
+  G.opp.battlefield.push(mkCreature('opp', { keywords: ['flying'] }));
   check('vinestrangle highlighted once an opp flyer exists', canPlayFromUI('you', inHand(G, 'vine_strangle')));
 })();
 

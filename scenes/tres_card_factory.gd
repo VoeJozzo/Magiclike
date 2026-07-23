@@ -2,11 +2,10 @@
 class_name TresCardFactory
 extends JsonCardFactory
 
-# Card-framework factory that reads CardResource .tres templates from
-# res://cards/templates/<card_id>.tres instead of the per-card JSON files
-# JsonCardFactory wants. Inherits JsonCardFactory's visual scaffolding
-# (default_card_scene, back_image, card_size, _create_card_node, _load_image)
-# and only swaps out the data-source step.
+# Card-framework factory reading CardResource .tres templates instead of the
+# per-card JSON files JsonCardFactory wants. Inherits JsonCardFactory's visual
+# scaffolding (default_card_scene, back_image, card_size, _create_card_node,
+# _load_image) and only swaps out the data-source step.
 #
 # Wired in scenes/tres_card_factory.tscn; assigned to CardManager via
 # scenes/game/game_board.gd's _factory_scene preload.
@@ -39,9 +38,9 @@ func create_card(card_name: String, target: CardContainer) -> Card:
 	return _create_card_node(template.card_id, front_image, target, card_info)
 
 
-# Build the card_info dict the existing visual layer expects. Mirrors what
-# JsonCardFactory used to read from JSON: {name, card_id, display_name,
-# front_image}. game_board.gd and battlefield_zone.gd consume these fields.
+# Build the card_info dict the existing visual layer expects: {name, card_id,
+# display_name, front_image}. game_board.gd and battlefield_zone.gd consume
+# these fields.
 static func _card_info_from_resource(tpl: CardResource) -> Dictionary:
 	return {
 		"name": tpl.card_id,

@@ -1,28 +1,15 @@
-// Audit fix A1-1 leg 2 — a NON-MANA ability activation resets the priority
-// pass tracker (Joe-approved, PR #98 round 3), so a stale pre-activation
-// pass can never close the round with no response window.
+// A NON-MANA ability activation resets the priority pass tracker, so a
+// stale pre-activation pass can never close the round with no response
+// window.
 //
-// REWRITTEN for A3-2 (stackable infrastructure): non-mana activations now
-// push a real kind:'ability' STACK ENTRY, and the §603 reset rides the push
-// itself (exactly like a spell cast / trigger push) — the leg-2 protection
-// is structural now. The response window moved EARLIER: the opponent
-// responds before the ability resolves, not merely before the round closes
-// over its result. These arms pin the protection in its new shape. (The
-// original inline reset survives verbatim in the dormant stackable:false
-// arm of doActivateAbility.)
+// Non-mana activations push a real kind:'ability' stack entry, and the
+// §603 reset rides the push itself (like a spell cast or trigger push):
+// the opponent responds before the ability resolves, not merely before
+// the round closes over its result. The original inline reset survives
+// verbatim in the dormant stackable:false arm of doActivateAbility.
 //
-// Arms:
-//   1. KEY (main phase) — you pass, opp pings with Prodigal Sorcerer: the
-//      ping goes ON THE STACK, your stale pass is wiped, you hold priority
-//      and can respond BEFORE the ping resolves; after you pass it resolves
-//      and you get a fresh round on the post-resolution board.
-//   2. KEY (block window — where it bites hardest) — blocks are in, the
-//      attacker passes, the defender pings an attacker: the entry stacks,
-//      the attacker regains priority BEFORE the ping resolves and again
-//      before combat damage.
-//   3. Guard — MANA abilities stay exempt (Llanowar Elves resolves inline,
-//      no stack entry, no reset; the stale pass still counts and the turn
-//      sails on). Pins the §705 fast path's scope.
+// Guard: MANA abilities stay exempt from the reset — Llanowar Elves
+// resolves inline with no stack entry. Pins the §705 fast path's scope.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -75,12 +62,9 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['llanowar_elves'] || !CARD
     G.opp.battlefield.push(sorcerer);
     const bolt = mk('lightning_bolt', 'you');
     G.you.hand.push(bolt);
-    // You pass on the empty board; opp now holds priority.
     ENGINE.executeAction('you', { type: 'pass' });
     check('setup: opp holds priority after your pass',
       ENGINE.expectedActor() === 'opp', 'actor=' + ENGINE.expectedActor());
-    // Opp pings your creature with the Sorcerer. A3-2: the ping takes a
-    // kind:'ability' stack entry; the push wipes your stale pass.
     ENGINE.executeAction('opp', { type: 'activateAbility', cardIid: sorcerer.iid, abilityIdx: 0,
       targets: [{ kind: 'creature', iid: myCreature.iid, label: myCreature.name }] });
     check('the ping is ON THE STACK (not yet resolved)',
@@ -95,9 +79,7 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['llanowar_elves'] || !CARD
     check('KEY: you can actually respond (bolt is castable)',
       ENGINE.isLegalAction('you', { type: 'castSpell', cardIid: bolt.iid,
         targets: [{ kind: 'creature', iid: sorcerer.iid, label: sorcerer.name }] }));
-    // Decline: the ping resolves (opp auto-passes after you — sorcerer
-    // tapped, nothing else to do), and you get a FRESH round on the
-    // post-resolution board.
+    // Decline: opp auto-passes (sorcerer tapped, nothing else to do).
     ENGINE.executeAction('you', { type: 'pass' });
     check('the ping resolved after the window (your creature has 1 damage)',
       myCreature.damage === 1 && G.stack.length === 0,
@@ -105,7 +87,6 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['llanowar_elves'] || !CARD
     check('KEY: you hold priority again on the post-resolution board (round reset)',
       ENGINE.expectedActor() === 'you' && G.phase === 'MAIN1',
       'actor=' + ENGINE.expectedActor() + ' phase=' + G.phase);
-    // Round still closes normally once you genuinely pass again (no stall).
     ENGINE.executeAction('you', { type: 'pass' });
     check('after your fresh pass the phase advances (no infinite round)',
       G.phase !== 'MAIN1', 'phase=' + G.phase);
@@ -124,8 +105,7 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['llanowar_elves'] || !CARD
     G.opp.battlefield.push(sorcerer);
     const bolt = mk('lightning_bolt', 'you');
     G.you.hand.push(bolt);
-    // Drive the real machine to the post-blocks priority round.
-    ENGINE.executeAction('you', { type: 'pass' });           // MAIN1: you pass
+    ENGINE.executeAction('you', { type: 'pass' });
     ENGINE.executeAction('opp', { type: 'pass' });           // MAIN1 closes
     ENGINE.executeAction('you', { type: 'declareAttackers', cardIids: [atk.iid] });
     ENGINE.executeAction('you', { type: 'pass' });           // post-attack window
@@ -134,9 +114,7 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['llanowar_elves'] || !CARD
     check('setup: post-blocks priority round open in COMBAT_BLOCK',
       G.phase === 'COMBAT_BLOCK' && ENGINE.expectedActor() === 'you',
       'phase=' + G.phase + ' actor=' + ENGINE.expectedActor());
-    ENGINE.executeAction('you', { type: 'pass' });           // attacker passes
-    // Defender pings the attacker before damage. A3-2: the ping stacks; the
-    // attacker gets a window BEFORE it even resolves.
+    ENGINE.executeAction('you', { type: 'pass' });
     ENGINE.executeAction('opp', { type: 'activateAbility', cardIid: sorcerer.iid, abilityIdx: 0,
       targets: [{ kind: 'creature', iid: atk.iid, label: atk.name }] });
     check('the ping is ON THE STACK (attacker undamaged so far)',
@@ -149,7 +127,7 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['llanowar_elves'] || !CARD
       && ENGINE.isLegalAction('you', { type: 'castSpell', cardIid: bolt.iid,
         targets: [{ kind: 'creature', iid: sorcerer.iid, label: sorcerer.name }] }),
       'actor=' + ENGINE.expectedActor());
-    // Decline: the ping resolves (opp auto-passes — sorcerer tapped).
+    // Decline: opp auto-passes (sorcerer tapped).
     ENGINE.executeAction('you', { type: 'pass' });
     check('the ping resolved on the attacker', atk.damage === 1, 'damage=' + atk.damage);
     check('KEY: STILL no combat damage (fresh round on the post-resolution board)',
@@ -160,7 +138,6 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['llanowar_elves'] || !CARD
       && ENGINE.isLegalAction('you', { type: 'castSpell', cardIid: bolt.iid,
         targets: [{ kind: 'creature', iid: sorcerer.iid, label: sorcerer.name }] }),
       'actor=' + ENGINE.expectedActor());
-    // Decline; combat damage then resolves normally.
     ENGINE.executeAction('you', { type: 'pass' });
     check('after the fresh pass, combat damage resolves (unblocked attacker connects)',
       G.opp.life === 18, 'opp.life=' + G.opp.life);
@@ -177,20 +154,16 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['llanowar_elves'] || !CARD
     const oppAnchor = mk('prodigal_sorcerer', 'opp');
     const elves = mk('llanowar_elves', 'opp');
     G.opp.battlefield.push(oppAnchor, elves);
-    ENGINE.executeAction('you', { type: 'pass' });           // you pass; opp holds
+    ENGINE.executeAction('you', { type: 'pass' });
     check('setup: opp holds priority after your pass',
       ENGINE.expectedActor() === 'opp' && G.phase === 'MAIN1',
       'actor=' + ENGINE.expectedActor() + ' phase=' + G.phase);
-    // Opp taps the Elves (mana ability): no reset — your stale pass stays
-    // on the books.
     ENGINE.executeAction('opp', { type: 'activateAbility', cardIid: elves.iid, abilityIdx: 0 });
     check('mana ability resolved (opp has {G} floating)',
       G.opp.mana.G === 1, 'G=' + G.opp.mana.G);
     check('still MAIN1, opp still holds (a mana tap closes nothing by itself)',
       G.phase === 'MAIN1' && ENGINE.expectedActor() === 'opp',
       'phase=' + G.phase + ' actor=' + ENGINE.expectedActor());
-    // Opp now passes: with the mana exemption, your stale pass still counts —
-    // the round closes immediately (no re-offer to you in MAIN1).
     ENGINE.executeAction('opp', { type: 'pass' });
     check('mana ability did not reset the round: opp\'s pass closed MAIN1 on your stale pass',
       G.phase === 'COMBAT_ATTACK', 'phase=' + G.phase);

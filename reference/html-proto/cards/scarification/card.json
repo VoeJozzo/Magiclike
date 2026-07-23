@@ -1,5 +1,6 @@
 {
   "card_id": "scarification",
+  "boss": true,
   "art": "art.png",
   "cost": {
     "B": 2,
@@ -17,7 +18,6 @@
     }
   ],
   "name": "Scarification",
-  "special": true,
   "types": [
     "Sorcery"
   ]

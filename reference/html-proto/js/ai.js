@@ -1,13 +1,13 @@
 // AI — pure decision-maker. Swap by replacing `decide` with same signature.
 
-// §7b coverage (cast path): every EFFECTS kind must be classified for the AI's
+// Coverage (cast path): every EFFECTS kind must be classified for the AI's
 // per-target cast scorer (scoreSpellTargetForMode) — either it has a scoring
 // branch (TARGET_SCORED), or it is consciously NOT target-scored (untargeted, a
 // rider on a multi-effect spell, or scored via a different decision path).
 // effectCoverageReport() (engine.js) checks this partition is exhaustive +
 // disjoint over Object.keys(EFFECTS), the same way it checks valuation/card-text.
-// This is what turns "added a targeted effect kind, forgot the cast scorer"
-// (the bug that hid the bosses' removal + mind control) from silent to caught.
+// This turns "added a targeted effect kind, forgot the cast scorer" from
+// silent to caught.
 // Declared at module scope (outside the AI IIFE) so the coverage report can read
 // them. Keep them in sync with the if-chain in scoreSpellTargetForMode.
 const TARGET_SCORED_KINDS = new Set([
@@ -30,15 +30,14 @@ const NOT_TARGET_SCORED_KINDS = new Set([
   'apply_in_game_splice',  // Stapler ability (player-UI-driven), not AI-scored
 ]);
 
-// AI spell valuation — RELOCATED from engine.js (review #6 — engine/AI layering).
+// AI spell valuation — pure AI heuristics; the engine consumes none of them.
 // These read only shared/exported helpers (`ENGINE.sevToNum`, `TOKENS`,
-// `ENGINE.getModes`) and
-// are pure AI heuristics; the engine consumes none of them. Declared at module
+// `ENGINE.getModes`). Declared at module
 // scope (outside the AI IIFE) so effectCoverageReport (engine.js) can read the
 // classification sets lazily and tests can reach them via `AI.*`.
 
-// Score a sorcery by best mode. Flash spells (incl. retired-Instant cards) get
-// a flexibility premium — they can be held up for an instant-speed response.
+// Flash spells (incl. retired-Instant cards) get a flexibility premium — they
+// can be held up for an instant-speed response.
 function spellValue(card) {
   const modes = ENGINE.getModes ? ENGINE.getModes(card) : [card.effects || []];
   let bestModeValue = 0;
@@ -65,7 +64,6 @@ function spellValueForEffects(effects) {
         v += sev === 1 ? 3 : sev === 2 ? 4 : sev === 3 ? 12 : 15;
       }
     }
-    // damage with a mass scope values like the legacy damageAll.
     else if (e.kind === 'damage') v += (e.scope === 'all_creatures') ? (8 + (e.amount || 0) * 2) : (6 + (e.amount || 0));
     else if (e.kind === 'chooses') v += 6;   // edict idiom (target(player)→chooses→sacrifice)
     else if (e.kind === 'sacrifice') v += 0;
@@ -78,7 +76,7 @@ function spellValueForEffects(effects) {
     }
     else if (e.kind === 'apply_in_game_splice') v += 18;   // 2-for-1 with cross-game retention
     else if (e.kind === 'move_card') {
-      // Collapsed draw (library→hand controller_top) / searchCreature
+      // draw (library→hand controller_top) / searchCreature
       // (library→hand library_search) / searchLandTapped (library→battlefield) /
       // shuffleIntoLibrary (battlefield→library) / returnFromGraveyard
       // (graveyard→hand) / flicker (battlefield→exile then exile→battlefield) —
@@ -94,7 +92,7 @@ function spellValueForEffects(effects) {
       else if (e.from_zone === 'exile' && e.to_zone === 'battlefield') v += 0;  // flicker return
       else v += 3;
     }
-    // §3.8: apply_sticker (cost_mod / set_color / stat_boost snapshot) — the
+    // apply_sticker (cost_mod / set_color / stat_boost snapshot) — the
     // Balancer family's persistent-tax half. Valued so embargo/bleach keep
     // their pre-decomposition value alongside the move_card half.
     else if (e.kind === 'apply_sticker') {
@@ -109,11 +107,9 @@ function spellValueForEffects(effects) {
     else if (e.kind === 'gain_life') v += (e.amount || 0) < 0 ? (3 + Math.abs(e.amount) * 2) : 1;
     else if (e.kind === 'schedule_delayed') v += 1;  // exile_until_eot's return tail (the bf→exile half carries the value)
     else if (e.kind === 'pump') v += (e.power < 0 || e.toughness < 0) ? (3 + Math.abs(e.toughness || 0)) : 2;
-    // A7-2: mirror engine.js abilityValue's add_counter case (3 + P + T), floored
-    // at >=1 (Joe) so an UNTARGETED counter spell is never valued 0 and the AI at
-    // least tries to cast it. Was a dead branch — VALUED-claimed but with no
-    // cast-scorer entry (effectCoverageReport's unscoredValuation now probes for
-    // exactly this class).
+    // Mirrors engine.js abilityValue's add_counter case (3 + P + T), floored
+    // at >=1 so an UNTARGETED counter spell is never valued 0 and the AI at
+    // least tries to cast it.
     else if (e.kind === 'add_counter') v += Math.max(1, 3 + (e.power || 0) + (e.toughness || 0));
     else if (e.kind === 'grant_keyword') {
       // mass-yours-eot Overrun-shape vs single-target permanent vs symmetric.
@@ -144,7 +140,7 @@ function spellValueForEffects(effects) {
   return v;
 }
 
-// §7b coverage assertion (plan-effects-refactor §8.1): every kind in the
+// Coverage assertion: every kind in the
 // EFFECTS dispatch table must be CLASSIFIED for AI valuation — either it has a
 // real scoring branch (spellValueForEffects / abilityValue), or it is
 // consciously unscored. This partition makes the silent-regression class loud:
@@ -173,11 +169,9 @@ const AI = (function() {
 
 // Resolve a castSpell action's card from the hand OR from a cast-permission
 // zone (e.g. a card exiled by Seal-Thief Courier with "you may cast it this
-// turn"). getLegalActions emits castSpell actions for both, but the decision
-// paths used to look only in hand — making permitted exile cards invisible to
-// the AI (it never cast what it stole). Reads the PASSED state, not the global
-// G, so it stays correct under simulation snapshots (a clone without
-// castPermissions just resolves hand-only).
+// turn"). getLegalActions emits castSpell actions for both. Reads the PASSED
+// state, not the global G, so it stays correct under simulation snapshots (a
+// clone without castPermissions just resolves hand-only).
 function findCastableCard(state, who, iid) {
   const inHand = state[who].hand.find(c => c.iid === iid);
   if (inHand) return inHand;
@@ -243,7 +237,7 @@ function decide(state, who) {
     return {type: 'numberChoice', number: Math.max(p.min, Math.min(p.max, n))};
   }
 
-  // Symmetricize: pick MAX of (power, toughness, cost). Yields the biggest body.
+  // Yields the biggest body.
   if (state.pendingSymmetricizeChoice && state.pendingSymmetricizeChoice.who === who) {
     const v = state.pendingSymmetricizeChoice.values;
     let which = 'power', best = v.power;
@@ -252,9 +246,6 @@ function decide(state, who) {
     return {type:'symmetricizeChoice', which};
   }
 
-  // Edict forced-sacrifice (GAP 2): pick the lowest sac-value permanent —
-  // mirrors the engine's former auto-pick, so AI-vs-AI edicts resolve
-  // identically to before the human-prompt path existed.
   if (state.pendingEdictChoice && state.pendingEdictChoice.who === who) {
     const pool = state.pendingEdictChoice.pool;
     let bestIid = pool.length ? pool[0].iid : null, bestVal = Infinity;
@@ -302,7 +293,6 @@ function decide(state, who) {
     return decideBlockers(state, who);
   }
 
-  // Priority: stack non-empty → reaction; main phase → main; off-turn combat → reactive.
   if (state.priority && state.priorityHolder === who) {
     if (state.stack.length > 0) {
       return decideReaction(state, who, actions);
@@ -457,10 +447,9 @@ function decideEndStepFlash(state, who, actions) {
 // Returns true if `card` has a mandatory ETB-bounce trigger whose only
 // valid target would be itself (self-bounce wastes the cast). Also catches
 // the broader case where the only valid bounce targets are our own creatures
-// we don't want to bounce — for the current pool we treat "no opp creature
-// to bounce" as the disqualifier; future cards (a self-bounce-for-protection
-// trigger, e.g.) might want a different rule. Conservative by design — only
-// fizzles flash casts when there's clearly nothing good to bounce.
+// we don't want to bounce — treats "no opp creature to bounce" as the
+// disqualifier. Conservative by design — only fizzles flash casts when
+// there's clearly nothing good to bounce.
 function flashETBWouldFizzle(state, who, card) {
   const triggers = card.triggers || [];
   for (const trig of triggers) {
@@ -509,7 +498,6 @@ function decideMain(state, who, actions) {
     if (!spellsByCard.has(a.cardIid)) spellsByCard.set(a.cardIid, []);
     spellsByCard.get(a.cardIid).push(a);
   }
-  // Curve-up: biggest playable first. Flash-hold: vanilla flash bodies deferred to off-turn.
   // findCastableCard (not hand.find): cast-permission cards (exile steals)
   // must stay candidates, or the AI never casts what it stole.
   const candidateCards = Array.from(spellsByCard.keys()).map(iid => ({
@@ -537,7 +525,7 @@ function decideMain(state, who, actions) {
   }
   if (bestPlay) return bestPlay;
 
-  // Activated abilities. Skip reserved-burn sources (part of the lethal line).
+  // Skip reserved-burn sources (part of the lethal line).
   let abilityActs = actions.filter(a => a.type === 'activateAbility');
   if (reservedBurnIids) {
     abilityActs = abilityActs.filter(a => !reservedBurnIids.has(a.cardIid));
@@ -610,7 +598,6 @@ function computeReservedBurnForLethal(state, who) {
   return null;
 }
 
-// Single-spell lethal — one burn source ≥ opp life.
 function findBurnLethal(state, who, actions) {
   const oppLife = state[opp(who)].life;
   if (oppLife <= 0) return null;
@@ -618,7 +605,7 @@ function findBurnLethal(state, who, actions) {
   return killer ? killer.action : null;
 }
 
-// Best land = the one that fixes us. Score producible colors against hand needs.
+// Best land = the one that fixes us.
 function pickBestLand(state, who, landActs) {
   if (landActs.length === 1) return landActs[0];
   const p = state[who];
@@ -712,7 +699,6 @@ function simulateCombat(state, attackerWho, attackerIids, blockMap) {
     if (!blockedByAtk[aIid]) blockedByAtk[aIid] = [];
     blockedByAtk[aIid].push(bIid);
   }
-  // Make sure every attacker and blocker has a working copy.
   for (const aIid of attackerIids) snap(aIid);
   for (const aIid of Object.keys(blockedByAtk)) {
     for (const bIid of blockedByAtk[aIid]) snap(bIid);
@@ -732,11 +718,9 @@ function simulateCombat(state, attackerWho, attackerIids, blockMap) {
       const w = snap(bIid); if (w) allCombatants.push(w.card);
     }
   }
-  // A2-1 lockstep: snapshot first-strike membership once, mirroring
-  // resolveCombatDamage's damage-start snapshot. Within this simulation the
-  // working copies' keywords never mutate between strikes (no lord-death
-  // revocation is simulated), so this is shape-parity with the engine, not
-  // a behavior change here.
+  // Snapshot first-strike membership once, mirroring resolveCombatDamage's
+  // damage-start snapshot. Working copies' keywords never mutate between
+  // strikes here (no lord-death revocation is simulated).
   const fsIids = new Set(
     allCombatants.filter(c => c.keywords.includes('first_strike')).map(c => c.iid)
   );
@@ -789,14 +773,13 @@ function simulateCombat(state, attackerWho, attackerIids, blockMap) {
       for (const wBlk of orderedBlockers) {
         const blk = wBlk.card;
         const [bPow, bTou] = ENGINE.getStats(blk);
-        // A2-7 (engine lockstep): 1 point of deathtouch damage is a lethal
+        // Engine lockstep: 1 point of deathtouch damage is a lethal
         // dose vs EVERY blocker, indestructible included (they're marked
-        // but survive — isDead keeps the immunity). Design ruling, PR #98,
-        // 2026-06-10.
+        // but survive — isDead keeps the immunity).
         const lethalNeeded = atkDeathtouch
           ? Math.min(1, Math.max(0, bTou - wBlk.damage))
           : Math.max(0, bTou - wBlk.damage);
-        // A2-2 (engine lockstep): lethalNeeded 0 ⇒ already satisfied — no
+        // Engine lockstep: lethalNeeded 0 ⇒ already satisfied — no
         // damage assigned, trample carryover not suppressed.
         if (atkDeals && remaining >= lethalNeeded) {
           if (lethalNeeded > 0) {
@@ -824,8 +807,7 @@ function simulateCombat(state, attackerWho, attackerIids, blockMap) {
           unsatisfied[0].damage += remaining;
           if (atk.keywords.includes('lifelink')) attackerLifeGain += remaining;
         } else if (atk.keywords.includes('lifelink')) {
-          // A2-7 (engine lockstep): wasted overkill still gains lifelink —
-          // full power. Design ruling, PR #98, 2026-06-10.
+          // Engine lockstep: wasted overkill still gains lifelink — full power.
           attackerLifeGain += remaining;
         }
       }
@@ -917,7 +899,6 @@ function combatBuffSwingValue(state, who, sourceIid, buffPow, buffTou) {
   // valuable but smaller than saving the source's life.
   let swing = 0;
   if (wasDying && !stillDying) swing += 15;   // saved the source — huge
-  // Source was attacking and now kills more blockers (or attacker now dies less)
   let extraBlockerKills = 0;
   for (const bIid of after.deadBlockers) {
     if (!before.deadBlockers.has(bIid)) extraBlockerKills++;
@@ -1334,8 +1315,8 @@ function scoreMultiTargetSpell(state, who, card, targets, modeIdx) {
   }
   if (slotsUsed.size === 0) {
     if (hasFight) return fightScore;
-    // New model (§3.5): a top-level `target` step (bare effects) is a single
-    // target — score it like the legacy single-target path.
+    // A top-level `target` step (bare effects) is a single target — score
+    // it like the single-target path.
     if (card.target) return scoreSpellTargetForMode(state, who, card, targets[0], modeIdx);
     return 0;
   }
@@ -1501,8 +1482,8 @@ function scoreSpellTarget(state, who, card, target) {
 function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
   const us = who, them = opp(who);
   const modeEffects = ENGINE.effectsForMode(card, modeIdx);
-  // Legacy: the targeted effect carries its own `target`. New model (§3.5): a
-  // top-level `target` step on the card, with bare effects — value the first
+  // Some effects carry their own `target`; others rely on a top-level
+  // `target` step on the card, with bare effects — value the first
   // target-operating effect (skip chooses(), mass-scoped effects, and the
   // apply_sticker rider so embargo/bleach score their move_card removal half,
   // not the persistent-tax sticker).
@@ -1677,9 +1658,8 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     if (!c) return -100;
     const buffPow = eff.power || 0;
     const buffTou = eff.toughness || 0;
-    // Negative deltas = weaken (debuff): target OPP creatures, not our own
-    // (collapsed from the legacy `weaken` kind, decision 3). buffTou is the
-    // signed delta (e.g. -2).
+    // Negative deltas = weaken (debuff): target OPP creatures, not our own.
+    // buffTou is the signed delta (e.g. -2).
     if (buffPow < 0 || buffTou < 0) {
       if (c.controller === us) return -100;            // never weaken our own
       if (c.card.keywords.includes('hexproof')) return -100;
@@ -1735,7 +1715,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     if (!c) return -100;
     // Negative-keyword grants (defender) — only cast on opp creatures.
     // Positive keywords (flying, haste, etc) — only cast on our own.
-    // For now Bindspeaker grants defender; broaden when we add others.
+    // Bindspeaker grants defender.
     const kw = eff.keyword;
     const isDebuff = (kw === 'defender' || kw === 'no_block');
     if (isDebuff && c.controller === us) return -100;
@@ -1788,7 +1768,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     return 8 + ENGINE.getCardValue(card, 'play');
   }
   if (eff.kind === 'move_card') {
-    // Collapsed discard (hand→graveyard) targeting a player — duress/mind_rot.
+    // discard (hand→graveyard) targeting a player — duress/mind_rot.
     // Only worth aiming at the opponent; value scales with cards stripped.
     if (eff.from_zone === 'hand' && eff.to_zone === 'graveyard') {
       if (target.kind !== 'player' || target.who !== them) return -100;
@@ -1796,7 +1776,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
       if (handSize === 0) return -100;
       return Math.min(eff.amount || 1, handSize) * 8 + 4;
     }
-    // Collapsed returnFromGraveyard / shuffleIntoLibrary — value at parity.
+    // returnFromGraveyard — graveyard→hand recursion.
     if (eff.from_zone === 'graveyard' && eff.to_zone === 'hand') {
       if (target.kind !== 'graveyard_card') return -100;
       const grave = state[target.controller || us].graveyard || [];
@@ -1815,7 +1795,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     }
     if (eff.from_zone === 'battlefield' && eff.to_zone === 'exile'
         && modeEffects.some(e => e.kind === 'schedule_delayed')) {
-      // Collapsed exile_until_eot (exile now + a scheduled return at EOT).
+      // exile_until_eot (exile now + a scheduled return at EOT).
       //   1. Opp's creature → tempo removal (off the board for a turn).
       //   2. Own creature → delayed flicker (re-fire ETB at EOT).
       if (target.kind !== 'creature') return -100;
@@ -1837,13 +1817,11 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     }
     if (eff.from_zone === 'battlefield' && eff.to_zone === 'exile'
         && modeEffects.some(e => e.kind === 'move_card' && e.from_zone === 'exile' && e.to_zone === 'battlefield')) {
-      // Collapsed flicker (exile + immediate return). Flickering only makes
-      // sense on our own creatures. Best targets:
+      // flicker (exile + immediate return). Best targets:
       //   1. ETB-trigger creatures we want to re-fire (Wall of Omens, Grave
       //      Digger) — high value, the whole point of flicker.
       //   2. Damaged creatures about to die — flicker resets damage.
-      // Avoid flickering tokens (they cease to exist) and creatures that lose
-      // ongoing benefit from staying put (counters).
+      // Permanent counters don't survive the round-trip, so subtract them below.
       if (target.kind !== 'creature') return -100;
       const c = ENGINE.findCard(target.iid);
       if (!c || c.controller !== us) return -100;
@@ -1859,7 +1837,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     }
     if (eff.from_zone === 'battlefield' && eff.to_zone === 'hand') {
       // Bounce (embargo's removal half — the apply_sticker cost-tax rides
-      // along). Tempo removal on an opp creature; a bounced token ceases.
+      // along).
       if (target.kind !== 'creature') return -100;
       const c = ENGINE.findCard(target.iid);
       if (!c || c.controller === us) return -100;
@@ -1887,11 +1865,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
 }
 
 function pickBestActivation(state, who, abilityActs) {
-  // Score each activation. Same-shape logic as spells. Handles all effect
-  // kinds an activated ability might have. Untargeted self-pumps, draws,
-  // and discards used to fall through to score 0 (silently never activated)
-  // — the audit caught this as a real AI dead zone for cards like Shivan
-  // Dragon's pump, Archmage of Veils, and Merfolk Looter.
+  // Score each activation. Same-shape logic as spells.
   const scored = abilityActs.map(act => {
     const card = state[who].battlefield.find(c => c.iid === act.cardIid);
     if (!card) return {act, score: -100};
@@ -1928,9 +1902,6 @@ function pickBestActivation(state, who, abilityActs) {
         const toSelf = !t || (t.kind === 'player' && t.who === who);
         score = toSelf ? (state[who].life <= 10 ? 2 + amt : -2) : -100;
       }
-    } else if (eff.kind === 'damage' && eff.target === 'player' && !act.targets) {
-      // Drain-tax abilities (legacy damage-to-player shape).
-      score = 8;
     } else if (eff.kind === 'affect_creature' && act.targets) {
       const t = act.targets[0];
       if (t.kind === 'creature') {
@@ -1969,7 +1940,7 @@ function pickBestActivation(state, who, abilityActs) {
       score = isSelf ? -50 : 8;
     } else if (eff.kind === 'move_card' && eff.from_zone === 'library'
         && (eff.to_zone === 'battlefield' || (eff.to_zone === 'hand' && eff.selector === 'library_search'))) {
-      // Tutoring / land-fetch is consistently strong (collapsed search*).
+      // Tutoring / land-fetch is consistently strong.
       score = 8;
     } else if (eff.kind === 'move_card' && eff.from_zone === 'graveyard' && eff.to_zone === 'hand') {
       // Recall a creature card from our graveyard to hand (Hymnwright's verse
@@ -2054,8 +2025,8 @@ function pickBestActivation(state, who, abilityActs) {
 
 return {
   decide,
-  // Spell valuation relocated from engine.js (review #6) — exposed for tests
-  // (test_ai_targeting, test_effect_coverage) and the engine coverage report.
+  // Spell valuation — exposed for tests (test_ai_targeting, test_effect_coverage)
+  // and the engine coverage report.
   spellValueForEffects, VALUED_EFFECT_KINDS, UNVALUED_EFFECT_KINDS,
 };
 })();

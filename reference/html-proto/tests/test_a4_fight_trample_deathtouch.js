@@ -1,18 +1,12 @@
-// Audit A4-9 — non-combat trample scope (design ruling, option A):
+// Design ruling — non-combat trample scope:
 //
-//   - SPELL effect damage from a trample source still spills the excess to
-//     the damaged creature's controller (deliberate design — trample
-//     stickers are offered to damaging sorceries and only do anything via
-//     this branch). PINNED here; previously you could delete the whole spill
-//     and the suite stayed green.
+//   - Trample stickers are offered to damaging sorceries; this SPELL-damage
+//     branch is the only place they do anything.
 //   - FIGHT damage does NOT spill: a fight is two creatures dealing power
 //     damage to each other (the fight cards' own text), not a trampling
 //     attack — the fight handler's intent comment lists deathtouch/lifelink
 //     and deliberately omits trample. Canon §902.2 defines trample for
-//     combat; the fight-path spill was collateral from the shared
-//     applyDamageFrom plumbing.
-//   - Deathtouch DOES ride fight damage (victim-mark) — also previously
-//     unfenced (mutation-dark).
+//     combat.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -68,7 +62,6 @@ console.log('\n=== pinned design: SPELL effect damage from a trample source stil
   const G = newGame();
   const raider = mk('goblin_raider', 'opp');   // 2/1
   G.opp.battlefield.push(raider);
-  // A damaging sorcery wearing the trample sticker (the live design route).
   const spell = { name: 'Trample Bolt', keywords: ['trample'] };
   const ctx = { controller: 'you', sourceName: 'Trample Bolt', sourceIid: null, sourceCard: spell };
   ENGINE.applyEffect(ctx, { kind: 'damage', amount: 5 }, { kind: 'creature', iid: raider.iid });

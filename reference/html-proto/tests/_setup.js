@@ -12,12 +12,6 @@
 //                  After return, ENGINE / AI / RUN / DRAFT / CARDS /
 //                  STICKERS / CONTROLLER / PICKLOG are on `global`.
 //                  Idempotent — second call is a no-op.
-//
-// History: the previous-session test bundle (see ../../../docs/...) read
-// a monolithic magiclike_engine.html and regex-extracted its single
-// <script> block. After the multi-file refactor (v1.0.129+) the HTML
-// loads modules via <script src=...> tags, so we concatenate them here
-// in the same order as magiclike_engine.html lines 522-530.
 
 const fs = require('fs');
 const path = require('path');
@@ -35,6 +29,7 @@ const ENGINE_FILES = [
   'engine.js',
   'card-text.js',
   'stickers.js',
+  'buckets.js',
   'ai.js',
   'draft.js',
   'run.js',
@@ -42,6 +37,7 @@ const ENGINE_FILES = [
   'controller.js',
   'render.js',
   'settings-panel.js',
+  'constellation.js',
   'triggers.js',
   'trigger-generator.js',
   'main.js',
@@ -130,10 +126,10 @@ function installDomStubs() {
 // and run.js / draft.js / picklog.js for their respective IIFE exports.
 const EXPOSED = [
   // Public module objects (top of each .js file).
-  'ENGINE', 'AI', 'RUN', 'DRAFT', 'CARDS', 'STICKERS',
+  'ENGINE', 'AI', 'RUN', 'DRAFT', 'CARDS', 'STICKERS', 'BUCKETS',
   // §7b cast-path coverage sets (ai.js module scope).
   'TARGET_SCORED_KINDS', 'NOT_TARGET_SCORED_KINDS',
-  'CONTROLLER', 'PICKLOG', 'VERSION', 'Modal', 'RUN_MODIFIERS', 'SETTINGS',
+  'CONTROLLER', 'PICKLOG', 'VERSION', 'Modal', 'SETTINGS',
   // Card-load surface (cards.js, module-scope).
   'ingestCard', 'basicLandTypeColors',
   // tplId rename plumbing — exposed for tplid_renames_test.
@@ -145,12 +141,15 @@ const EXPOSED = [
   // exposed for the A3-13 condition-aliasing and A3-5 table-validation tests.
   'MERCURIAL_TRIGGER_POOL',
   'evalTriggerCondition',
-  // Composable-predicate surface (triggers.js, module-scope — Slice 2 / E2).
+  // Composable-predicate surface (triggers.js, module-scope).
   'ATOMIC_PREDICATES', 'evaluateCondition', '_parseCall',
   // Effect-shorthand parser (triggers.js, module-scope — §5.1/§5.2).
   '_parseEffectCall', 'desugarEffectString', 'normalizeCardEffects',
   'validateAllCardConditions', 'VALID_TRIGGER_EVENTS',
   'triggerArchetype', 'triggerSubtype', 'triggerFiresOnEnter',
+  // Live archetype table + signature fn (triggers.js, module-scope) — read
+  // directly by trigger_migration_test.
+  '_ARCHETYPE_BY_SIG', '_condSignature',
   'generateConditionOptions', 'generateEffectOptions', 'assembleTrigger',
   // Empower system (cards.js module-scope).
   'EMPOWER_FIELDS', 'isEmpowerableField', 'enumerateEmpowerTargets',
@@ -180,14 +179,14 @@ const EXPOSED = [
   'targetPhrase', 'withFilter', 'plainSeg', 'indefiniteArticle', 'manaCostBraces',
   'bumpedSeg', 'bumpedDerived',
   'segsToText', 'capitalize', 'capitalizeSegs',
-  'triggerPreamble', 'abilityCostPhrase', 'keywordPreamble',
-  // Unified type system (types.js, all module-scope, no IIFE — Phase 1).
+  'triggerPreamble', 'abilityCostPhrase',
+  // Unified type system (types.js, all module-scope, no IIFE).
   'TYPE_REGISTRY', 'typeRegistryEntry', 'typeCategory', 'isCardTypeTag',
   'typesOf', 'hasType', 'addType', 'subtypesOf', 'governingType',
-  'isPermanent', 'typeLine', 'typeLineParts',
+  'isPermanent', 'typeLine', 'typeLineParts', 'isUndraftable',
 ];
 
-// Card templates now live in cards/<tplId>/card.json. The browser-side
+// Card templates live in cards/<tplId>/card.json. The browser-side
 // loadCards() uses fetch() — useless in Node. Tests instead populate
 // CARDS synchronously from disk via fs.readFileSync, much faster than
 // awaiting a fetch loop and gives identical data.
@@ -214,7 +213,7 @@ function loadEngine() {
   _loaded = true;
   installDomStubs();
   let code = getSource();
-  // Strip the browser bootstrap. main.js now wraps CONTROLLER.init() in a
+  // Strip the browser bootstrap. main.js wraps CONTROLLER.init() in a
   // loadCards().then(...) so cards arrive before init. In Node we'll
   // populate CARDS ourselves and call nothing — leaving the .then chain
   // intact would invoke fetch(), which doesn't exist here.
@@ -243,13 +242,12 @@ function loadEngine() {
 
 // A1-4: a SINGLE source of truth for "get `who` to an open MAIN1 priority round".
 // 76 test files hand-write G.priority/priorityHolder/phase directly (249 sites);
-// the audit's rename experiment (G.priority -> G.prio) left 34/36 silently green
-// because their stale hand-writes were simply ignored by the engine. This helper
-// PREFERS driving the real machine (so a future rename breaks HERE, in one place,
-// and migrated tests regain their grip on the priority bookkeeping), with one
-// authoritative hand-written fallback for the forced-player case (where advancing
-// through the opponent's turn would disturb a test's bespoke board). The ~63
-// MAIN1-pose callers were migrated onto this (workflow, per-file verified); the
+// the engine ignores those stale hand-writes, so a field rename here can leave
+// such tests silently green. This helper PREFERS driving the real machine (so a
+// future rename breaks HERE, in one place, and migrated tests regain their grip
+// on the priority bookkeeping), with one authoritative hand-written fallback for
+// the forced-player case (where advancing through the opponent's turn would
+// disturb a test's bespoke board). The ~63 MAIN1-pose callers use this; the
 // COMBAT-posers use startCombat (below).
 function startMainPhase(who) {
   const ENGINE = global.ENGINE;

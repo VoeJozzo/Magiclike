@@ -1,9 +1,6 @@
-// §8.1 AI-valuation lockstep: the AI must value migrated (top-level target() +
-// bare effect) spells the same as the legacy per-effect-target shape. Before
-// the fix, scoreMultiTargetSpell/scoreSpellTargetForMode keyed off per-effect
-// `eff.target` and scored a bare-effect spell at 0 (AI would never cast it).
-// These cast a synthetic migrated bolt through AI.decide on a board where
-// casting is clearly correct.
+// §8.1: the AI must value migrated (top-level target() + bare effect) spells
+// the same as the legacy per-effect-target shape. These cast a synthetic
+// migrated bolt through AI.decide on a board where casting is clearly correct.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -14,13 +11,11 @@ function check(label, ok, info) {
   if (ok) pass++; else fail++;
 }
 
-// Migrated Lightning Bolt: top-level target() + bare damage (no per-effect target).
 CARDS._testBolt = { tplId: '_testBolt', name: 'Test Bolt', types: ['Instant'], cost: { R: 1 }, color: 'R', colors: ['R'], target: 'creature_or_player', effects: [{ kind: 'damage', amount: 3 }] };
 
 // A keyword-free vanilla so the AI's combat sim isn't skewed by flying/etc. when
 // the test overrides power/toughness — keeps the decision deterministic across
-// pool order (pre-id-normalization this happened to land on a vanilla; the
-// alphabetical reorder exposed the latent dependency on "no keywords").
+// pool order.
 const TOUGH = (() => {
   for (const [id, c] of Object.entries(CARDS)) {
     if (hasType(c, 'Creature') && (c.toughness || 0) >= 4 && !c.triggers && !c.abilities && !(c.keywords && c.keywords.length)) return id;
@@ -71,15 +66,13 @@ console.log('\n=== AI does NOT bolt its own creature ===');
   G.you.life = 20;
   aiMain(G, 'opp');
   const a = AI.decide(G, 'opp');
-  // It may cast at the player (face chip) but must NOT target its own creature.
+  // It may cast at the player (face chip).
   const targetsOwn = a && a.type === 'castSpell' && a.targets && a.targets[0] && a.targets[0].iid === own.iid;
   check('AI never targets its own creature', !targetsOwn);
 })();
 
-// §8.1 mass-valuation: a migrated mass spell (damage + scope) is recognized as
-// mass and held sensibly (the AI correctly holds a sweeper on its own
-// unpressured turn). The legacy damageAll kind has been removed (step 7), so
-// these now assert the new form's behavior + absolute values directly.
+// §8.1: a migrated mass spell (damage + scope) is recognized as mass and held
+// sensibly.
 CARDS._pyroNew = { tplId: '_pyroNew', name: 'Pyro New', types: ['Sorcery'], cost: { R: 2 }, color: 'R', colors: ['R'], effects: [{ kind: 'damage', amount: 2, scope: 'all_creatures' }] };
 
 function decidesToCast(tpl, setup) {
@@ -93,7 +86,6 @@ function decidesToCast(tpl, setup) {
 
 console.log('\n=== migrated mass-damage held when it would wreck only own board ===');
 (() => {
-  // AI's own creatures would die, opponent has none → holding is correct.
   const s = (G) => { for (let i = 0; i < 3; i++) { const c = mk(TOUGH, 'opp'); c.toughness = 2; c.power = 2; G.opp.battlefield.push(c); } };
   check('migrated mass-damage held (would only kill own)', decidesToCast('_pyroNew', s) === false);
 })();

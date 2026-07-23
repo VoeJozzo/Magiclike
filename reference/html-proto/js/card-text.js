@@ -2,7 +2,8 @@
 // Returns {text, highlight}[] segments — bumped values get highlight:true
 // (empower visual emphasis). describeCardText is the flat-string wrapper.
 // Cards with custom_text:true (Endomorph, Codex, Elystra) keep hand-authored text.
-// Sole ENGINE dependency: synthesizeStapledTemplate (guarded for load order).
+// ENGINE dependencies: sevToNum, plus addSubtypeKeywords and
+// synthesizeStapledTemplate (those two guarded for load order).
 
 const COLOR_NAMES = { W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green' };
 const NUM_WORDS = { 1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five' };
@@ -18,19 +19,17 @@ function escapeHtml(s) { return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','
 // (engine.js) and GENERATOR_EFFECTS / GENERATOR_CONDITIONS (trigger-
 // generator.js). The cardName is HTML-escaped because the result lands
 // in innerHTML — designer-authored templates may contain HTML (e.g.
-// future <b>emphasis</b>), but card names are display data that should
+// <b>emphasis</b>), but card names are display data that should
 // never be parsed as markup.
 function formatTriggerText(template, cardName) {
   return (template || '').replace(/~/g, escapeHtml(cardName || ''));
 }
 
-// eff.target → noun phrase. 'player' = "target opponent" for damage/discard, "target player" for gain_life.
 const STAT_PHRASE = { total_mana_cost: 'total mana cost' };
-// Compose the English for a `graveyard_card` target from its filter axes:
-// type/not_type/subtype (adjectives on "card"), `select` (a superlative clause),
-// and `graveyards` (which yards). A superlative names its comparison pool with
-// "among …"; a plain restriction names a location with "from …". Always "target":
-// even a superlative leaves a choice when several cards tie for the extreme.
+// Compose the English for a `graveyard_card` target from its filter axes.
+// A superlative names its comparison pool with "among …"; a plain restriction
+// names a location with "from …". Always "target": even a superlative leaves
+// a choice when several cards tie for the extreme.
 function graveyardCardPhrase(filter) {
   filter = filter || {};
   let core = 'card';
@@ -68,14 +67,13 @@ function targetNoun(eff) {
   if (t === 'opp')    return 'target opponent';
   if (t === 'player') return 'target player';
   if (t === 'creature') return 'target creature';
-  // New target() taxonomy (§3.5).
   if (t === 'creature_or_player') return 'any target';
   if (t === 'your_creature') return 'target creature you control';
   if (t === 'opp_creature') return 'target creature an opponent controls';
   if (t === 'graveyard_card') return 'target card';  // detail composed by graveyardCardPhrase (see withFilter)
   if (t === 'permanent')return 'target permanent';
   if (t === 'spell')    return 'target spell';
-  if (t === 'card')     return 'target card';
+  if (t === 'permanent_or_spell') return 'target permanent or spell';
   return t || '';
 }
 
@@ -119,7 +117,6 @@ function searchFilterNoun(filter, includeCard) {
   if (!filter) return 'card';
   if (typeof filter === 'string') return filter.toLowerCase() + suffix;
   if (filter.subtype) return filter.subtype.toLowerCase() + suffix;
-  if (filter.sub) return filter.sub.toLowerCase() + suffix;
   if (filter.type) return filter.type.toLowerCase() + suffix;
   return 'card';
 }
@@ -148,7 +145,6 @@ function describeAmount(amount) {
       target_toughness: "the target's toughness",
       source_power:     "this creature's power",
       source_toughness: "this creature's toughness",
-      mana_spent:       'mana spent on it',
     };
     return dynMap[amount.from] || ('X (' + amount.from + ')');
   }
@@ -211,8 +207,7 @@ function signedStat(field, eff, tplEff, negZero) {
 // card.text instead. effectCoverageReport (engine.js) skips these when
 // checking for the "[kind]" debug sentinel, so a kind belongs here ONLY if
 // it genuinely has no standalone describeEffect text — a member that grows
-// a real case must leave the set, or the coverage guard stops guarding it
-// (audit A10-8: apply_sticker drifted in exactly this way and was removed).
+// a real case must leave the set, or the coverage guard stops guarding it.
 //   steal         — internal; dispatched by change_control (which has text)
 //   annihilate    — its case returns [] by design; the rip/edict chain
 //                   renders the whole phrase
@@ -238,7 +233,6 @@ function describeEffect(eff, tplEff) {
     case 'gain_life':
       if (typeof eff.amount === 'object' && eff.amount && eff.amount.from) {
         const owner = (eff.who && eff.who.from === 'target_controller') ? "its controller" : 'you';
-        // Conjugate by subject (audit A10-5): "you gain", "its controller gains".
         const verb = owner === 'you' ? ' gain life equal to ' : ' gains life equal to ';
         return [plainSeg(owner + verb + describeAmount(eff.amount))];
       }
@@ -305,16 +299,15 @@ function describeEffect(eff, tplEff) {
       return [plainSeg('put a +'), pSeg, plainSeg('/+'), tSeg, plainSeg(tail)];
     }
     case 'grant_keyword': {
-      // 'eot' → EOT text; targeted → "as long as on bf" (source-tied); self → no duration.
       let dur;
       if (eff.duration === 'eot') {
         dur = ' until end of turn';
       } else if (eff.target === 'creature' || eff.target === 'your_creature' || eff.target === 'opp_creature'
                  || eff.scope === 'all_yours' || eff.scope === 'all_creatures') {
         // Non-eot grants are source-linked (applyGrant tracks the source iid;
-        // the keyword falls off when the source leaves play). The §3.5 migration
-        // renamed the target 'creature'→'your_creature'/'opp_creature', which
-        // had silently dropped this phrase.
+        // the keyword falls off when the source leaves play). 'creature' must
+        // stay alongside 'your_creature'/'opp_creature' here — dropping it
+        // silently omits this phrase.
         dur = ' as long as this is on the battlefield';
       } else {
         dur = '';
@@ -366,25 +359,28 @@ function describeEffect(eff, tplEff) {
     }
     case 'move_card': {
       // Generic card-movement primitive → English for the common collapsed
-      // idioms (matches the legacy kinds' phrasing for parity).
+      // idioms; phrasing must match each idiom's established form.
       const fz = eff.from_zone, tz = eff.to_zone;
-      if (fz === 'library' && tz === 'hand' && eff.selector === 'library_search') {  // collapsed searchCreature
+      if (fz === 'library' && tz === 'hand' && eff.selector === 'library_search') {
+        // "draw it", not "put it into your hand" — the house ruling defines
+        // drawing as ANY library→hand move, so tutor text uses the draw verb
+        // and draw-matters cards (curious_faerie) read consistently with
+        // what actually triggers.
         const noun = searchFilterNoun(eff.filter, true);
-        return [plainSeg('search your library for ' + indefiniteArticle(noun) + ' ' + noun + ' and put it into your hand')];
+        return [plainSeg('search your library for ' + indefiniteArticle(noun) + ' ' + noun + ' and draw it')];
       }
-      if (fz === 'library' && tz === 'battlefield') {  // collapsed searchLandTapped (auto fetch)
+      if (fz === 'library' && tz === 'battlefield') {
         // Derive the fetched-card noun from the filter (subtype > type > "card"),
         // mirroring the fetch-to-hand case above — a {type:'Land'} filter is "a
-        // land", not the old hardcoded "basic land" (which was narrower than the
-        // filter and drifted from what the card actually does).
+        // land".
         const noun = searchFilterNoun(eff.filter, false);
         return [plainSeg('search your library for ' + indefiniteArticle(noun) + ' ' + noun + ' and put it onto the battlefield' + ((eff.post && eff.post.tap) ? ' tapped' : ''))];
       }
-      if (fz === 'library' && tz === 'hand') {  // collapsed draw
+      if (fz === 'library' && tz === 'hand') {
         if (eff.amount === 1) return [plainSeg('draw a card')];
         return [plainSeg('draw '), amtSeg, plainSeg(' cards')];
       }
-      if (fz === 'hand' && tz === 'graveyard') {  // collapsed discard
+      if (fz === 'hand' && tz === 'graveyard') {
         if (eff.target === 'player' || eff.target === 'opp') {
           if (eff.amount === 1) return [plainSeg(t + ' discards a card')];
           return [plainSeg(t + ' discards '), amtSeg, plainSeg(' cards')];
@@ -423,8 +419,7 @@ function describeEffect(eff, tplEff) {
       const pt = (eff.power || eff.toughness) ? (eff.power || 0) + '/' + (eff.toughness || 0) + ' ' : '';
       const body = pt + tags.join(' ');
       // scope:'self' carries no target noun — subject is "this", mirroring
-      // pump's arm (audit A10-4: artifice_triumphant's granted ability
-      // rendered an empty subject + double space).
+      // pump's arm.
       const subj = eff.scope === 'self' ? 'this' : t;
       // set_types REPLACES the whole type line (a Creature encased into an
       // Artifact stops being a Creature) — say so, since "becomes an Artifact"
@@ -485,14 +480,14 @@ function describeEffect(eff, tplEff) {
       if (eff.scope === 'self') return [plainSeg('sacrifice this creature')];
       return [plainSeg('sacrifice ' + (t || 'it'))];
     case 'change_control': {
-      // Unified gainControl + steal. transfer_ownership renders the steal
-      // trophy flavor; otherwise the gain-control text (+ duration / riders).
+      // transfer_ownership renders the steal trophy flavor; otherwise the
+      // gain-control text (+ duration / riders).
       if (eff.transfer_ownership) return [plainSeg('shuffle ' + t + ' into your library')];
       const parts = ['gain control of ' + t];
       if (eff.duration === 'eot') parts.push(' until end of turn');
       const segs = [plainSeg(parts.join(''))];
       const riders = [];
-      if (eff.untap || eff.untap_on_take) riders.push('untap it');
+      if (eff.untap) riders.push('untap it');
       if (eff.grant_haste) riders.push('it gains haste until end of turn');
       if (riders.length > 0) {
         const cap = riders.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join('. ');
@@ -611,11 +606,8 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
   // distinct_targets: a later slot reads "another ..." when an earlier slot targets
   // the same OBJECT TYPE. The engine forbids one object filling two slots by
   // IDENTITY (sameTarget), independent of each slot's filter — so key on the slot's
-  // `target` type, NOT a JSON.stringify(filter) signature. The old signature key
-  // broke two ways: it depended on filter key-insertion order (JSON.stringify isn't
-  // canonical), and two same-type slots with DIFFERENT filters (e.g. "creature" vs
-  // "creature you control") still can't reuse an object in the engine but wouldn't
-  // read "another." Type-repetition matches the engine's actual collision domain.
+  // `target` type, NOT a JSON.stringify(filter) signature. Type-repetition matches
+  // the engine's actual collision domain.
   const anotherSlots = new Set();
   if (distinctTargets && Array.isArray(slotSpecs)) {
     const seenTargets = new Set();
@@ -647,6 +639,10 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
       const inj = { target: stepTarget };
       if (stepFilter) inj.filter = stepFilter;
       else if (typeof edictFilter === 'string' && EDICT_CHAIN_KINDS.has(e.kind)) inj.edictFilter = edictFilter;
+      // Source-exclusion filter (`another: true`, §5b sibling of distinct_targets):
+      // reuse the distinct-slot "another target ..." phrasing — honest because
+      // the ts* layer forbids the source filling the slot.
+      if (stepFilter && stepFilter.another) inj._another = true;
       return Object.assign({}, e, inj);
     });
   }
@@ -705,7 +701,7 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
       seg1, plainSeg(' damage to ' + t1 + '.'),
     ];
   }
-  // Loot pattern (draw then discard) — both are now collapsed move_card forms.
+  // Loot pattern (draw then discard) — both are collapsed move_card forms.
   if (effects.length === 2
       && effects[0].kind === 'move_card'
       && effects[0].from_zone === 'library' && effects[0].to_zone === 'hand'
@@ -732,10 +728,9 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
   // Scarification idiom: an affect_creature removal + an apply_sticker(scarified)
   // persistent rider. The removal verb is rendered DYNAMICALLY via describeEffect
   // so an empower-promoted severity shows ("exile", not a frozen "destroy") and
-  // bump-highlights — the whole reason this card stopped being custom_text, which
-  // had hardcoded "Destroy" and hid the empower. (The scar rider prose is fixed —
-  // the scarified life-loss isn't an empower target — so it's a literal here,
-  // mirroring the balancer-tax idiom below.)
+  // bump-highlights. (The scar rider prose is fixed — the scarified life-loss
+  // isn't an empower target — so it's a literal here, mirroring the balancer-tax
+  // idiom below.)
   if (effects.length === 2) {
     const acIdx = effects.findIndex(e => e.kind === 'affect_creature' && !e.scope);
     const apIdx = effects.findIndex(e => e.kind === 'apply_sticker' && e.sticker_id === 'scarified');
@@ -777,6 +772,28 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
   const nonEmpty = parts.filter(p => Array.isArray(p) && p.some(s => s && s.text));
   if (nonEmpty.length === 0) return [];
   if (nonEmpty.length === 1) return capitalizeSegs(nonEmpty[0]).concat(plainSeg('.'));
+  // Same-target "It" idiom: with ONE shared top-level
+  // target (no slots — slot cards like Twin Strike genuinely pick twice),
+  // every clause resolves against the same locked pick, so repeating the full
+  // target phrase reads like a second choice that doesn't exist. After the
+  // first clause names it, later clauses say "it": "Untap target creature you
+  // control. It gains vigilance until end of turn." Substituted before
+  // capitalization so a clause-initial "it" becomes "It" naturally.
+  if (stepTarget && !(Array.isArray(slotSpecs) && slotSpecs.length)) {
+    const sharedEff = stepFilter ? { target: stepTarget, filter: stepFilter } : { target: stepTarget };
+    const shared = withFilter(targetPhrase(sharedEff), sharedEff);
+    let mentioned = false;
+    for (const clause of nonEmpty) {
+      let inThis = false;
+      for (const seg of clause) {
+        if (!seg || !seg.text || seg.text.indexOf(shared) === -1) continue;
+        if (mentioned) seg.text = seg.text.replace(shared, 'it');
+        inThis = true;
+        break;
+      }
+      if (inThis) mentioned = true;
+    }
+  }
   const out = [];
   for (let i = 0; i < nonEmpty.length; i++) {
     if (i > 0) out.push(plainSeg('. '));
@@ -802,12 +819,13 @@ function capitalizeSegs(segs) {
   return out;
 }
 
-// "When/Whenever ..." prefix from event+condId. Falls back to event-only phrasing.
+// "When/Whenever ..." prefix from event+condition. Falls back to event-only phrasing.
 function triggerPreamble(trig) {
   const ev = trig.event;
-  // Classify from condId (legacy) or composable condition (Slice 2 / E2).
   const cid = triggerArchetype(trig);
-  const sub = triggerSubtype(trig) || 'creature';
+  // Any-of subtype args ("Elf, Merfolk" — Covenant Scholar) render as an
+  // "or"-join: "another Elf or Merfolk enters under your control,".
+  const sub = (triggerSubtype(trig) || 'creature').split(/,\s*/).join(' or ');
   if (cid === 'thisEnters')  return 'When this enters the battlefield,';
   if (cid === 'thisDies')    return 'When this dies,';
   if (cid === 'thisAttacks') return 'When this attacks,';
@@ -834,14 +852,41 @@ function triggerPreamble(trig) {
     return 'Whenever a ' + sub + ' you control attacks,';
   }
   if (cid === 'anyCardDies')    return 'Whenever a creature dies,';
+  if (cid === 'cardDiesOfSubtype') return 'Whenever a ' + sub + ' dies,';
   if (cid === 'youCastSpell')   return 'Whenever you cast a spell,';
   if (cid === 'youCastCounterspell') return 'Whenever you cast a counterspell,';
   if (cid === 'youGainLife')    return 'Whenever you gain life,';
+  if (cid === 'oppLosesLife')   return 'Whenever an opponent loses life,';
+  if (cid === 'youDiscard')     return 'Whenever you discard a card,';
+  if (cid === 'youCastSpellWithKeyword') {
+    return 'Whenever you cast a spell with ' + (triggerKeyword(trig) || 'a keyword') + ',';
+  }
+  if (cid === 'youCastSpellOppTurn') return 'Whenever you cast a spell during an opponent\'s turn,';
+  if (cid === 'youCastNoncreatureSpell') return 'Whenever you cast a noncreature spell,';
+  if (cid === 'youActivateCreatureAbility') {
+    return 'Whenever you activate an ability of a creature you control,';
+  }
+  if (cid === 'anotherEtbCreatureYouEnters') {
+    return 'Whenever another creature with an enters-the-battlefield ability enters under your control,';
+  }
+  if (cid === 'cardYouEntersOfSubtype') {
+    // Card-type gates read as their common noun ("a land enters"); tribal
+    // subtypes keep their capital ("a Goblin enters").
+    const noun = sub === 'Land' ? 'land' : sub;
+    return 'Whenever a ' + noun + ' enters the battlefield under your control,';
+  }
+  if (cid === 'creatureYouDies') return 'Whenever a creature you control dies,';
+  if (cid === 'anotherCreatureYouAttacks') return 'Whenever another creature you control attacks,';
+  if (cid === 'youDraw') return 'Whenever you draw a card,';
+  if (cid === 'youLoseLife') return 'Whenever you lose life,';
+  // "sorcery", not "spell": every damage spell in the pool is Sorcery-typed,
+  // and bare "spell" would wrongly suggest creature casts count (the
+  // Wildfire Colossus ruling).
+  if (cid === 'youCastDamageSpell') return 'Whenever you cast a sorcery that deals damage,';
   if (ev === 'attacks') return 'When this attacks,';
   return 'Whenever a relevant event occurs,';
 }
 
-// Full trigger clause as segments (lowercase body since preamble ends in comma).
 // A plain {W,U,B,R,G,C} cost -> brace string: generic first, then color pips
 // (e.g. {R:1,C:2} -> "{2}{R}"). renderManaSymbols draws them.
 function manaCostBraces(cost, opts) {
@@ -856,6 +901,7 @@ function manaCostBraces(cost, opts) {
   return s || empty;
 }
 
+// Full trigger clause as segments (lowercase body since preamble ends in comma).
 function describeTrigger(trig, tplTrig) {
   const preamble = triggerPreamble(trig);
   const tplEffs = tplTrig ? tplTrig.effects : undefined;
@@ -878,7 +924,7 @@ function describeTrigger(trig, tplTrig) {
 }
 
 // Single seam for a trigger's one-line LOG / stack-pill label. Returns the
-// AUTHORED label if the trigger carries one — post-cutover only custom_text cards
+// AUTHORED label if the trigger carries one — only custom_text cards
 // do (e.g. Archdemon's bespoke bargain effects that don't generate cleanly) — else
 // the generated reminder text, with the raw event name as a last resort.
 //
@@ -942,8 +988,8 @@ function describeAbility(ab, tplAb) {
   }
   // The `main_phase_only` flag restricts an activated ability to the controller's
   // main phase (empty stack) — the non-default timing. Magiclike has no "sorcery"
-  // timing concept (the Flash refactor made instant-speed = the `flash` keyword),
-  // so the reminder reads "during your main phase", not "as a sorcery". Rendered
+  // timing concept — instant speed is the `flash` keyword — so the reminder
+  // reads "during your main phase", not "as a sorcery". Rendered
   // as a second sentence; the caller appends the final period.
   const speedClause = ab.main_phase_only ? [plainSeg('. Activate only during your main phase')] : [];
   if (!cost) return body.concat(speedClause);
@@ -961,13 +1007,11 @@ function describeAbility(ab, tplAb) {
   return [plainSeg(cost + ': ')].concat(body).concat(speedClause);
 }
 
-// One-line button label for the controller's unified ability picker (audit
-// A10-1). Renders through the engine's own oracle (describeAbility →
+// One-line button label for the controller's unified ability picker.
+// Renders through the engine's own oracle (describeAbility →
 // segsToText) — the same path as render.js's ability stack pill — so a
-// picker button can never contradict the card's rules text. (The previous
-// hand-rolled kind→label table lied: raw internal kinds as labels, inverted
-// permanence, wrong subject, understated costs.) Capped because picker
-// buttons are small; the card's hover/popup carries the full text.
+// picker button can never contradict the card's rules text. Capped because
+// picker buttons are small; the card's hover/popup carries the full text.
 function abilityPickerLabel(ab, maxLen) {
   const cap = maxLen || 60;
   let text = '';
@@ -976,27 +1020,83 @@ function abilityPickerLabel(ab, maxLen) {
   return text.length > cap ? text.slice(0, cap - 1).trimEnd() + '…' : text;
 }
 
-// Lord buff: "Other <subtype>s you control get +P/+T and have <kw>."
-function describeStaticBuff(buff) {
-  const sub = buff.subtype ? buff.subtype + 's' : 'creatures';
-  let scope;
-  if (buff.filter && (buff.filter.controller === 'self' || buff.filter.controller === 'you')) {
-    scope = 'Other ' + sub + ' you control';
-  } else if (buff.filter && buff.filter.controller === 'opp') {
-    scope = 'Other ' + sub + ' an opponent controls';
-  } else {
-    scope = 'Other ' + sub;
+// Static spell riders — "Spells you cast also …". One sentence per
+// rider, phrased by (spell_filter, rider_scope, first effect). The four
+// shipping shapes are covered exactly; a new shape rendering '' fails the
+// no-dead-text discipline loudly in tests rather than lying quietly.
+function describeSpellRider(rider, selfName) {
+  const eff = (rider.effects || [])[0] || {};
+  const filt = rider.spell_filter || {};
+  const spellNoun = filt.has_effect === 'damage'
+    ? 'Sorceries you cast that deal damage' : 'Spells you cast';
+  const scope = rider.rider_scope || 'all_targets';
+  if (scope === 'self') {
+    if (eff.kind === 'pump' && eff.duration === 'permanent') {
+      return spellNoun + ' also put a +' + (eff.power || 0) + '/+' + (eff.toughness || 0)
+        + ' counter on ' + (selfName || 'this') + '.';
+    }
+    return '';
   }
-  const stats = (buff.power || buff.toughness)
-    ? 'get +' + (buff.power || 0) + '/+' + (buff.toughness || 0)
-    : '';
-  // Lookup display names so "first_strike" → "first strike", etc.
+  const qualifier = scope === 'your_creature_targets' ? ' that target creatures you control' : '';
+  const object = scope === 'your_creature_targets' ? 'them'
+    : scope === 'creature_targets' ? 'each creature they target'
+    : 'their targets';
+  if (eff.kind === 'damage') {
+    return spellNoun + qualifier + ' also deal ' + (eff.amount || 0) + ' damage to ' + object + '.';
+  }
+  if (eff.kind === 'pump' && eff.duration === 'permanent') {
+    return spellNoun + qualifier + ' also put a +' + (eff.power || 0) + '/+' + (eff.toughness || 0)
+      + ' counter on ' + object + '.';
+  }
+  if (eff.kind === 'grant_keyword') {
+    return spellNoun + qualifier + ' also grant ' + (eff.keyword || '') + ' to ' + object
+      + (eff.duration === 'eot' ? ' until end of turn' : '') + '.';
+  }
+  return '';
+}
+
+// Lord buff: "Other <subtype>s you control get +P/+T and have <kw>."
+function describeStaticBuff(buff, lordTpl) {
+  // Card-TYPE buffs read "Artifact creatures" (the engine only buffs
+  // creatures — lordBuffApplies gates on hasType Creature); subtype buffs
+  // keep the tribal plural ("Demons"). "Other" is honest only when the lord
+  // itself matches the buff (it's excluded by iid) — an Ironbrand Marshal
+  // (no Artifact type) buffs EVERY artifact creature, so "Other" would lie.
+  const isTypeTag = buff.subtype && typeCategory(buff.subtype) === 'type';
+  const sub = buff.subtype ? (isTypeTag ? buff.subtype + ' creatures' : buff.subtype + 's') : 'creatures';
   const kwDisplay = {
     flying: 'flying', vigilance: 'vigilance', trample: 'trample', haste: 'haste',
     first_strike: 'first strike', double_strike: 'double strike', deathtouch: 'deathtouch',
     lifelink: 'lifelink', reach: 'reach', menace: 'menace', defender: 'defender',
     flash: 'flash', hexproof: 'hexproof', indestructible: 'indestructible',
   };
+  // Keyword-filtered buffs ("creatures you control with flying" — Wing
+  // Commander). The filter narrows who gets buffed, so the phrase must
+  // render it. For the "Other" honesty check the lord's keywords are read
+  // EFFECTIVELY — subtype-implied included, since Wing Commander's own
+  // flying comes from Angel, not a keywords entry.
+  const kwFilter = (buff.filter && buff.filter.has_keyword) || null;
+  const withKw = kwFilter ? ' with ' + (kwDisplay[kwFilter] || kwFilter) : '';
+  const lordHasKw = !kwFilter || !lordTpl
+    || ((typeof ENGINE !== 'undefined' && ENGINE.addSubtypeKeywords)
+      ? ENGINE.addSubtypeKeywords((lordTpl.types || []), (lordTpl.keywords || []).slice())
+      : (lordTpl.keywords || [])).includes(kwFilter);
+  const lordMatches = (!lordTpl || !buff.subtype || hasType(lordTpl, buff.subtype)) && lordHasKw;
+  const other = lordMatches ? 'Other ' : '';
+  let scope;
+  if (buff.filter && (buff.filter.controller === 'self' || buff.filter.controller === 'you')) {
+    scope = other + sub + ' you control' + withKw;
+  } else if (buff.filter && buff.filter.controller === 'opp') {
+    scope = other + sub + ' an opponent controls' + withKw;
+  } else {
+    scope = other + sub + withKw;
+  }
+  if (!lordMatches) scope = scope.charAt(0).toUpperCase() + scope.slice(1);
+  // Signed stat rendering: "+1/-1", not "+1/+-1" (Rakdos Underboss).
+  const signed = (n) => (n < 0 ? String(n) : '+' + n);
+  const stats = (buff.power || buff.toughness)
+    ? 'get ' + signed(buff.power || 0) + '/' + signed(buff.toughness || 0)
+    : '';
   const kwList = (buff.keywords && buff.keywords.length)
     ? buff.keywords.map(k => 'have ' + (kwDisplay[k] || k)).join(' and ')
     : '';
@@ -1008,8 +1108,8 @@ function describeStaticBuff(buff) {
   return body + '.';
 }
 
-// Keywords meaningful on a non-creature spell. Today only `flash` (the
-// retired-Instant marker that grants instant-speed casting). Combat keywords
+// Keywords meaningful on a non-creature spell. Today only `flash` (grants
+// instant-speed casting). Combat keywords
 // (flying/trample/...) never apply to a spell, so they're filtered out of a
 // spell's preamble — otherwise a sorcery could nonsensically read "Trample."
 const SPELL_LEGAL_KEYWORDS = new Set(['flash']);
@@ -1059,12 +1159,6 @@ function keywordPreambleSegs(keywords, stickerKws) {
   return segs;
 }
 
-// Keyword list as a flat "Flying, Vigilance" string (no period). Delegates to
-// the segment version so there's one source of truth for display names/filtering.
-function keywordPreamble(keywords) {
-  return keywordPreambleSegs(keywords).map(s => s.text).join('');
-}
-
 // Flat string for storage/logging. UI uses describeCardSegments for highlights.
 // skipKeywords:true keeps the stored text free of the keyword preamble so
 // successive engine regenerations (engine.js makeCard's card.text refresh,
@@ -1092,8 +1186,8 @@ function describeCardSegments(card, opts) {
     // effects) aren't in the static text and need to be surfaced. We
     // compute granted = card.keywords \ tpl.keywords and prepend just
     // those, mirroring how non-special cards inline their full preamble.
-    // Skipped when opts.skipKeywords (the classic frame renders its own
-    // keyword badges via nativeKeywordBadgesHtml).
+    // Skipped when opts.skipKeywords (the card frame renders its own
+    // keyword badges via keywordIconsHtml).
     //
     // Sections must be flattened before return because consumers
     // (segmentsToHtml, the test harness) expect a flat array of segment
@@ -1124,9 +1218,26 @@ function describeCardSegments(card, opts) {
     }
     // Authored text may carry the conventional ~ placeholder (Adept, Codex) —
     // substitute the card's name so it never reaches a player's eyes raw
-    // (audit A10-3; substitution is idempotent once baked into card.text).
+    // (substitution is idempotent once baked into card.text).
     const staticText = formatTriggerText(card.text || tpl.text || '', card.name || tpl.name);
     if (staticText) sections.push([plainSeg(staticText)]);
+    // Stapled halves: authored text can't know what a staple added, so append
+    // each staple's generated text — the merged card reads complete without
+    // losing the authored voice (audit A14).
+    const stapledIds = (card.stapledFrom && card.stapledFrom.stapledTpls) || [];
+    for (const sid of stapledIds) {
+      if (!CARDS[sid]) continue;
+      // landManaExplicit: a staple half's mana ability must PRINT — the merged
+      // card's type line doesn't convey it the way a standalone land's does.
+      // skipKeywords: the staple's keywords are already on the merged card, so
+      // the preamble above prints them once; printing them here too reads as
+      // "Flying. … [Abyss Lurker] Flying."
+      const stapleSegs = describeCardSegments(CARDS[sid],
+        Object.assign({}, opts, { landManaExplicit: true, skipKeywords: true }));
+      if (stapleSegs.length) {
+        sections.push([plainSeg('[' + (CARDS[sid].name || sid) + '] '), ...stapleSegs]);
+      }
+    }
     const out = [];
     for (let i = 0; i < sections.length; i++) {
       if (i > 0) out.push(plainSeg(' '));
@@ -1163,7 +1274,13 @@ function describeCardSegments(card, opts) {
   }
   if (Array.isArray(card.static_buffs)) {
     for (const buff of card.static_buffs) {
-      const phrase = describeStaticBuff(buff);
+      const phrase = describeStaticBuff(buff, card);
+      if (phrase) sections.push([plainSeg(phrase)]);
+    }
+  }
+  if (Array.isArray(card.spell_riders)) {
+    for (const rider of card.spell_riders) {
+      const phrase = describeSpellRider(rider, card.name || tpl.name);
       if (phrase) sections.push([plainSeg(phrase)]);
     }
   }
@@ -1203,7 +1320,7 @@ function describeCardSegments(card, opts) {
       // invisible. A choose-form ability whose colors are ALL conveyed (e.g. a
       // Forest with an "Also a Island" sticker → "Basic Land — Forest Island")
       // is suppressed too, mirroring paper dual lands.
-      if (hasType(card,'Land') && ab.cost && ab.cost.tap && !ab.cost.mana
+      if (!opts.landManaExplicit && hasType(card,'Land') && ab.cost && ab.cost.tap && !ab.cost.mana
           && ab.effects && ab.effects.length === 1 && ab.effects[0].kind === 'add_mana') {
         const eff = ab.effects[0];
         const produced = manaEffectColors(eff);
@@ -1233,7 +1350,6 @@ function describeCardSegments(card, opts) {
   return out;
 }
 
-// "Choose one — A; or B; or C." block.
 function describeModalSegs(modes, tplModes) {
   const out = [plainSeg('Choose one — ')];
   for (let i = 0; i < modes.length; i++) {

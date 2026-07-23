@@ -1,8 +1,7 @@
-// Rules-infrastructure fixes (DIVERGENCE B2 / F2 / D4).
-//   B2 — unused mana empties at every phase boundary (MTG 106.4), not only CLEANUP.
-//   F2 — indestructible keeps its marked damage; only the death check is skipped.
-//   D4 — damage is life loss: it fires the directional life_changed(delta<0), so
-//        "whenever you lose life" (is_life_loss) triggers fire from burn/combat too.
+// Rules-infrastructure invariants: DIVERGENCE B2 / F2 / D4.
+//   B2 — MTG 106.4: empties every phase boundary, not only CLEANUP.
+//   F2 — indestructible skips only the death check, not damage marking.
+//   D4 — damage fires life_changed(delta<0), so is_life_loss triggers fire from burn/combat too.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -31,7 +30,7 @@ function newGame() {
 function readyMain(G, who) {
   setup.startMainPhase(who);
 }
-// Pass priority for both seats until the phase changes (runs the transition's SBA).
+// Runs the transition's SBA.
 function advanceOnePhase(G) {
   const start = G.phase;
   let safety = 16;
@@ -117,17 +116,17 @@ else {
   const G = newGame();
   const c = mk(VANILLA, 'you');
   c.keywords = ['indestructible']; c.power = 2; c.toughness = 3; c.sick = true;
-  c.damage = 3;   // lethal
+  c.damage = 3;
   G.you.battlefield.push(c);
   readyMain(G, 'you');
-  advanceOnePhase(G);   // runs SBAs at the transition
+  advanceOnePhase(G);
   const live = G.you.battlefield.find(x => x.iid === c.iid);
   check('indestructible creature survived lethal damage', !!live);
   check('F2: its marked damage was NOT cleared (still 3)',
     live && live.damage === 3, live && ('damage=' + live.damage));
   if (live) {
-    live.keywords = [];       // strip indestructible
-    advanceOnePhase(G);       // next SBA: retained lethal damage now kills it
+    live.keywords = [];
+    advanceOnePhase(G);
     check('F2: losing indestructible lets the retained damage kill it',
       !G.you.battlefield.some(x => x.iid === c.iid));
   }
@@ -137,7 +136,6 @@ console.log('\n=== D4: damage fires is_life_loss (life loss event from burn, not
 if (!CARDS['lightning_bolt'] || !VANILLA) { console.log('  (bolt or vanilla unavailable -- skipping)'); }
 else {
   const G = newGame();
-  // A watcher: "whenever you lose life, gain 10 life." Fires only via is_life_loss.
   const watcher = mk(VANILLA, 'you');
   watcher.triggers = [{
     event: 'life_changed',
@@ -151,7 +149,7 @@ else {
   ENGINE.executeAction('opp', { type: 'castSpell', cardIid: bolt.iid,
     targets: [{ kind: 'player', who: 'you', label: 'You' }] });
   settle(G);
-  // Bolt deals 1 (you -1); the is_life_loss watcher then gains 10 → net +9.
+  // Bolt deals 3 damage; the watcher's +10 gain nets +7.
   check('D4: burn damage fired the is_life_loss watcher (net life gain after +10)',
     G.you.life > lifeStart, 'life ' + lifeStart + ' -> ' + G.you.life);
 }

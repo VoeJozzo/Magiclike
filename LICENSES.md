@@ -76,6 +76,13 @@ schema later.
 - **License:** project-owned (commissioned art, no external license)
 - **Coverage note:** all 14 combat keywords have art (`unblockable` included); `innate` and `tap` also ship icons (extras, not combat keywords). File names match the engine `KEYWORDS` keys.
 
+### Pixel-chrome UI tile kit (Claude-authored)
+
+- **Location in tree:** `reference/html-proto/assets/ui/` — 9-slice button tiles (`pxbtn_*`), toggle/slider/segmented/progress controls (`ctrl_*`), mana gems (`gem_*`), map nodes (`node_*`), `woodbar_src.png`, plus the `_slices.json` slice manifest
+- **Used for:** the html-proto pixel-chrome reskin (PR #150) — buttons, bars, map nodes, and mana-pool gems
+- **Source:** authored by Claude in the PR #150 design session; sheets baked from the Claude-authored source art by `tools/bake/bake_ui_tiles.py`
+- **License:** project-owned (commissioned art, no external license)
+
 ---
 
 ## AI assistance

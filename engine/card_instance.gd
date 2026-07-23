@@ -7,7 +7,7 @@ extends RefCounted
 var instance_id: int = 0
 var template: CardResource = null
 
-# Owner: who owns the card ("return to owner's hand"). Controller: who runs it now (diverges in Phase 3+).
+# Owner: who owns the card ("return to owner's hand"). Controller: who runs it now.
 var owner_key: String = ""
 var controller_key: String = ""
 
@@ -63,7 +63,6 @@ func to_string_short() -> String:
 	return "%s[#%d %s]" % [tap_str, instance_id, name()]
 
 
-# Live P/T: base + pump + counters. Returns 0 for non-creatures.
 func current_power() -> int:
 	if template == null or not (template is CreatureResource):
 		return 0
@@ -119,7 +118,7 @@ const SUBTYPE_KEYWORDS: Dictionary = {
 }
 
 
-# Single seam for combat/target checks: template baseline + runtime grants + subtype-implied, deduped.
+# Single seam for combat/target checks.
 func effective_keywords() -> Array:
 	if template == null:
 		return granted_keywords

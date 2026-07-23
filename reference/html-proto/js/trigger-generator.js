@@ -61,7 +61,7 @@ const GENERATOR_EFFECTS = [
     id: 'addCounterSelf',
     weight: 2,
     needsLiveSource: true,
-    // Always +1/+1; counters are permanent — bigger would snowball.
+    // Counters are permanent — bigger would snowball.
     roll: () => [{kind: 'add_counter', scope: 'self', power: 1, toughness: 1}],
     describe: () => `~ gets a +1/+1 counter`,
   },
@@ -94,7 +94,7 @@ const GENERATOR_EFFECTS = [
 
 // Excludes parameterized conditions (no basis for picking subtype).
 // sourceLive gates needsLiveSource effects. Each entry carries the composable
-// {event, condition} shape directly (Slice 2 / E2) — no condId indirection.
+// {event, condition} shape directly — no condId indirection.
 const GENERATOR_CONDITIONS = [
   {id: 'thisEnters',     weight: 3, sourceLive: true,  text: '~ enters',
    event: 'card_zone_change', condition: ['this_card', 'card_moves(anywhere, battlefield)']},
@@ -114,10 +114,6 @@ const GENERATOR_CONDITIONS = [
    event: 'spell_cast', condition: ['another_card', 'controlled_by(you)']},
 ];
 
-// Architect's Codex build flow: generateConditionOptions → generateEffectOptions → assembleTrigger.
-// (A one-call generateRandomTrigger twin was deleted — audit A3-7: it had no
-// production callers and, unlike assembleTrigger, didn't set noSelfCascade,
-// so wiring it up would have shipped cascade-unguarded triggers.)
 function _genWeightedPickN(entries, n) {
   const pool = entries.slice();
   const out = [];
@@ -139,7 +135,7 @@ function generateConditionOptions() {
   return _genWeightedPickN(GENERATOR_CONDITIONS, 3);
 }
 
-// 3 effect candidates filtered by chosen cond's sourceLive. Params re-rolled per offer.
+// Params re-rolled per offer.
 function generateEffectOptions(chosenCondition) {
   const eligible = GENERATOR_EFFECTS.filter(e =>
     !e.needsLiveSource || chosenCondition.sourceLive);
@@ -154,7 +150,7 @@ function generateEffectOptions(chosenCondition) {
   });
 }
 
-// Finalize (cond, eff) → trigger object (the composable trigger shape).
+// The composable trigger shape.
 function assembleTrigger(chosenCondition, chosenEffect) {
   return {
     event: chosenCondition.event,

@@ -1,18 +1,8 @@
-// The False Witness — a Flash doppelganger. As it enters, it exiles target
-// creature an opponent controls and becomes a copy of it (plus Insect
-// Shapeshifter); when it leaves, the exiled card returns under its owner's
-// control and the witness reverts to The False Witness.
-//
 // The copy is implemented as the engine's existing materialize-then-re-derive
 // pattern (like keyword/type grants): become_copy_of writes the copied printed
 // characteristics onto the instance, and resetInPlayState re-derives the base
 // on EVERY leave path — so the revert is free and the witness's own leave
 // trigger (on the base identity) is never clobbered by the copied triggers.
-//
-// Covers: flash timing; ETB exile+copy (stats/types/keywords + kept subtypes);
-// copying a creature WITH a trigger (the leave-return still fires); the death
-// path AND the bounce path (revert + return to owner); the AI copies the
-// opponent's biggest threat and won't flash into an empty board.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -98,11 +88,9 @@ console.log('\n=== copying a creature WITH a trigger — the leave-return still 
   drain(G);
   const w = G.you.battlefield.find(c => c.iid === witness.iid);
   check('witness became Blood Artist', w && w.name === 'Blood Artist', w && w.name);
-  // It carries the copied trigger(s) AND its own base triggers (ETB + leave).
   check('witness has copied trigger(s) plus its own (leave survives the copy)',
     w && (w.triggers || []).length >= copiedTrigCount + 1,
     w && (w.triggers || []).length + ' triggers');
-  // Kill it: it must revert AND return the exiled Blood Artist to the opponent.
   ENGINE.applyEffect({ controller: 'opp', sourceName: 'Kill', sourceIid: 99001 },
     { kind: 'affect_creature', severity: 'destroy' }, { kind: 'creature', iid: witness.iid });
   drain(G);
@@ -122,7 +110,6 @@ console.log('\n=== bounce path: revert + return the original (a non-death leave)
   drain(G);
   const w = G.you.battlefield.find(c => c.iid === witness.iid);
   check('witness copied Grizzly Bears', w && w.name === 'Grizzly Bears', w && w.name);
-  // Bounce the witness to hand (battlefield -> hand leave path).
   ENGINE.applyEffect({ controller: 'you', sourceName: 'Bounce', sourceIid: 99002 },
     { kind: 'move_card', from_zone: 'battlefield', to_zone: 'hand', selector: 'target' },
     { kind: 'creature', iid: witness.iid });
@@ -138,7 +125,7 @@ console.log('\n=== bounce path: revert + return the original (a non-death leave)
 console.log('\n=== AI behavior: copies the biggest threat; no flash into an empty board ===');
 (() => {
   const G = freshGame();
-  // a weak 2/2, a 2/1, and a fat 4/4 flyer — the AI should copy the flyer.
+  // a weak 2/2, a 2/1, and a fat 4/4 flyer
   G.opp.battlefield.push(mk('grizzly_bears', 'opp'), mk('savannah_lions', 'opp'), mk('air_elemental', 'opp'));
   const witness = mk('false_witness', 'you'); G.you.hand.push(witness);
   ENGINE.executeAction('you', { type: 'castSpell', cardIid: witness.iid });
@@ -147,7 +134,6 @@ console.log('\n=== AI behavior: copies the biggest threat; no flash into an empt
   check('AI copied the opponent’s strongest creature (Air Elemental)',
     w && w.name === 'Air Elemental', w && w.name);
 
-  // Flash window: opp's END step, opp has a creature → AI flashes it in.
   const G2 = freshGame();
   G2.activePlayer = 'opp'; G2.priorityHolder = 'you'; G2.phase = 'END';
   G2.opp.battlefield.push(mk('air_elemental', 'opp'));
@@ -156,7 +142,7 @@ console.log('\n=== AI behavior: copies the biggest threat; no flash into an empt
   check('AI flashes the witness at the opponent’s end step (has a creature to copy)',
     a1 && a1.type === 'castSpell' && a1.cardIid === wit2.iid, a1 && a1.type);
 
-  // Flash window with EMPTY opp board → AI must NOT flash (ETB would fizzle).
+  // ETB would fizzle with an empty opp board.
   const G3 = freshGame();
   G3.activePlayer = 'opp'; G3.priorityHolder = 'you'; G3.phase = 'END';
   const wit3 = mk('false_witness', 'you'); G3.you.hand.push(wit3);

@@ -1,7 +1,6 @@
-// Audit A5-15 — the out-of-charges Stapler rip must route its battlefield removal
-// through leave-play discipline (removeFromCombat + clearRestrictionsFromSource),
-// not a raw Array.filter. A5-5 already scoped the purge to (tplId, slotIdx); this
-// pins the remaining half. Latent today (Stapler is the only charges card, an
+// The out-of-charges Stapler rip must route its battlefield removal through
+// leave-play discipline (removeFromCombat + clearRestrictionsFromSource), not
+// a raw Array.filter. Latent today (Stapler is the only charges card, an
 // Artifact, special/unique), so the observable conditions are CONSTRUCTED: the
 // about-to-be-ripped stapler is injected into combat state and stamped as the
 // source of a can't-attack restriction on a bystander.
@@ -15,7 +14,7 @@ const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k]
 
 console.log('=== A5-15: charge-rip routes battlefield removal through leave-play discipline ===');
 (() => {
-  RUN.start({ cards: Array(5).fill('plains'), colors: ['W'] }, 'stapler');
+  RUN.start({ cards: [...Array(5).fill('plains'), 'stapler'], colors: ['W'] });
   RUN.startNextGame();
   const G = ENGINE.state();
   setup.startMainPhase('you');
@@ -42,10 +41,10 @@ console.log('=== A5-15: charge-rip routes battlefield removal through leave-play
   G.opp.battlefield = [oppBase, bystander, someAttacker];
 
   // CONSTRUCTED observables — only cleared if leave-play discipline runs on the rip:
-  G.attackers = [staplerIid, someAttacker.iid];            // stapler is (artificially) attacking
-  G.blockers = new Map([[staplerIid, someAttacker.iid]]);  // ...and blocking someAttacker
+  G.attackers = [staplerIid, someAttacker.iid];
+  G.blockers = new Map([[staplerIid, someAttacker.iid]]);
   bystander.cantAttack = true;
-  bystander.cantAttackBy = new Set([staplerIid]);          // stapler granted this restriction
+  bystander.cantAttackBy = new Set([staplerIid]);
 
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: staplerIid, abilityIdx: 0,
     targets: [{ kind: 'permanent', iid: oppBase.iid, label: oppBase.name },

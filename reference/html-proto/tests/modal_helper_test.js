@@ -1,12 +1,9 @@
-// Modal helper (controller.js, module scope). Stack-aware show/hide
-// with per-modal Escape opt-in. Tests the stack/dismissible logic
-// directly — no real DOM needed; the helper's internal _stack and
-// dismissible flag are the load-bearing state.
+// Modal helper lives in controller.js (module scope); tests reach
+// Modal._stack directly — no DOM needed.
 //
 // Catches: someone forgetting `dismissible: false` on a new decision
 // modal, breaking stack-LIFO ordering, regressions in the Escape
-// handler (which exists because the helper was originally inside the
-// CONTROLLER IIFE — see v1.0.132 commit message for the bug history).
+// handler.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -46,8 +43,8 @@ console.log('\n=== show is idempotent (render-loop callers safe) ===');
 {
   resetStack();
   Modal.show('searchModal');
-  Modal.show('searchModal');   // second call from a re-render
-  Modal.show('searchModal');   // third
+  Modal.show('searchModal');
+  Modal.show('searchModal');
   check('duplicate shows do not stack', Modal._stack.length === 1);
 }
 
@@ -64,7 +61,7 @@ console.log('\n=== Escape closes the top dismissible modal (LIFO) ===');
 {
   resetStack();
   Modal.show('cardBrowserModal');                              // dismissible
-  Modal.show('cardZoomPopup');                                 // dismissible (nested)
+  Modal.show('cardZoomPopup');
   check('stack has 2 entries before Escape', Modal._stack.length === 2);
 
   // Simulate the keydown event the document listener would receive.
@@ -100,8 +97,8 @@ console.log('\n=== Non-Escape keys are ignored ===');
 console.log('\n=== Nested: dismissible-on-top of sticky, Escape only pops the top ===');
 {
   resetStack();
-  Modal.show('rewardModal', { dismissible: false });     // sticky base
-  Modal.show('cardZoomPopup');                           // dismissible nested
+  Modal.show('rewardModal', { dismissible: false });
+  Modal.show('cardZoomPopup');
   Modal._onEscape({ key: 'Escape' });
   check('nested dismissible pops first', Modal._stack.length === 1);
   check('sticky base remains', Modal._stack[0].id === 'rewardModal');
@@ -128,7 +125,7 @@ console.log('\n=== hide() of a modal not on stack is a no-op ===');
 {
   resetStack();
   Modal.show('foo');
-  Modal.hide('bar');   // not on stack
+  Modal.hide('bar');
   check('hiding an absent modal leaves stack intact', Modal._stack.length === 1);
   Modal.hide('foo');
 }
@@ -139,11 +136,9 @@ console.log('\n=== Hides record exactly the user-initiated flag for onClose ==='
   let closedFlags = [];
   Modal.show('foo', { dismissible: true, onClose: () => closedFlags.push('foo') });
 
-  // Code-driven hide — onClose should NOT fire (per the helper's contract).
   Modal.hide('foo');
   check('code-driven hide does not invoke onClose', closedFlags.length === 0);
 
-  // User-initiated (via Escape simulation) — onClose SHOULD fire.
   resetStack();
   closedFlags = [];
   Modal.show('bar', { dismissible: true, onClose: () => closedFlags.push('bar') });

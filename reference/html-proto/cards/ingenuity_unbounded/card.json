@@ -1,8 +1,8 @@
 {
   "card_id": "ingenuity_unbounded",
+  "boss": true,
   "name": "Ingenuity Unbounded",
   "art": "art.png",
-  "special": true,
   "cost": {
     "C": 1
   },

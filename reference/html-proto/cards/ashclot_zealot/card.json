@@ -1,0 +1,33 @@
+{
+  "card_id": "ashclot_zealot",
+  "name": "Ashclot Zealot",
+  "art": "\u26b1\ufe0f",
+  "cost": {
+    "B": 1,
+    "R": 1
+  },
+  "power": 1,
+  "toughness": 2,
+  "types": [
+    "Creature",
+    "Human",
+    "Shaman"
+  ],
+  "triggers": [
+    {
+      "event": "spell_cast",
+      "condition": [
+        "another_card",
+        "controlled_by(you)",
+        "card_has_effect(damage)"
+      ],
+      "effects": [
+        {
+          "kind": "gain_life",
+          "amount": -1
+        }
+      ],
+      "target": "opp"
+    }
+  ]
+}

@@ -1,14 +1,8 @@
-// Card data registry + async loader.
-//
-// Card templates used to live inline in this file as one giant CARDS = {...}
-// object literal. They now live in cards/<tplId>/card.json — one folder per
-// card. This file:
-//   - declares CARDS as an empty object at module-load time
-//   - exposes loadCards() which fetches cards/_manifest.json + each
-//     card.json in parallel and populates CARDS
-//   - keeps the supporting registries that don't fit the per-card model
-//     (TOKENS, KEYWORDS, STICKERS, EMPOWER_FIELDS, KEYWORD_DISPLAY,
-//     KEYWORD_STICKER_WEIGHTS, RUN_MODIFIERS) inline below
+// Card data registry + async loader. Card templates live in
+// cards/<tplId>/card.json — one folder per card; this file declares CARDS as
+// an empty object, exposes loadCards() to populate it from the manifest, and
+// holds the supporting registries that don't fit the per-card model (TOKENS,
+// KEYWORDS, STICKERS, EMPOWER_FIELDS, KEYWORD_DISPLAY, KEYWORD_STICKER_WEIGHTS).
 //
 // CARDS starts empty. Every consumer reads it via `CARDS[tplId]` at runtime
 // (never at module-load), so the empty-initial state is fine — by the time
@@ -27,7 +21,7 @@ const CARDS = {};
 //
 // Wire    →  JS-internal
 //   card_id  →  tplId
-//   (derived) →  color, colors (computed from cost; not stored in JSON)
+//   (derived) →  color, colors (from cost; authored values are kept but discouraged — see cards/CLAUDE.md)
 function ingestCard(card) {
   if (card == null || typeof card !== 'object') return card;
   if (Object.prototype.hasOwnProperty.call(card, 'card_id')) {
@@ -46,7 +40,7 @@ function ingestCard(card) {
     if (!Object.prototype.hasOwnProperty.call(card, 'colors')) card.colors = colors;
   }
   // Normalize any function-call-shorthand effects to canonical dicts (§5.1/§5.2).
-  // No-op for dict-form effects, so the current all-dict pool is unaffected.
+  // No-op for dict-form effects.
   if (typeof normalizeCardEffects === 'function') normalizeCardEffects(card);
   grantBasicLandMana(card);
   return card;
@@ -115,22 +109,13 @@ async function loadCards() {
       console.warn('Card text contains ~ outside custom_text flag:', card.tplId);
     }
   }
-  // Defensive: warn if the loaded count doesn't match the manifest. A
-  // missing card.json (404) would resolve to a parse error and reject the
-  // Promise.all, so reaching here with a mismatched count would only
-  // happen if a manifest entry deserialized to something falsy.
-  if (cards.length !== manifest.length) {
-    console.warn('Card load count mismatch:', cards.length, 'vs', manifest.length);
-  }
 }
 
 // TOKENS — minted by effects. Vanish on leave-play (dies-triggers still fire).
 const TOKENS = {
-  spirit_w_1_1:  {name:'Spirit',  types:['Creature','Spirit'],  power:1, toughness:1, art:'👻', color:'W', text:'Flying', keywords:['flying']},
+  spirit_w_1_1:  {name:'Spirit',  types:['Creature','Spirit'],  power:1, toughness:1, art:'👻', color:'W', keywords:['flying']},
   soldier_w_1_1: {name:'Soldier', types:['Creature','Human','Soldier'], power:1, toughness:1, art:'⚔', color:'W'},
-  goblin_r_1_1:  {name:'Goblin',  types:['Creature','Goblin'],  power:1, toughness:1, art:'👺', color:'R', text:'Haste', keywords:['haste']},
-  saproling_g_1_1: {name:'Saproling', types:['Creature','Saproling'], power:1, toughness:1, art:'🌱', color:'G'},
-  bear_g_2_2:    {name:'Bear',    types:['Creature','Bear'],    power:2, toughness:2, art:'🐻', color:'G'},
+  goblin_r_1_1:  {name:'Goblin',  types:['Creature','Goblin'],  power:1, toughness:1, art:'👺', color:'R', keywords:['haste']},
 };
 
 // SHARED CONSTANTS — new keywords here auto-become available stickers.
@@ -217,17 +202,15 @@ STICKERS['cost_minus_1'] = {
   },
   stackable: true,
   weight: 1,
-  // §3.8: unified onto the signed cost_mod kind (−1 reward / +1 embargo).
+  // cost_mod: signed amount (−1 reward, +1 embargo).
   kind: 'cost_mod',
   amount: -1,
 };
 
-// Empower bumps one buffable field per application. Roll recorded on slot.empowerRolls.
-// Single source of truth for empowerable params, post-collapse (§3.5/§3.8):
-// the mass kinds (damageAll/pumpAllYours/removeAll) folded into damage/pump/
-// affect_creature + scope; weaken/add_counter into signed/permanent pump; draw
-// into move_card(library→hand). `move_card` is empowerable ONLY in its draw
-// shape (gated in isEmpowerableField).
+// Empower bumps one buffable field per application. Roll recorded on
+// slot.empowerRolls. Single source of truth for empowerable params.
+// `move_card` is empowerable only in its draw shape (gated in
+// isEmpowerableField).
 const EMPOWER_FIELDS = {
   damage:         ['amount'],
   pump:           ['power', 'toughness'],
@@ -300,10 +283,7 @@ STICKERS['empower'] = {
   text: 'A single number on this card is increased by 1 — rolled when applied. Stack for more rolls.',
   appliesTo: (c) => hasEmpowerableEffect(c),
   stackable: true,
-  weight: 10,                  // baseline. Was 50 during early playtest to
-                               // pump Empower into nearly every offer pool;
-                               // dropped to baseline now that the mechanic
-                               // is shipped and stable.
+  weight: 10,
   kind: 'empower',
   amount: 1,
 };
@@ -340,10 +320,8 @@ const KEYWORD_REMINDER = {
   flash: 'You may cast it any time you could cast an instant.',
   unblockable: "It can't be blocked.",
   innate: 'It starts in your opening hand.',
-  tap: 'The tap symbol — appears in activated-ability costs.',
 };
 // Per-keyword sticker offer weight. Higher = more common in pair offers.
-// Keeping it minimal for now — tune as we get playtest signal.
 //   1 = rare/strong (game-warping when stuck)
 //   10 = baseline (everything else)
 const KEYWORD_STICKER_WEIGHTS = {
@@ -374,15 +352,10 @@ for (const kw of KEYWORDS) {
       // Don't offer a keyword the card already has (native or stickered).
       if ((c.keywords || []).includes(kw)) return false;
       if ((c.stickers || []).some(sId => STICKERS[sId] && STICKERS[sId].keyword === kw)) return false;
-      // Type-based eligibility:
-      //   - Lifelink/Deathtouch/Trample: creatures, OR damaging spells.
-      //   - Flash: creatures, OR sorceries (gives a sorcery instant speed).
-      //   - All other keywords: creatures only.
+      // Flash is also offered on sorceries (gives them instant speed).
       if (kw === 'lifelink' || kw === 'deathtouch' || kw === 'trample') {
         if (hasType(c, 'Creature')) {
-          // OK
         } else if (hasType(c, 'Sorcery') && spellDealsDamage(c)) {
-          // OK
         } else {
           return false;
         }
@@ -443,7 +416,7 @@ STICKERS['scarified'] = {
   text: 'When this enters the battlefield, its controller loses 1 life.',
   appliesTo: (c) => hasType(c, 'Creature'),
   stackable: true,         // multiple scarifications stack — each fires on ETB
-  weight: 0,               // not in random pools
+  weight: 0,
   kind: 'trigger',
   trigger: {
     event: 'card_zone_change',
@@ -458,93 +431,4 @@ STICKERS['scarified'] = {
 };
 
 
-// =========================================================================
-// RUN MODIFIERS — Neow-style run-defining choices presented before draft.
-// Each modifier: {id, name, text, apply()}.
-// CONTRACT (stated identically in run.js's RUN.start at the call site):
-// apply(slots) may mutate the slots array in place OR return
-// {extras: [...]} of new slots to append.
-// Today all 7 boons return extras only ({extras: [{tplId, stickers}, ...]}).
-// Future hooks (stickerBias, lifeOffset, etc) can be added similarly.
-// =========================================================================
-const RUN_MODIFIERS = {};
-// NOTE: no `art:` field on these. The boon picker derives the visual
-// from CARDS[m.id].art (every boon's id matches the tplId of the card
-// it grants). A boon CAN set an explicit `art:` to override, but
-// shouldn't need to in normal cases — keeping the boon and the card
-// visually in sync as art changes is the whole point.
-RUN_MODIFIERS['architects_codex'] = {
-  id: 'architects_codex',
-  name: "The Architect's Codex",
-  text: "Begin your run with The Architect's Codex — a 4-mana 2/3. The first time you draw it each game, choose one of three procedurally-generated abilities (or keep the current one).",
-  apply: () => ({
-    extras: [{ tplId: 'architects_codex', stickers: [] }],
-  }),
-};
-RUN_MODIFIERS['city_of_brass'] = {
-  id: 'city_of_brass',
-  name: 'Polychrome Pact',
-  text: 'Begin your run with a City of Brass already in hand. Taps for any color.',
-  // Pinned during early development to guarantee a universally-applicable
-  // boon was always available. Now unpinned — competes with other boons
-  // in the random rotation. Re-pin if a future round of playtest signals
-  // that the boon pool has grown disjoint enough that a stable fallback
-  // is needed again.
-  apply: () => ({
-    extras: [{ tplId: 'city_of_brass', stickers: ['innate'] }],
-  }),
-};
-RUN_MODIFIERS['endomorph'] = {
-  id: 'endomorph',
-  name: 'The Hungering Mimic',
-  text: 'Begin your run with Endomorph in your deck — a 2-mana 2/2 that permanently absorbs a keyword from each creature it kills (or +1/+1 if it can\'t).',
-  apply: () => ({
-    extras: [{ tplId: 'endomorph', stickers: [] }],
-  }),
-};
-RUN_MODIFIERS['steal'] = {
-  id: 'steal',
-  name: 'The Long Heist',
-  text: 'Begin your run with Steal in your deck — a 5-mana instant that counters target spell or takes target permanent, putting it into your library forever.',
-  apply: () => ({
-    extras: [{ tplId: 'steal', stickers: [] }],
-  }),
-};
-RUN_MODIFIERS['phylactery'] = {
-  id: 'phylactery',
-  name: 'Phylactery',
-  text: "Begin your run with a Phylactery (Swamp, in opening hand). You can't lose to 0 life or to decking out — each damage past zero or would-be overdraw rips a slot from your deck instead. Phylactery itself is always ripped last.",
-  apply: () => ({
-    extras: [{ tplId: 'phylactery', stickers: ['innate'] }],
-  }),
-};
-RUN_MODIFIERS['elystra_the_immortal'] = {
-  id: 'elystra_the_immortal',
-  name: 'Elystra the Immortal',
-  text: "Begin your run with Elystra in your deck — a 3-mana 1/1. End-of-turn effects on her last forever, but every spell that targets her is ripped from its caster's deck after it resolves.",
-  // v1.0.48: unpinned. Was pinned because Elystra was the headline build-around
-  // and players wanted reliable access; with the pool grown (Codex, Mercurial,
-  // others now competitive), guaranteed visibility crowds out exploration of
-  // the other boons. Re-pin if the pool shrinks or Elystra-stacking runs
-  // become so dominant that players regularly skip whatever boon got rolled.
-  apply: () => ({
-    extras: [{ tplId: 'elystra_the_immortal', stickers: [] }],
-  }),
-};
-
-RUN_MODIFIERS['stapler'] = {
-  id: 'stapler',
-  name: 'Stapler',
-  text: "Begin your run with Stapler — a {3} Artifact with 3 per-run charges. {3}, T: choose two target permanents, staple the second onto the first. When out of charges, ripped from the run.",
-  // Charges initialize from CARDS.stapler.charges_at_run_start (= 3) via the
-  // extras-loop in start(). Persist across games on slot.charges.
-  // v1.0.68: unpinned. Was pinned during initial playtesting (v1.0.52) to
-  // collect feedback on the in-game splice flow; mechanic is now stable
-  // across many versions (charges/persistence/all 4 splice cases including
-  // lands, double-staple guard, live-text updates, combat-state transfer).
-  // Re-pin if the splice rewrite uncovers regressions.
-  apply: () => ({
-    extras: [{ tplId: 'stapler', stickers: [] }],
-  }),
-};
 

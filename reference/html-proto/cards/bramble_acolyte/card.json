@@ -1,0 +1,36 @@
+{
+  "card_id": "bramble_acolyte",
+  "name": "Bramble Acolyte",
+  "art": "🌿",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "power": 1,
+  "toughness": 2,
+  "types": [
+    "Creature",
+    "Elf",
+    "Druid"
+  ],
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "another_card",
+        "card_is_creature",
+        "controlled_by(you)",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "effects": [
+        {
+          "kind": "pump",
+          "duration": "permanent",
+          "power": 1,
+          "toughness": 1,
+          "scope": "self"
+        }
+      ]
+    }
+  ]
+}

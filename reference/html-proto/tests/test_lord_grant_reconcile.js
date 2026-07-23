@@ -1,19 +1,8 @@
-// Audit A4-2 (adjudicates parked A2-9) — lord static-buff reconciliation.
-//
-// A static_buff is ONE ability with two halves. Before this fix the halves
-// lived in two divergent lifecycle models:
-//   - stats: recomputed live in getStats (drops instantly when the filter
-//     stops matching) — but with NO Creature gate, so a subtype-free lord
-//     buffed lands (A2-9's executed divergence);
-//   - keywords: event-reconciled into card.keywords by
-//     applyStaticKeywordGrants — but ADD-ONLY, so a grant went stale forever
-//     when the lord's filter stopped matching without a leave-play event
-//     (steal the creature, change its type, ...).
-//
-// The fix hoists ONE shared lordBuffApplies() predicate consumed by both
-// halves, and makes applyStaticKeywordGrants a true diff-reconcile (revoke
-// pass for lord-sourced grants the predicate no longer accepts). This file
-// pins:
+// Lord static-buff reconciliation: a static_buff is one ability with two
+// halves, both routed through the shared lordBuffApplies() predicate — the
+// live stat half (getStats, gated to Creatures) and the diff-reconciled
+// keyword half (applyStaticKeywordGrants, with a revoke pass for grants the
+// predicate no longer accepts). This file pins:
 //   1. steal (change_control) revokes the old lord's keyword AND the stat
 //      half agrees (both halves answer through the one predicate);
 //   2. the thief's own lord picks the stolen creature up;
@@ -23,8 +12,8 @@
 //      source still grants;
 //   5. an EOT grant of the same keyword (Threaten's grant_haste) survives the
 //      lord-grant revocation;
-//   6. A2-9's stat gate: a subtype-free {controller:'self'} lord buff no
-//      longer buffs non-creatures (lands);
+//   6. a subtype-free {controller:'self'} lord buff does not buff
+//      non-creatures (lands);
 //   7. the real emit path heals stale grants with no direct reconcile call.
 
 const setup = require('./_setup');
@@ -137,7 +126,6 @@ console.log('\n=== 4. multi-source: lord revoked, spell source keeps the keyword
   const raider = mk('goblin_raider', 'you');
   G.you.battlefield.push(lord, raider);
   ENGINE.applyStaticKeywordGrants();
-  // Same keyword from a spell too.
   ENGINE.applyEffect({ controller: 'you', sourceName: 'Quickening', sourceIid: -303 },
     { kind: 'grant_keyword', keyword: 'haste', duration: 'permanent' },
     { kind: 'creature', iid: raider.iid });
@@ -171,8 +159,7 @@ console.log('\n=== 5. Threaten shape: EOT haste survives the lord-grant revocati
 console.log('\n=== 6. A2-9: the stat half no longer buffs non-creatures ===');
 (() => {
   const G = freshGame();
-  // Hand-crafted subtype-free lord ("creatures you control get +1/+1") — the
-  // executed A2-9 divergence: the stat loop buffed a Mountain.
+  // Hand-crafted subtype-free lord (vanguard_ensign already ships this shape).
   const lord = mk('goblin_chieftain', 'you');
   lord.static_buffs = [{ filter: { controller: 'self' }, power: 1, toughness: 1 }];
   const land = mk('mountain', 'you');
@@ -192,7 +179,6 @@ console.log('\n=== 7. the real emit path heals a stale grant (no direct reconcil
   G.you.battlefield.push(lord, raider);
   ENGINE.applyStaticKeywordGrants();
   steal(G, 'opp', raider);
-  // No direct call — cast a creature; the resolution's emits reconcile.
   const burn = mk('goblin_raider', 'you');
   G.you.hand.push(burn);
   ENGINE.executeAction('you', { type: 'castSpell', cardIid: burn.iid });

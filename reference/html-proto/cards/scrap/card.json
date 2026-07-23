@@ -1,0 +1,24 @@
+{
+  "card_id": "scrap",
+  "name": "Scrap",
+  "art": "🔨",
+  "cost": {
+    "R": 1
+  },
+  "types": [
+    "Sorcery"
+  ],
+  "keywords": [
+    "flash"
+  ],
+  "target": "permanent",
+  "target_filter": {
+    "type": "Artifact"
+  },
+  "effects": [
+    {
+      "kind": "affect_creature",
+      "severity": "destroy"
+    }
+  ]
+}

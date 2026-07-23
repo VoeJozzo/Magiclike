@@ -1,0 +1,28 @@
+{
+  "card_id": "chrysalis_ward",
+  "name": "Chrysalis Ward",
+  "art": "🦋",
+  "cost": {
+    "U": 1,
+    "C": 1
+  },
+  "types": [
+    "Sorcery"
+  ],
+  "keywords": [
+    "flash"
+  ],
+  "target": "your_creature",
+  "effects": [
+    {
+      "kind": "grant_keyword",
+      "keyword": "hexproof",
+      "duration": "eot"
+    },
+    {
+      "kind": "pump",
+      "power": 0,
+      "toughness": 1
+    }
+  ]
+}

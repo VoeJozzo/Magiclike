@@ -17,8 +17,7 @@ var land_played_this_turn: bool = false
 # Cumulative damage-style life loss (excludes natural decay). Powers Bloodlust-style triggers.
 var life_lost_this_turn: int = 0
 
-# Maximum hand size enforced at the cleanup step (MTG 514.3). Default 7; can be
-# pumped/cut by future effects (e.g. Reliquary Tower-style "no maximum").
+# Maximum hand size enforced at the cleanup step (MTG 514.3).
 var max_hand_size: int = 7
 
 

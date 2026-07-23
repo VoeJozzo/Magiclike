@@ -1,0 +1,22 @@
+{
+  "card_id": "updraft",
+  "name": "Updraft",
+  "art": "🌬️",
+  "cost": {
+    "U": 1
+  },
+  "types": [
+    "Sorcery"
+  ],
+  "keywords": [
+    "flash"
+  ],
+  "target": "your_creature",
+  "effects": [
+    {
+      "kind": "grant_keyword",
+      "keyword": "flying",
+      "duration": "eot"
+    }
+  ]
+}

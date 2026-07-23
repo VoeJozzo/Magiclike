@@ -1,5 +1,6 @@
 {
   "card_id": "steal",
+  "boon": true,
   "art": "art.png",
   "cost": {
     "C": 5
@@ -15,7 +16,6 @@
     }
   ],
   "name": "Steal",
-  "special": true,
   "text": "Counter target non-token spell or take target non-token permanent. The card becomes yours forever — shuffle it into your library.",
   "custom_text": true,
   "keywords": [

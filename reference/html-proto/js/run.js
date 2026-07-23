@@ -1,10 +1,9 @@
 // SAVE_VERSION bumps on schema change; MIGRATIONS walks old saves forward.
-// Hoisted out of the RUN IIFE so the test harness can exercise them via EXPOSED.
+// Declared at module scope, not inside the RUN IIFE, so the test harness can exercise them via EXPOSED.
 const SAVE_KEY = 'magiclike_run_v1';
 const SAVE_VERSION = 2;
 
 // tplId renames — old → new. Used by run-save migration AND picklog translation.
-// v1.0.134.16: four cards' tplIds didn't match display names from earlier renames.
 const TPLID_RENAMES = {
   "abyssLurker":         "abyss_lurker",
   "aerialManeuver":      "aerial_maneuver",
@@ -254,6 +253,7 @@ const TPLID_RENAMES = {
   "wrathOfGod":          "day_of_reckoning",
   "wurm":                "gizzard_beast",
   "zealot":              "holy_zealot",
+  "rescue_angel":        "uplifting_angel",
 };
 function renameTplId(id) { return TPLID_RENAMES[id] || id; }
 
@@ -261,7 +261,7 @@ function renameTplId(id) { return TPLID_RENAMES[id] || id; }
 // renameTplId over every loaded pick on every load (no schema gate — picklog.js),
 // so if a key were ever reused as a LIVE card id, that card's picklog history
 // would be silently rewritten forever. Boot surfaces any collision (main.js); the
-// static invariant is also pinned in tplid_renames_test.js. Empty today.
+// static invariant is also pinned in tplid_renames_test.js.
 function tplidRenameKeyCollisions(cards) {
   return Object.keys(TPLID_RENAMES).filter(k => cards && cards[k]);
 }
@@ -280,24 +280,17 @@ function migrateSlotTplIds(slots) {
 
 const MIGRATIONS = {
   // v1->v2 tplId rename. The renames must reach every place a tplId actually
-  // persists on a SAVED runState. Git-verified at df2fd38^ (where SAVE_VERSION
-  // was 1 and save() stored {version, runState}): those places are the live
-  // slots; the mid-game slots snapshot (a deep-clone of slots taken at game
-  // start); a pending transform reward's replacementPack (two shapes — a
-  // 'mixed'-phase candidate, and the committed 'transformPick' phase); and the
-  // run modifier (boon) id (e.g. cityOfBrass -> city_of_brass). The PREVIOUS
-  // migration was written against a PHANTOM shape: it renamed four fields that
-  // never existed on a persisted runState (pendingNeowModifier / currentPack /
-  // youPicks / oppDecks — youPicks/currentPack live on DRAFT's in-memory state,
-  // not the save) and MISSED the snapshot, so loading an old mid-game save
-  // resurrected dead tplIds and the next deck build threw "Unknown card",
-  // wiping the run (audit A9-1). (A9-10's later version-gap miss is a non-issue
-  // per Joe — solo player, two-week-old saves — so SAVE_VERSION stays 2.)
+  // persists on a SAVED runState: the live slots; the mid-game slots snapshot
+  // (a deep-clone of slots taken at game start); a pending transform reward's
+  // replacementPack (two shapes — a 'mixed'-phase candidate, and the
+  // committed 'transformPick' phase); and the run modifier (boon) id (e.g.
+  // cityOfBrass -> city_of_brass). (A9-10's later version-gap miss is a
+  // non-issue per Joe — solo player, two-week-old saves — so SAVE_VERSION
+  // stays 2.)
   1: (blob) => {
     const rs = blob.runState || {};
     migrateSlotTplIds(rs.slots);
     migrateSlotTplIds(rs.midGameSlotsSnapshot);
-    if (rs.modifier) rs.modifier = renameTplId(rs.modifier);
     const pr = rs.pendingReward;
     if (pr) {
       // Shape A — 'mixed' phase: each transform candidate carries replacementPack.
@@ -333,13 +326,6 @@ function save() {
   }
 }
 
-// §3.8 snake_case rename map for sticker IDs stored in saved slots.
-const STICKER_ID_RENAMES = {
-  plus1plus1: 'plus1_plus1',
-  costMinus1: 'cost_minus_1',
-  landColor_W: 'land_color_w', landColor_U: 'land_color_u', landColor_B: 'land_color_b',
-  landColor_R: 'land_color_r', landColor_G: 'land_color_g',
-};
 
 function load() {
   try {
@@ -375,57 +361,16 @@ function load() {
     let dirty = false;
     let stalePruned = 0;
     let rollsBackfilled = 0;
-    let subtypeMigrated = 0;
-    let permaBuffsMigrated = 0;
     if (Array.isArray(runState.slots)) {
       for (const slot of runState.slots) {
-        // A5-6/A5-7: convert a legacy slot.permaBuffs object (Elystra's banked
-        // power/toughness/keywords from before the sticker refactor) into the
-        // stat_boost / kw_* stickers that now carry it — so an in-flight save
-        // spanning the upgrade doesn't silently drop the accumulated buffs.
-        // LIVE, not dead code (PR #134 review adjudication, 2026-07-02): the
-        // released dev build (v2.1.18) still WRITES slot.permaBuffs via
-        // flushPermanentEotToPermaBuffs under SAVE_VERSION 2, so this is the
-        // only bridge for a save that crosses the sticker refactor. Remove only
-        // when the released build no longer writes the field (or a deliberate
-        // SAVE_VERSION bump retires it).
-        if (slot.permaBuffs && typeof slot.permaBuffs === 'object') {
-          if (!Array.isArray(slot.stickers)) slot.stickers = [];
-          const pb = slot.permaBuffs;
-          if ((pb.power || 0) !== 0 || (pb.toughness || 0) !== 0) {
-            slot.stickers.push({ kind: 'stat_boost', power: pb.power || 0, toughness: pb.toughness || 0 });
-          }
-          if (Array.isArray(pb.keywords)) {
-            for (const kw of pb.keywords) {
-              const id = 'kw_' + kw;
-              if (STICKERS[id] && !slot.stickers.includes(id)) slot.stickers.push(id);
-            }
-          }
-          delete slot.permaBuffs;
-          permaBuffsMigrated++;
-          dirty = true;
-        }
         if (!Array.isArray(slot.stickers)) continue;
         if (!Array.isArray(slot.subtypeRolls)) slot.subtypeRolls = [];
-        slot.stickers = slot.stickers.map(id => {
-          if (typeof id === 'string' && id.startsWith('subtype_') && id !== 'subtype') {
-            const sub = id.slice('subtype_'.length);
-            const cap = sub.charAt(0).toUpperCase() + sub.slice(1);
-            slot.subtypeRolls.push(cap);
-            subtypeMigrated++;
-            return 'subtype';
-          }
-          // §3.8 snake_case sticker-id renames.
-          if (STICKER_ID_RENAMES[id]) { dirty = true; return STICKER_ID_RENAMES[id]; }
-          return id;
-        });
         const before = slot.stickers.length;
         // Keep registry-id stickers AND inline {kind,...} descriptors (§3.8
         // apply_sticker products: cost_mod / set_color / stat_boost snapshots).
         slot.stickers = slot.stickers.filter(s =>
           (s && typeof s === 'object' && s.kind) || STICKERS[s]);
         stalePruned += before - slot.stickers.length;
-        // Backfill empowerRolls for empower stickers without recorded rolls.
         const empowerCount = slot.stickers.filter(id => id === 'empower').length;
         if (!Array.isArray(slot.empowerRolls)) slot.empowerRolls = [];
         while (slot.empowerRolls.length < empowerCount) {
@@ -443,46 +388,20 @@ function load() {
       if (rollsBackfilled > 0) {
         console.log(`Backfilled ${rollsBackfilled} empower roll(s) on legacy save.`);
       }
-      if (subtypeMigrated > 0) {
-        console.log(`Migrated ${subtypeMigrated} legacy subtype sticker(s) to unified format.`);
-      }
-      if (permaBuffsMigrated > 0) {
-        console.log(`Migrated ${permaBuffsMigrated} legacy permaBuffs slot(s) to stat_boost/kw stickers.`);
-      }
-      if (stalePruned > 0 || rollsBackfilled > 0 || subtypeMigrated > 0) dirty = true;
+      if (stalePruned > 0 || rollsBackfilled > 0) dirty = true;
+    }
+    // Config backfill: saves from before the Growing Deck have no config —
+    // they are classic runs by definition.
+    if (!runState.config || typeof runState.config.mode !== 'string') {
+      runState.config = { mode: 'classic' };
+      dirty = true;
     }
     // Reroll pendingReward if it's not a current shape (legacy splice pre-rolls).
     if (runState.pendingReward) {
       const ph = runState.pendingReward.phase;
-      if (ph !== 'mixed' && ph !== 'transformPick' && ph !== 'twoStickersReveal') {
+      if (ph !== 'mixed' && ph !== 'transformPick' && ph !== 'twoStickersReveal' &&
+          ph !== 'bucketPick') {
         runState.pendingReward = generateRewardOffer();
-        dirty = true;
-      }
-    }
-    // Map migrations: color/constructedId/boss-type backfill for legacy saves.
-    if (runState.map && Array.isArray(runState.map.nodes)) {
-      const COLOR_KEYS = ['W','U','B','R','G'];
-      const maxLevel = runState.map.nodes.reduce((m, n) => Math.max(m, n.level), 0);
-      const bossIds = (typeof DRAFT !== 'undefined' && DRAFT.getConstructedDeckIds)
-        ? DRAFT.getConstructedDeckIds().filter(id => {
-            const spec = DRAFT.getConstructedDeck(id);
-            return spec && spec.isBoss;
-          })
-        : [];
-      for (const n of runState.map.nodes) {
-        if (!('constructedId' in n)) { n.constructedId = null; dirty = true; }
-        const isExit = (n.level === maxLevel);
-        if (isExit && n.type !== 'boss' && bossIds.length > 0) {
-          n.type = 'boss';
-          n.constructedId = bossIds[Math.floor(Math.random() * bossIds.length)];
-          dirty = true;
-        }
-        if ('color' in n) continue;
-        const isEnd = (n.level === 0 || n.level === maxLevel);
-        if (isEnd) { n.color = null; dirty = true; continue; }
-        n.color = Math.random() < 0.6
-          ? COLOR_KEYS[Math.floor(Math.random() * 5)]
-          : null;
         dirty = true;
       }
     }
@@ -503,7 +422,7 @@ function hasSave() {
   try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; }
 }
 
-function start(playerDeck, modifierId) {
+function start(playerDeck) {
   // Deck → slots {tplId, stickers}. Lands are slots too (need innate sticker support).
   // charges_at_run_start templates (Stapler) get a charges counter.
   const slots = playerDeck.cards.map(tplId => {
@@ -514,47 +433,8 @@ function start(playerDeck, modifierId) {
     }
     return slot;
   });
-  // Apply Neow-style run modifier (boon) if one was chosen.
-  if (modifierId && RUN_MODIFIERS[modifierId]) {
-    // Pass the in-progress slots into apply() so boons can reflect on the
-    // deck — e.g., to pick a random creature slot to anoint, or to skip
-    // application if no eligible slots exist.
-    // CONTRACT (stated identically in cards.js above RUN_MODIFIERS):
-    // apply(slots) may mutate the slots array in place OR return
-    // {extras: [...]} of new slots to append.
-    // Today all 7 boons return extras only (each grants a card); none
-    // mutates slots in place. In-place mutation is the documented shape
-    // for a future boon that modifies existing slots rather than adding
-    // new ones.
-    const result = RUN_MODIFIERS[modifierId].apply(slots) || {};
-    if (Array.isArray(result.extras)) {
-      for (const e of result.extras) {
-        // Pass through optional slot-level fields. Most boon-extras only
-        // need tplId + stickers (City of Brass, Elystra, Phylactery);
-        // future boons may want to seed empowerRolls, subtypeRolls, or
-        // bonusTriggers directly (and stickers — including stat_boost/kw_*, the
-        // channel Elystra's permanent buffs now use). The extras slot is the
-        // right place for these — they're how the boon shapes the slot it adds.
-        // (The triggerPool passthrough below is legacy-save support only:
-        // Mercurial Adept now seeds her pool via trigger_pool_seed — see
-        // engine.js makePlayer — and no current boon passes a triggerPool.)
-        const slot = { tplId: e.tplId, stickers: (e.stickers || []).slice() };
-        if (e.triggerPool) slot.triggerPool = e.triggerPool;
-        if (e.bonusTrigger) slot.bonusTrigger = e.bonusTrigger;
-        if (e.empowerRolls) slot.empowerRolls = e.empowerRolls.slice();
-        if (e.subtypeRolls) slot.subtypeRolls = e.subtypeRolls.slice();
-        const extraTpl = CARDS[e.tplId];
-        if (extraTpl && typeof extraTpl.charges_at_run_start === 'number') {
-          slot.charges = (typeof e.charges === 'number') ? e.charges : extraTpl.charges_at_run_start;
-        }
-        slots.push(slot);
-      }
-    }
-  }
   runState = {
     slots,
-    colors: playerDeck.colors,
-    modifier: modifierId || null,
     gameNum: 0,
     wins: 0,
     active: true,
@@ -566,9 +446,14 @@ function start(playerDeck, modifierId) {
     map: generateMap(),
     pendingMapChoice: null,
     pendingPostDraftOffer: null,
+    // Run config. Growing Deck runs start small (bucket draft) and grow via
+    // addBucket rewards until the deck reaches the classic 23-spell size;
+    // classic/desertCube runs start full and never see addBucket offers.
+    config: {
+      mode: (playerDeck && playerDeck.mode === 'growing') ? 'growing' : 'classic',
+    },
   };
   runState.map.currentNodeId = runState.map.rootId;
-  // Post-draft Innate offer: up to 3 most-drafted basic types.
   const BASIC_TPL_IDS = new Set(['plains','island','swamp','mountain','forest']);
   const basicCounts = {};
   for (const slot of runState.slots) {
@@ -629,7 +514,7 @@ function generateMap() {
       }
       nodes.push({
         id: idForLevelCol(level, col),
-        level, col, type, color, constructedId, cols,
+        level, col, type, color, constructedId,
       });
     }
   }
@@ -692,19 +577,6 @@ function getMapSuccessors(nodeId) {
 
 function startNextGame() {
   if (!runState || !runState.active) return null;
-  // Advance map. Single-successor → auto. Multi → pickMapNode resolved first.
-  if (runState.gameNum > 0 && runState.map && runState.map.currentNodeId) {
-    const cur = runState.map.currentNodeId;
-    const completedVisited = runState.map.visitedNodeIds.includes(cur);
-    if (completedVisited) {
-      const succ = getMapSuccessors(cur);
-      if (succ.length === 1) {
-        runState.map.currentNodeId = succ[0];
-      } else if (succ.length >= 2) {
-        console.warn('startNextGame: pending map choice not resolved; using current node');
-      }
-    }
-  }
   runState.gameNum++;
   runState.lastResult = null;
   runState.pendingReward = null;
@@ -719,7 +591,11 @@ function startNextGame() {
     : null;
   const colorAffinity = curNode ? curNode.color : null;
   const constructedId = curNode ? curNode.constructedId : null;
-  const opp = DRAFT.buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, constructedId);
+  // Growing Deck: heuristic-drafted opponents mirror the player's current
+  // spell count (both sides grow across the run); constructed decks and
+  // bosses are scripted landmarks and ignore the mirror (draft.js).
+  const numPicks = isGrowingRun() ? countSpellSlots(runState.slots) : undefined;
+  const opp = DRAFT.buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, constructedId, numPicks);
   ENGINE.init(runState.slots, opp.cards);
   save();
   let bossName = null;
@@ -732,7 +608,6 @@ function startNextGame() {
   return { gameNum: runState.gameNum, bossName, bossIcon };
 }
 
-// Commit fork choice; validates against pendingMapChoice options.
 function pickMapNode(nodeId) {
   if (!runState || !runState.pendingMapChoice) return false;
   if (!runState.pendingMapChoice.options.includes(nodeId)) return false;
@@ -742,7 +617,6 @@ function pickMapNode(nodeId) {
   return true;
 }
 
-// Apply Innate sticker to the first slot of the chosen basic tplId.
 function pickPostDraftOffer(tplId) {
   if (!runState || !runState.pendingPostDraftOffer) return false;
   const offer = runState.pendingPostDraftOffer;
@@ -806,9 +680,7 @@ function recordResult(winner, playedSlotIdxs, claimedKeywords) {
       } else {
         // 1+ successors → a click-the-node choice. A SINGLE successor is a
         // one-option choice (identical map UI to a fork), not a separate
-        // auto-advance behind a "Continue" button. (The startNextGame
-        // single-successor auto-advance is kept as a back-compat fallback for
-        // saves made before this — see startNextGame.)
+        // auto-advance behind a "Continue" button.
         runState.pendingMapChoice = { options: successors };
       }
     }
@@ -832,11 +704,10 @@ const REWARD_TYPE_WEIGHTS = {
   transform:     2,   // uncommon — opens a draft-style replacement pack
   clone:         2,   // uncommon — duplicate a slot (fresh, no stickers carry)
   threeStickersBlind: 1,  // rare — three stickers on a random creature slot,
-                          // identity not revealed at offer time. Lowered from
-                          // 2 → 1 (v1.0.46) because three stickers on a single
-                          // creature reliably produces a centerpiece threat,
-                          // and at weight 2 it was showing up often enough to
-                          // distort the run's power curve.
+                          // identity not revealed at offer time. Kept low:
+                          // at weight 2, three stickers on one creature
+                          // reliably produces a centerpiece threat that
+                          // distorts the run's power curve.
   ripUp:         1,   // rare — permanently removes a slot
   splice:        2,   // uncommon — combines two of the player's cards into
                       // one slot (Bolt + Giant Growth → 2-cost spell that
@@ -846,20 +717,55 @@ const REWARD_TYPE_WEIGHTS = {
                       // enumerates eligible pairs and picks one;
                       // canonicalSplicePair decides which half is the
                       // base); the player accepts or declines the offered
-                      // pair as-is — no pick-then-pick step (v1.0.47).
+                      // pair as-is — no pick-then-pick step.
 };
+
+// Growing Deck growth targets — the canonical classic deck shape the run
+// grows toward (23 spells + 17 lands; mirrors draft.js's TOTAL_PICKS/LANDS).
+const GROWING_TARGET_SPELLS = 23;
+const GROWING_TARGET_LANDS = 17;
+// addBucket's reward weight per missing spell. At a 12-spell deficit the
+// weight is 24 (vs. sticker's 12) so early offers almost always carry a
+// growth option; the weight fades to 0 as the deck fills — one formula gives
+// the run its arc: building → empowering.
+const GROWTH_WEIGHT_PER_MISSING_SPELL = 2;
+
+function countSpellSlots(slots) {
+  let n = 0;
+  for (const slot of slots) {
+    const tpl = CARDS[slot.tplId];
+    if (tpl && !hasType(tpl, 'Land')) n++;
+  }
+  return n;
+}
+
+function isGrowingRun() {
+  return !!(runState && runState.config && runState.config.mode === 'growing');
+}
+
+// The effective reward-type table for THIS offer: the static weights plus a
+// dynamically-weighted addBucket entry while a Growing Deck is under target.
+function effectiveRewardWeights() {
+  const weights = Object.assign({}, REWARD_TYPE_WEIGHTS);
+  if (isGrowingRun()) {
+    const deficit = GROWING_TARGET_SPELLS - countSpellSlots(runState.slots);
+    if (deficit > 0) weights.addBucket = GROWTH_WEIGHT_PER_MISSING_SPELL * deficit;
+  }
+  return weights;
+}
 
 // Roll the type of one reward candidate by weight. Allows excluded types so
 // we can fall back when a type can't be fulfilled.
-function pickRewardType(excluded) {
+function pickRewardType(excluded, weights) {
   const exc = excluded || new Set();
+  const table = weights || REWARD_TYPE_WEIGHTS;
   let total = 0;
-  for (const [t, w] of Object.entries(REWARD_TYPE_WEIGHTS)) {
+  for (const [t, w] of Object.entries(table)) {
     if (!exc.has(t)) total += w;
   }
   if (total <= 0) return null;
   let roll = Math.random() * total;
-  for (const [t, w] of Object.entries(REWARD_TYPE_WEIGHTS)) {
+  for (const [t, w] of Object.entries(table)) {
     if (exc.has(t)) continue;
     roll -= w;
     if (roll < 0) return t;
@@ -897,6 +803,17 @@ function rollOneCandidate(type, alreadyOffered) {
       return cand;
     }
     return null;
+  }
+  if (type === 'addBucket') {
+    // Growing Deck growth: 3 synergy-graph buckets (each 3 cards + 2 lands),
+    // pre-rolled at offer time so the offer is stable across save/load.
+    // Single-shot dup key — at most one growth candidate per offer.
+    if (alreadyOffered.has('addBucket')) return null;
+    const deckTplIds = runState.slots.map(s => s.tplId);
+    const buckets = BUCKETS.rollBucketOffer(deckTplIds);
+    if (!buckets || buckets.length === 0) return null;
+    alreadyOffered.add('addBucket');
+    return { kind: 'addBucket', buckets };
   }
   if (type === 'transform') {
     // Lands included — manabase modification is intentional.
@@ -999,11 +916,14 @@ function rollOneCandidate(type, alreadyOffered) {
 function generateRewardOffer() {
   const candidates = [];
   const alreadyOffered = new Set();
+  // Snapshot the weight table once per offer — includes the dynamic addBucket
+  // weight while a Growing Deck is under its spell target.
+  const weights = effectiveRewardWeights();
   for (let i = 0; i < 3; i++) {
     const excluded = new Set();
     let cand = null;
     while (!cand) {
-      const type = pickRewardType(excluded);
+      const type = pickRewardType(excluded, weights);
       if (!type) break;     // every type exhausted
       cand = rollOneCandidate(type, alreadyOffered);
       if (!cand) excluded.add(type);
@@ -1092,6 +1012,22 @@ function pickRewardCandidate(idx) {
     save();
     return;
   }
+  if (cand.kind === 'addBucket') {
+    // Two-phase like transform: committing the candidate opens the pick-a-
+    // bucket phase; the deck mutates in pickBucket, not here.
+    runState.pendingReward = {
+      phase: 'bucketPick',
+      buckets: cand.buckets.map(b => ({
+        name: b.name,
+        cards: b.cards.slice(),
+        lands: b.lands.slice(),
+        coherence: b.coherence,
+        why: (b.why || []).slice(),
+      })),
+    };
+    save();
+    return;
+  }
   if (cand.kind === 'splice') {
     const ok = applySplice(cand.baseSlotIdx, cand.stapleSlotIdx);
     if (!ok) {
@@ -1103,7 +1039,7 @@ function pickRewardCandidate(idx) {
   if (cand.kind === 'clone') {
     // Deep-clone all slot state (stickers, staples, empowerRolls, bonusTrigger,
     // charges) so the player gets the merged/buffed version, not just the base.
-    // Elystra's permanent buffs ride along inside stickers now (audit A5-6/A5-7).
+    // Elystra's permanent buffs ride along inside stickers (audit A5-6/A5-7).
     const orig = runState.slots[cand.slotIdx];
     if (!orig) {
       runState.pendingReward = null;
@@ -1132,7 +1068,7 @@ function pickRewardCandidate(idx) {
       };
     }
     if (typeof orig.charges === 'number') {
-      // A5-5 (Joe Option A, PR #98): photocopy the REMAINING charges. A clone
+      // A5-5: photocopy the REMAINING charges. A clone
       // of a half-used Stapler is half-used — without this the clone slot has no
       // charges field, the engine charge gate reads it as infinite (never
       // decrements, never rips), and the UI shows "3 charges" forever.
@@ -1208,8 +1144,7 @@ function pickRewardCandidate(idx) {
   }
 }
 
-// Player chose a replacement card from the transform pack. Replace the slot
-// (no stickers carry over — fresh slot) and clear the pending reward.
+// No stickers carry over onto the replacement — a fresh slot, by design.
 function pickTransformReplacement(tplId) {
   if (!runState || !runState.pendingReward) return;
   if (runState.pendingReward.phase !== 'transformPick') return;
@@ -1224,6 +1159,49 @@ function pickTransformReplacement(tplId) {
   runState.slots[slotIdx] = { tplId, stickers: [] };
   runState.pendingReward = null;
   save();
+}
+
+// Growing Deck: commit a bucket pick — push a fresh slot per card and per
+// land (mirrors start()'s slot builder, incl. charges_at_run_start). Once
+// the deck reaches its spell target, a one-time land top-up closes the
+// small rounding gap buckets leave (4 buckets × 2 lands = 16 vs. target 17).
+function pickBucket(bucketIdx) {
+  if (!runState || !runState.pendingReward) return;
+  if (runState.pendingReward.phase !== 'bucketPick') return;
+  const bucket = runState.pendingReward.buckets && runState.pendingReward.buckets[bucketIdx];
+  if (!bucket) return;
+  PICKLOG.logBucketPick(bucket, runState.pendingReward.buckets);
+  for (const tplId of [...bucket.cards, ...bucket.lands]) {
+    if (!CARDS[tplId]) continue;
+    const slot = { tplId, stickers: [] };
+    const tpl = CARDS[tplId];
+    if (tpl && typeof tpl.charges_at_run_start === 'number') {
+      slot.charges = tpl.charges_at_run_start;
+    }
+    runState.slots.push(slot);
+  }
+  if (countSpellSlots(runState.slots) >= GROWING_TARGET_SPELLS) {
+    topUpLands();
+  }
+  runState.pendingReward = null;
+  save();
+}
+
+// Push basic lands until the deck holds GROWING_TARGET_LANDS, colored by the
+// deck's overall pip profile (single-sourced through DRAFT.allocLandsFor).
+function topUpLands() {
+  const landCount = runState.slots.length - countSpellSlots(runState.slots);
+  const deficit = GROWING_TARGET_LANDS - landCount;
+  if (deficit <= 0) return;
+  const pips = { W: 0, U: 0, B: 0, R: 0, G: 0 };
+  for (const slot of runState.slots) {
+    const tpl = CARDS[slot.tplId];
+    if (!tpl || !tpl.cost) continue;
+    for (const k of Object.keys(pips)) pips[k] += (tpl.cost[k] || 0);
+  }
+  for (const landTplId of DRAFT.allocLandsFor(pips, deficit)) {
+    runState.slots.push({ tplId: landTplId, stickers: [] });
+  }
 }
 
 // Apply a splice — merge staple slot into base, remove staple. Pre-rolled
@@ -1252,7 +1230,7 @@ function applySplice(baseSlotIdx, stapleSlotIdx) {
   // (engine.js mergeSpliceData). Stickers are slot-scoped and just concat;
   // empower rolls remap (effect indices shift when arrays concatenate / move
   // into an ETB trigger); subtype concat; bonusTrigger: base wins. (Elystra's
-  // permanent buffs are stickers now, so they ride the sticker concat.)
+  // permanent buffs are stickers, so they ride the sticker concat.)
   const merged = mergeSpliceData(
     { tplId: baseSlot.tplId, stickers: baseSlot.stickers, empowerRolls: baseSlot.empowerRolls,
       subtypeRolls: baseSlot.subtypeRolls,
@@ -1271,13 +1249,10 @@ function applySplice(baseSlotIdx, stapleSlotIdx) {
   return true;
 }
 
-// (countEffects + remapEmpowerRollForStaple moved to module scope so both
+// (countEffects + remapEmpowerRollForStaple live at module scope so both
 //  the RUN IIFE and the ENGINE IIFE can call them — ENGINE needs them for
-//  in-game Stapler splice. The function bodies are unchanged from the
-//  original RUN-private versions.)
+//  in-game Stapler splice.)
 
-// Dismiss the reveal screen for twoStickers — closes the modal so the
-// player can advance to the next game.
 function dismissReveal() {
   if (!runState || !runState.pendingReward) return;
   if (runState.pendingReward.phase !== 'twoStickersReveal') return;
@@ -1376,8 +1351,6 @@ function appendSlot(tplId, stickers, meta) {
     if (Array.isArray(meta.stapledTpls))  newSlot.stapledTpls  = meta.stapledTpls.slice();
     if (meta.bonusTrigger)                newSlot.bonusTrigger = meta.bonusTrigger;
     if (typeof meta.charges === 'number') newSlot.charges = meta.charges;
-    // §3.8: Balancer overrides (symmetricized/colorOverride/extraCost) are gone —
-    // those cards now persist via stickers (cost_mod / set_color / stat_boost).
   }
   runState.slots.push(newSlot);
   save();
@@ -1409,8 +1382,11 @@ function _setPendingRewardForTest(reward) {
 }
 
 return { start, startNextGame, recordResult, getStats: getRunStats, isActive,
-         pickRewardCandidate, pickTransformReplacement, dismissReveal, getReward, getSlots,
+         pickRewardCandidate, pickTransformReplacement, pickBucket, dismissReveal, getReward, getSlots,
          applySplice, _setPendingRewardForTest,
+         // Reward-type odds — exported so the opp sticker-burst roll derives
+         // from the same table the player rewards use (audit A12/A13).
+         REWARD_TYPE_WEIGHTS,
          applyStickerToSlot, appendSlot, removeSlotByIdx,
          // Map navigation API.
          getMapState, pickMapNode,

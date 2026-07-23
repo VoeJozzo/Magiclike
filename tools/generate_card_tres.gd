@@ -1,10 +1,7 @@
 extends Node
 
-# One-time migration tool: read every card from CardDatabase.get_card() and
-# save it as cards/templates/<card_id>.tres. After this runs, card_database.gd
-# is rewritten to load() from .tres instead of constructing in code. The tool
-# script itself can be deleted after the migration commit lands — kept around
-# in tools/ in case we ever need to regenerate from scratch.
+# Run after CardResource structural changes to regenerate cards/templates/*.tres
+# from CardDatabase (see cards/templates/card_database.gd).
 #
 # Headless: godot --headless --path <repo> res://tools/generate_card_tres.tscn
 

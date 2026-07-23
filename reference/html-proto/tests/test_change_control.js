@@ -1,10 +1,6 @@
-// change_control unified control primitive (Slice 3 step 3 / decision 11).
-// Covers the control-change core (Mind Control / Threaten): pluck from the
-// current controller, push to the caster, with optional untap/haste/duration.
-// transfer_ownership delegates to the proven steal handler (not re-tested
-// deeply here). The migration is done: gainControl is retired (no handler;
-// effect_migration_test pins it GONE); steal remains permanently by design
-// as the transfer_ownership delegate. Exercised via applyEffect.
+// change_control: pluck from the current controller, push to the caster,
+// with optional untap/haste/duration (Mind Control / Threaten).
+// transfer_ownership delegates to the steal handler; not re-tested deeply here.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -48,7 +44,7 @@ console.log('\n=== Threaten: grant_haste + untap + eot duration ===');
   clearBoards();
   const c = place('opp');
   c.tapped = true;
-  ENGINE.applyEffect(CTX, { kind: 'change_control', duration: 'eot', grant_haste: true, untap_on_take: true },
+  ENGINE.applyEffect(CTX, { kind: 'change_control', duration: 'eot', grant_haste: true, untap: true },
     { kind: 'creature', iid: c.iid });
   check('taken to your side', has(G.you.battlefield, c.iid));
   check('untapped on take', c.tapped === false);
@@ -77,11 +73,8 @@ console.log('\n=== legacy param names still honored (grant_haste/untap) ===');
 
 console.log('\n=== Steal on a STAPLED opp creature transfers the WHOLE staple (not just the base) ===');
 (() => {
-  // Regression: the steal capture only read stapledTpls from a player-side run
-  // SLOT. An opponent's creature has no slot, so the else-branch dropped the
-  // staple -- the thief got a bare base creature (savannahLions 2/1) instead of
-  // the merged savannahLions+furnaceWhelp (4/3 flying). The merged identity lives
-  // on the runtime card's stapledFrom; the fix copies it on the no-slot path.
+  // An opponent's creature has no run slot; its staple identity lives on the
+  // runtime card's stapledFrom.stapledTpls rather than a slot.
   clearBoards();
   setup.startMainPhase('you');
   G.you.mana = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 9 };

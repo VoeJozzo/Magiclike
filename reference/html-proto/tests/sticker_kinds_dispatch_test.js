@@ -6,8 +6,6 @@
 //   applyStickersToCard — mutating a card at construction time
 //   stickersForSlot     — gating re-offer at reward time
 //   stickerBadgesHtml   — rendering the visual badge
-//
-// Adapted from the prior-session bundle.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -61,11 +59,15 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 }
 
 {
-  // remove_keyword: lose_defender strips a Wall's (subtype-derived) defender so it can attack.
-  const card = freshCard('wall_of_omens', ['lose_defender']);
-  ENGINE.applySubtypeKeywords(card);   // Wall→defender is derived, not printed on the card
+  // The precondition rides an UNSTICKERED card: applySubtypeKeywords honors
+  // remove_keyword stickers, so a stickered Wall never passes through a state
+  // where it has defender — there is no intermediate to observe.
+  const bare = freshCard('wall_of_omens', []);
+  ENGINE.applySubtypeKeywords(bare);
   check('lose_defender precondition: wall_of_omens has defender via its Wall subtype',
-    card.keywords.includes('defender'));
+    bare.keywords.includes('defender'));
+  const card = freshCard('wall_of_omens', ['lose_defender']);
+  ENGINE.applySubtypeKeywords(card);
   applyStickersToCard(card);
   check("remove_keyword strips 'defender' from card.keywords",
     !card.keywords.includes('defender'));
@@ -91,7 +93,7 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 {
   const card = freshCard('plains', ['land_color_w']);
   applyStickersToCard(card);
-  // Adding the native color is a no-op — still just W (no duplicate / no choose).
+  // No duplicate color added, and no promotion to a choose-type mana ability.
   check("landColor: native 'W' stays single-color", JSON.stringify(ENGINE.landProducibleColors(card)) === JSON.stringify(['W']));
 }
 
@@ -118,7 +120,6 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
   check('set_color sets card.color to C', card.color === 'C', 'color=' + card.color);
 }
 {
-  // Mixed string + inline descriptors in one slot's sticker list.
   const card = freshCard('furnace_whelp', ['plus1_plus1', { kind: 'cost_mod', amount: 1, stackable: true }]);
   const before = card.cost.C;
   applyStickersToCard(card);
@@ -200,8 +201,6 @@ console.log('\n=== stickersForSlot: each kind reflects into view correctly ===')
 }
 
 {
-  // lose_defender: offered on a defender creature, gated off non-defenders, and
-  // not re-offered once applied (view reflects the removal).
   const wall = stickersForSlot({ tplId: 'wall_of_omens', stickers: [] }, ['W']);
   check('lose_defender offered on a defender creature', wall.some(s => s.id === 'lose_defender'));
   const lion = stickersForSlot({ tplId: 'savannah_lions', stickers: [] }, ['W']);
@@ -212,9 +211,7 @@ console.log('\n=== stickersForSlot: each kind reflects into view correctly ===')
 
 console.log('\n=== stickerBadgesHtml: only non-redundant kinds render (Q2) ===');
 
-// KEPT — info no other frame element surfaces. (grant_mana_ability is also a
-// kept kind, but no registry sticker uses it post-Q3 — land stickers are now
-// add_type — so it's exercised only by inline/boss descriptors, not here.)
+// KEPT — info no other frame element surfaces.
 {
   const roll = { location: 'abilities', subIdx: 0, effIdx: 0, modeIdx: null, field: 'amount' };
   const html = stickerBadgesHtml(['empower'], false, [roll], 'spitfire_bastion');
@@ -227,7 +224,6 @@ console.log('\n=== stickerBadgesHtml: only non-redundant kinds render (Q2) ===')
   check('lose_defender (remove_keyword) badge still renders', html.includes('Loses Defender'));
 }
 
-// DROPPED — already shown in oracle text / type line / P-T box / cost box.
 {
   check('statBoost badge suppressed (shown in P/T box)', stickerBadgesHtml(['plus1_plus1']) === '');
   check('keyword badge suppressed (shown in oracle text)', stickerBadgesHtml(['kw_flying']) === '');
@@ -239,7 +235,6 @@ console.log('\n=== stickerBadgesHtml: only non-redundant kinds render (Q2) ===')
     stickerBadgesHtml(['land_color_r']) === '');
 }
 {
-  // Mixed: dropped kinds vanish, kept kinds remain.
   const html = stickerBadgesHtml(['plus1_plus1', 'kw_flying', 'lose_defender']);
   check('mixed badges: dropped suppressed, kept shown',
     !html.includes('+1/+1') && !html.includes('Flying') && html.includes('Loses Defender'));
@@ -248,7 +243,6 @@ console.log('\n=== stickerBadgesHtml: only non-redundant kinds render (Q2) ===')
 console.log('\n=== Q1: sticker-granted text is flagged for coloring ===');
 
 {
-  // Sticker-granted keyword → its keyword-preamble segment carries sticker:true.
   const card = freshCard('savannah_lions', ['kw_flying']);
   applyStickersToCard(card);
   const segs = describeCardSegments(card, { skipKeywords: false });
@@ -256,15 +250,13 @@ console.log('\n=== Q1: sticker-granted text is flagged for coloring ===');
   check('sticker-granted keyword segment flagged sticker:true', !!flyingSeg && flyingSeg.sticker === true);
 }
 {
-  // An intrinsic keyword is NOT flagged (only sticker-granted ones color).
-  const card = freshCard('air_elemental', []);  // 4/4 with intrinsic flying
+  const card = freshCard('air_elemental', []);  // intrinsic flying, not sticker-granted
   applyStickersToCard(card);
   const segs = describeCardSegments(card, { skipKeywords: false });
   const flyingSeg = segs.find(s => s.text === 'Flying');
   check('intrinsic keyword segment NOT flagged sticker', !!flyingSeg && !flyingSeg.sticker);
 }
 {
-  // Sticker-granted trigger (Scarified) → marked _from_sticker + segs flagged.
   const card = freshCard('savannah_lions', ['scarified']);
   applyStickersToCard(card);
   const trig = (card.triggers || []).find(t => t._from_sticker);
@@ -273,7 +265,6 @@ console.log('\n=== Q1: sticker-granted text is flagged for coloring ===');
   check('scarified trigger segments flagged sticker:true', segs.some(s => s.sticker === true));
 }
 {
-  // segmentsToHtml turns the flag into a .sticker-granted span; plain text isn't wrapped.
   const flagged = segmentsToHtml([{ text: 'Flying', sticker: true }]);
   check('segmentsToHtml emits .sticker-granted span', flagged.includes('class="sticker-granted"'));
   const plain = segmentsToHtml([plainSeg('Flying')]);
@@ -283,8 +274,6 @@ console.log('\n=== Q1: sticker-granted text is flagged for coloring ===');
 console.log('\n=== Q3: land-color stickers add a land type (mana autogranted) ===');
 
 {
-  // 'Also a Mountain' adds the Mountain subtype to a Plains; the §305.6 autogrant
-  // then yields red mana. The native white production is preserved.
   const card = freshCard('plains', ['land_color_r']);
   applyStickersToCard(card);
   check('land_color_r adds the Mountain land type', hasType(card, 'Mountain'));

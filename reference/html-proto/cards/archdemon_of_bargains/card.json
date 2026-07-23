@@ -1,5 +1,6 @@
 {
   "card_id": "archdemon_of_bargains",
+  "boss": true,
   "art": "art.png",
   "cost": {
     "B": 2,
@@ -11,7 +12,6 @@
   ],
   "name": "Archdemon of Bargains",
   "power": 5,
-  "special": true,
   "text": "Flying, Trample. When this enters, you choose a number from 1 to 5; put that many stickers on permanents this controls. When this leaves play, put that many stickers on permanents you control.",
   "toughness": 5,
   "triggers": [

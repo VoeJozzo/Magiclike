@@ -1,8 +1,4 @@
-// DIVERGENCE D4: gain_life is a unified signed life-delta. amount > 0 gains and
-// fires life_changed(delta>0) → is_life_gain; amount < 0 loses life, tracks
-// lifeLostThisTurn, and fires life_changed(delta<0) → is_life_loss; 0 = no-op.
-// Card-text renders the sign. (No card uses negatives yet — this enables drain-
-// as-loss and lose-life triggers without a new effect kind.)
+// DIVERGENCE D4: gain_life is a unified signed life-delta.
 
 const setup = require('./_setup');
 setup.loadEngine();

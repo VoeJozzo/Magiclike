@@ -1,12 +1,12 @@
 {
   "card_id": "endomorph",
+  "boon": true,
   "art": "art.png",
   "cost": {
     "C": 2
   },
   "name": "Endomorph",
   "power": 2,
-  "special": true,
   "toughness": 2,
   "triggers": [
     {

@@ -1,8 +1,7 @@
-// §3.8 Balancer decomposition: embargo / bleach (and later symmetricize) no
-// longer write bespoke slot fields read by applyBalancerOverrides — they
-// decompose into the sticker pipeline via the apply_sticker effect, which
-// applies an inline {kind,...} sticker to the target's slot (persisted) AND the
-// runtime card. Everything flows through one sticker pipeline.
+// embargo/bleach decompose into the sticker pipeline via the apply_sticker
+// effect, which applies an inline {kind,...} sticker to the target's slot
+// (persisted) AND the runtime card. Everything flows through one sticker
+// pipeline.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -13,9 +12,8 @@ function check(label, ok, info) {
   if (ok) pass++; else fail++;
 }
 
-// A real, non-special creature for slot 0.
 const CR = (() => {
-  for (const id in CARDS) { const c = CARDS[id]; if (hasType(c, 'Creature') && !c.special && c.cost) return id; }
+  for (const id in CARDS) { const c = CARDS[id]; if (hasType(c, 'Creature') && !isUndraftable(c) && c.cost) return id; }
   return null;
 })();
 function bootWithCreature() {
@@ -53,7 +51,7 @@ console.log('\n=== embargo persists across a fresh makeCard (next-game rebuild) 
 console.log('\n=== bleach: apply_sticker(set_color C, folds cost) + move_card(bf→exile) ===');
 (() => {
   const { G, inst } = bootWithCreature();
-  inst.cost = { W: 1, B: 2, C: 1 };   // force a colored cost so the fold is exercised
+  inst.cost = { W: 1, B: 2, C: 1 };
   const tgt = { kind: 'creature', iid: inst.iid };
   ENGINE.applyEffect(CTX('Bleach'), { kind: 'apply_sticker', sticker: { kind: 'set_color', color: 'C' } }, tgt);
   check('runtime color set to C', inst.color === 'C', 'color=' + inst.color);
@@ -64,8 +62,6 @@ console.log('\n=== bleach: apply_sticker(set_color C, folds cost) + move_card(bf
     !G.you.battlefield.some(c => c.iid === inst.iid) && G.you.exile.some(c => c.iid === inst.iid));
   check('set_color sticker persisted on the slot (the "Forever" bleaching)',
     RUN.getSlots()[0].stickers.some(s => s && s.kind === 'set_color'));
-  // The upside: rebuilding the card from its run-slot yields a colorless cost
-  // (castable off any mana in future games).
   const rebuilt = ENGINE.makeCard(CR, RUN.getSlots()[0].stickers, 0);
   check('rebuilt-from-slot card has colorless cost (no colored pips)',
     !['W', 'U', 'B', 'R', 'G'].some(k => rebuilt.cost && rebuilt.cost[k]),
@@ -82,7 +78,7 @@ console.log('\n=== embargo/bleach card.json are decomposed (no bespoke kinds) ==
     (Array.isArray(c.effects) ? c.effects : []).some(e => e && (e.kind === 'embargo' || e.kind === 'bleach'))));
 })();
 
-console.log('\n=== §3.8 snake_case: a save with legacy sticker ids loads renamed (no data loss) ===');
+console.log('\n=== stale-sticker prune: unknown/legacy sticker ids are dropped on load ===');
 (() => {
   const blob = {
     version: SAVE_VERSION,
@@ -94,18 +90,15 @@ console.log('\n=== §3.8 snake_case: a save with legacy sticker ids loads rename
   const ok = RUN.load();
   check('save loaded', ok === true);
   const stickers = RUN.getSlots()[0].stickers;
-  check('plus1plus1 → plus1_plus1', stickers.includes('plus1_plus1'));
-  check('costMinus1 → cost_minus_1', stickers.includes('cost_minus_1'));
-  check('landColor_W → land_color_w', stickers.includes('land_color_w'));
-  check('no legacy ids survive (would have been pruned as unknown)',
+  check('legacy camelCase ids pruned as unknown',
     !stickers.some(s => s === 'plus1plus1' || s === 'costMinus1' || s === 'landColor_W'));
+  check('nothing materialized in their place', stickers.length === 0, JSON.stringify(stickers));
 })();
 
 console.log('\n=== scarification (#18): apply_sticker(scarified by id) + affect_creature(destroy) ===');
 (() => {
-  // Decomposed from the old destroy_and_sticker_slot monolith. Sticker-FIRST so
-  // the run-slot scar lands while the creature is still reachable; then destroy.
-  // Exercises apply_sticker's registry-id shape (sticker_id → STICKERS lookup).
+  // Sticker-first: the run-slot scar must land before the creature is
+  // destroyed and no longer targetable.
   const { G, inst } = bootWithCreature();
   const tgt = { kind: 'creature', iid: inst.iid };
   ENGINE.applyEffect(CTX('Scarification'), { kind: 'apply_sticker', sticker_id: 'scarified' }, tgt);
@@ -117,11 +110,10 @@ console.log('\n=== scarification (#18): apply_sticker(scarified by id) + affect_
 
 console.log('\n=== vileEdict (#27): chooses(permanent) → annihilate → rip (zone-agnostic slot strip) ===');
 (() => {
-  // The targeted player's chosen permanent ceases to exist (annihilate — NO
-  // death triggers, NOT graveyard) AND its deck-slot is stripped from the run.
+  // Annihilate skips death triggers (unlike destroy).
   const { G, inst } = bootWithCreature();
   const slotsBefore = RUN.getSlots().length;
-  // ctx-style: target is the player (you, the edict victim); chooses auto-picks.
+  // chooses() auto-picks a permanent for the edict target.
   const ctx = { controller: 'opp', sourceName: 'Vile Edict', sourceIid: -1, allTargets: [{ kind: 'player', who: 'you' }] };
   ENGINE.applyEffect(ctx, { kind: 'chooses', filter: 'permanent' }, { kind: 'player', who: 'you' });
   ENGINE.applyEffect(ctx, { kind: 'annihilate' }, null);
@@ -131,13 +123,6 @@ console.log('\n=== vileEdict (#27): chooses(permanent) → annihilate → rip (z
   check('its deck-slot stripped from the run', RUN.getSlots().length === slotsBefore - 1);
   check('vileEdict generates accurate text', describeCardText(CARDS.vile_edict) === 'Target opponent rips a permanent they control.');
 })();
-
-// NOTE: a prior version source-grepped engine/stickers/run.js to assert the old
-// applyBalancerOverrides channel "is deleted". Removed — a "function X stays
-// deleted" grep only fires when someone deliberately re-adds it (a decision, not
-// a regression), and the behavior blocks above already prove embargo/bleach
-// decompose through the one sticker pipeline (runtime cost + slot persistence):
-// if the legacy channel were the live one, those assertions would change.
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

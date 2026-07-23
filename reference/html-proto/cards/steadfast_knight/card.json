@@ -1,0 +1,33 @@
+{
+  "card_id": "steadfast_knight",
+  "name": "Steadfast Knight",
+  "art": "⚔️",
+  "cost": {
+    "W": 2,
+    "C": 1
+  },
+  "power": 2,
+  "toughness": 3,
+  "types": [
+    "Creature",
+    "Human",
+    "Knight"
+  ],
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "effects": [
+        {
+          "kind": "grant_keyword",
+          "scope": "all_yours",
+          "keyword": "vigilance",
+          "duration": "eot"
+        }
+      ]
+    }
+  ]
+}

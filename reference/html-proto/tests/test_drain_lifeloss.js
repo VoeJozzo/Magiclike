@@ -1,11 +1,5 @@
-// Drain cards are LIFE LOSS, not damage. Cards authored as "loses N life"
-// (Blood Artist, Blood Priest, drain demons, Goblin Chieftain's ping, Grave
-// Charm's drain mode, Wicked Acolyte, the self-loss on Demonic Tutor / Life for
-// Life / Dread Knight / Vexing Ogre, and the Scarified sticker) were implemented
-// as damage-to-player. The D4 signed gain_life mechanism existed but nothing
-// migrated the cards onto it. Now they do — life loss is unpreventable, doesn't
-// trigger damage synergies, and DOES feed life-loss synergies (Blood Priest +
-// Bloodlust). This locks the data shape, the behavior, and the AI valuation.
+// Drain cards are life loss, not damage: unpreventable, doesn't trigger damage
+// synergies, and does feed life-loss synergies (e.g. Blood Priest + Bloodlust).
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -63,7 +57,7 @@ function drain(G) {
 
 console.log('\n=== Blood Priest drains the OPPONENT (and tracks life loss) ===');
 (() => {
-  const G = game('opp');                 // opp casts → drains "you"
+  const G = game('opp');
   const youLife0 = G.you.life;
   const bp = mk('blood_priest', 'opp'); G.opp.hand.push(bp);
   ENGINE.executeAction('opp', { type: 'castSpell', cardIid: bp.iid });
@@ -79,13 +73,12 @@ console.log('\n=== Demonic Tutor: the "you lose 2 life" is self life loss (after
   const myLife0 = G.you.life;
   // seed library with a creature so the search has something to find (and so it
   // opens a HUMAN search prompt rather than fizzling with nothing to fetch).
-  const findable = mk(Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && !CARDS[k].special), 'you');
+  const findable = mk(Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && !isUndraftable(CARDS[k])), 'you');
   G.you.library.push(findable);
   const dt = mk('demonic_tutor', 'you'); G.you.hand.push(dt);
   ENGINE.executeAction('you', { type: 'castSpell', cardIid: dt.iid });
   drain(G);
-  // A4-23 leg-1: the trailing "lose 2 life" now resolves AFTER the human's search
-  // pick (canon §704.2 in-order resolution), not mid-resolution before it.
+  // canon §704.2: in-order resolution.
   check('self life-loss DEFERRED until the search pick', G.you.life === myLife0, 'life=' + G.you.life);
   ENGINE.executeAction('you', { type: 'searchPick', cardIid: findable.iid });
   check('caster lost 2 life (self drain) after the pick', G.you.life === myLife0 - 2, myLife0 + '→' + G.you.life);
@@ -93,11 +86,9 @@ console.log('\n=== Demonic Tutor: the "you lose 2 life" is self life loss (after
 
 console.log('\n=== AI still values + casts a drain creature (not undervalued) ===');
 (() => {
-  // abilityValue must score the drain trigger positively; getCardValue reflects it.
   const v = ENGINE.getCardValue(CARDS.blood_priest, 'play');
   check('bloodPriest has positive card value (drain trigger valued, not negative)', v > 0, 'value=' + v);
-  // And the AI actually casts it when it's the only play (clear the dealt hand
-  // so it doesn't prefer a land drop or another spell).
+  // Clear the dealt hand so it doesn't prefer a land drop or another spell.
   const G = game('opp');
   G.opp.hand.length = 0;
   const bp = mk('blood_priest', 'opp'); G.opp.hand.push(bp);

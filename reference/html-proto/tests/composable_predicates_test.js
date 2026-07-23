@@ -1,9 +1,5 @@
-// Composable predicates (Slice 2 / DIVERGENCE E2) — proto side.
-// Covers the function-call parser, the evaluate() walker (all expression
-// shapes), and each of the 12 atomic predicates against synthetic
-// new-vocabulary events. These run in parallel with the legacy condId path;
-// no card uses the new `condition` field yet, so the existing 482 assertions
-// are unaffected (verified by run_all.js).
+// Composable predicates test (proto side) — runs in parallel with the
+// legacy condId trigger path.
 //
 // Atomics read only specific fields, so synthetic ctx objects (not a started
 // game) are sufficient and keep the unit tests deterministic. `state` is a
@@ -17,12 +13,10 @@ function check(label, ok, info) {
   console.log('  ' + (ok ? 'PASS' : 'FAIL') + ': ' + label + (info ? ' -- ' + info : ''));
   if (ok) pass++; else fail++;
 }
-// Fresh synthetic engine-state stand-in.
 function S(youLost, oppLost) {
   return { you: { lifeLostThisTurn: youLost || 0 }, opp: { lifeLostThisTurn: oppLost || 0 } };
 }
 
-// ── Parser: _parseCall / arg coercion ────────────────────────────────────
 console.log('=== _parseCall ===');
 (() => {
   const p = _parseCall('card_moves(battlefield, graveyard)');
@@ -48,7 +42,6 @@ console.log('=== _parseCall ===');
   check('quoted "3" is string not int', forcedStr.args[0] === '3' && typeof forcedStr.args[0] === 'string');
 })();
 
-// ── evaluate() expression shapes ─────────────────────────────────────────
 console.log('\n=== evaluateCondition shapes ===');
 (() => {
   const source = { iid: 1 };
@@ -86,7 +79,6 @@ console.log('\n=== evaluateCondition shapes ===');
   check('malformed number expr → false', evaluateCondition(42, ctx) === false);
 })();
 
-// ── Atomic predicates against synthetic events ───────────────────────────
 console.log('\n=== atomic predicates ===');
 (() => {
   const source = { iid: 10 };
@@ -152,7 +144,7 @@ console.log('\n=== atomic predicates ===');
     ATOMIC_PREDICATES.lost_life_this_turn({ state: S(0, 4), source, event: {}, who: 'you' }, ['you']) === false);
 })();
 
-// ── Worked composition: Bloodlust Berserker (plan §4.1) ──────────────────
+// See docs/plans/plan-zone-change-and-composable-predicates.md §4.1.
 console.log('\n=== worked: Bloodlust Berserker condition ===');
 (() => {
   const cond = ['this_card', 'card_moves(battlefield, graveyard)', 'lost_life_this_turn(opp)'];
@@ -169,10 +161,10 @@ console.log('\n=== worked: Bloodlust Berserker condition ===');
     evaluateCondition(cond, { state: S(0, 2), source, event: otherDies, who: 'you' }) === false);
 })();
 
-// ── Boot validation ──────────────────────────────────────────────────────
+// Boot validator: js/main.js calls this after loadCards() (plan §8) to catch
+// condition typos before runtime.
 console.log('\n=== validateAllCardConditions ===');
 (() => {
-  // Synthetic card pool: good + bad conditions and event kinds.
   const synthetic = [
     { tplId: 'goodCard', triggers: [
       { event: 'card_zone_change', condition: ['this_card', 'card_moves(battlefield, graveyard)'] },
@@ -203,7 +195,6 @@ console.log('\n=== validateAllCardConditions ===');
   check('valid new event kind accepted', !r.unknownEvents.some(u => u.startsWith('goodEvent.')));
   check('valid combat_damage event kind accepted', !r.unknownEvents.some(u => u.startsWith('goodCombatEvent.')));
 
-  // The real shipped pool (now fully composable) must validate clean.
   const live = validateAllCardConditions(CARDS);
   check('live CARDS pool: no unknown atomics', live.unknownAtomics.length === 0,
     live.unknownAtomics.join(', '));

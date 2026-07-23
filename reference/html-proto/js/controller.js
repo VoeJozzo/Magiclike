@@ -57,7 +57,7 @@ const CONTROLLER = (function() {
 let pendingTarget = null;       // {kind:'cast'|'ability', cardIid, abilityIdx?, modeIdx?}
 let pendingModalChoice = null;  // {cardIid} — open mode picker
 let selectedMapNode = null;     // map node selected (highlighted) but not yet committed; Continue commits
-let uiAtk = [];                 // attacker selection
+let uiAtk = [];
 let uiBlk = new Map();          // blocker → attacker
 let uiPickBlk = null;           // selected blocker awaiting attacker click
 let aiScheduled = false;
@@ -118,6 +118,12 @@ function init() {
   if (settingsBtnPersistent) {
     settingsBtnPersistent.onclick = SETTINGS_PANEL.show;
   }
+  // Constellation viewer (🔭) — sibling of the gear; CONSTELLATION.show picks
+  // Deck vs Pool tab by whether a run is active.
+  const constellationBtn = document.getElementById('constellationBtn');
+  if (constellationBtn) {
+    constellationBtn.onclick = CONSTELLATION.show;
+  }
   // Keyboard pass / confirm: Space and Enter both trigger the contextual
   // primary action (Done Attacking/Blocking during a combat declaration,
   // otherwise Pass). See onPrimaryActionKey for the gating.
@@ -133,7 +139,6 @@ function init() {
 function stickerAppliesLabel(s) {
   switch (s.kind) {
     case 'stat_boost':     return 'creatures';
-    case 'grant_mana_ability':     return "lands that don't already produce {" + s.color + '} (deck must play ' + s.colorAdj + ')';
     case 'add_type':      return s.color
       ? "lands that don't already produce {" + s.color + '} (deck must play ' + s.colorAdj + ')'
       : 'permanents (adds the ' + s.type + ' type)';
@@ -175,7 +180,7 @@ function appendStickerSectionToBrowser(inner) {
   };
   const isInnateSticker = s => s.kind === 'keyword' && s.keyword === 'innate';
   for (const s of allStickers) {
-    if (s.kind === 'grant_mana_ability' || s.kind === 'add_type' || isInnateSticker(s)) groups['Land mods'].push(s);
+    if (s.kind === 'add_type' || isInnateSticker(s)) groups['Land mods'].push(s);
     else if (s.kind === 'keyword')                     groups['Keyword grants'].push(s);
     else                                               groups['Card boosts'].push(s);
   }
@@ -213,7 +218,6 @@ function appendStickerSectionToBrowser(inner) {
       text.style.cssText = 'color:#bbb';
       item.appendChild(text);
 
-      // Eligibility line — what cards this sticker can be applied to.
       const goes = document.createElement('div');
       goes.innerHTML = '<span style="color:#777">Goes on:</span> <span class="apply-text" style="color:#999"></span>';
       // Same {W}/{U}/etc treatment for the landColor eligibility blurb.
@@ -235,13 +239,13 @@ function showCardBrowser() {
   // Header — title + close. Sticky so it stays visible while scrolling
   // through what is potentially 100+ cards.
   const header = document.createElement('div');
-  header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding:8px 4px;border-bottom:1px solid #444;position:sticky;top:-16px;background:rgba(0,0,0,.96);z-index:1';
+  header.className = 'browser-head';
   const title = document.createElement('h2');
   title.textContent = 'CARD BROWSER';
-  title.style.cssText = 'color:#ffd700;margin:0;font-size:16px;letter-spacing:.08em';
+  title.className = 'browser-title';
   const closeBtn = document.createElement('button');
   closeBtn.textContent = 'Close';
-  closeBtn.style.cssText = 'padding:6px 14px;background:#332;border:1px solid #663;color:#ccc;cursor:pointer;border-radius:3px;font-family:inherit;font-size:12px';
+  closeBtn.className = 'choice-btn choice-btn-sm';
   closeBtn.onclick = () => { Modal.hide('cardBrowserModal'); };
   header.appendChild(title);
   header.appendChild(closeBtn);
@@ -284,7 +288,10 @@ function showCardBrowser() {
 
     const heading = document.createElement('h3');
     heading.textContent = g.label + ' — ' + g.cards.length + ' cards';
-    heading.style.cssText = 'color:' + g.tone + ';font-size:13px;letter-spacing:.1em;margin:0 0 8px;border-left:3px solid ' + g.tone + ';padding:2px 0 2px 8px;text-transform:uppercase';
+    // Tone is per-group data, so it stays inline; the rest is .browser-group-head.
+    heading.className = 'browser-group-head';
+    heading.style.color = g.tone;
+    heading.style.borderLeft = '3px solid ' + g.tone;
     section.appendChild(heading);
 
     const grid = document.createElement('div');
@@ -303,19 +310,20 @@ function showCardBrowser() {
   document.getElementById('cardBrowserModal').scrollTop = 0;
 }
 
-// Start-screen button styles, named so the factory below is the single place
-// button construction (create → text → style → onclick → append) lives.
-const START_BTN_STYLE = {
-  primary:   'padding:10px 20px;background:#2a4a2a;border:1px solid #4a8a4a;color:#aaffaa;border-radius:4px;cursor:pointer;font-size:14px',
-  cube:      'padding:10px 20px;background:#3a3a1a;border:1px solid #888844;color:#ddcc88;border-radius:4px;cursor:pointer;font-size:14px',
-  discard:   'padding:8px 20px;background:#2a2a2a;border:1px solid #555;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px',
-  secondary: 'padding:8px 20px;background:#1a1a2a;border:1px solid #444;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px',
-  sandbox:   'padding:8px 20px;background:#2a1a3a;border:1px solid #8855aa;color:#ddb3ff;border-radius:4px;cursor:pointer;font-size:12px',
+// Start-screen button variants map to CSS classes, not inline style strings —
+// inline styles would override the stylesheet's .start-btn* rules. `discard`
+// and `secondary` are both muted small buttons, so they share `start-btn-minor`.
+const START_BTN_CLASS = {
+  primary:   'start-btn start-btn-primary',
+  cube:      'start-btn start-btn-cube',
+  discard:   'start-btn start-btn-minor',
+  secondary: 'start-btn start-btn-minor',
+  sandbox:   'start-btn start-btn-sandbox',
 };
 function makeStartBtn(parent, text, styleKey, onclick) {
   const b = document.createElement('button');
   b.textContent = text;
-  b.style.cssText = START_BTN_STYLE[styleKey];
+  b.className = START_BTN_CLASS[styleKey] || START_BTN_CLASS.secondary;
   b.onclick = onclick;
   parent.appendChild(b);
   return b;
@@ -340,7 +348,14 @@ function showStartScreen() {
   if (RUN.hasSave()) {
     sub.textContent = 'You have a run in progress.';
     makeStartBtn(btns, 'Continue Run', 'primary', continueRun);
-    makeStartBtn(btns, 'New Run (discard save)', 'discard', () => {
+    makeStartBtn(btns, 'New Growing Deck Run (discard save)', 'discard', () => {
+      if (confirm('Discard your current run and start a new Growing Deck run?')) {
+        RUN.clearSave();
+        screen.style.display = 'none';
+        newRun('growing');
+      }
+    });
+    makeStartBtn(btns, 'New Classic Run (discard save)', 'discard', () => {
       if (confirm('Discard your current run and start a new one?')) {
         RUN.clearSave();
         screen.style.display = 'none';
@@ -356,7 +371,13 @@ function showStartScreen() {
     });
   } else {
     sub.textContent = 'A card roguelike';
-    makeStartBtn(btns, 'New Run', 'primary', () => {
+    // Growing Deck: start from 3 bucket picks, grow toward 23 spells via
+    // addBucket rewards between fights (docs/plans/plan-bucket-draft.md).
+    makeStartBtn(btns, 'New Run (Growing Deck)', 'primary', () => {
+      screen.style.display = 'none';
+      newRun('growing');
+    });
+    makeStartBtn(btns, 'New Classic Run', 'cube', () => {
       screen.style.display = 'none';
       newRun('classic');
     });
@@ -381,9 +402,8 @@ function showStartScreen() {
 // card into either player's hand or battlefield and top up mana/life via a
 // floating panel. Deliberately bypasses the run meta (no draft/map/rewards) —
 // gameOver and onStateChange are guarded by `sandboxMode` so it can't touch a
-// saved run. NOTE: a static/passive opponent is a planned follow-up; for now
-// the opponent is the normal AI (pair with Settings → Devtools → "Reveal AI
-// opponent's hand" to watch what it holds).
+// saved run. The opponent is the normal AI (pair with Settings → Devtools →
+// "Reveal AI opponent's hand" to watch what it holds).
 function sandboxDeck() {
   // Basic lands only → no deck-out and no random spells cluttering draws.
   // You spawn the cards you want to test. Derived from CARDS so it can't drift.
@@ -582,11 +602,11 @@ function continueRun() {
     } else {
       RUN.rollbackForMidGameRestore();
       lastGameRecorded = false;
-      if (RUN.getPostDraftOffer && RUN.getPostDraftOffer()) {
+      if (RUN.getPostDraftOffer()) {
         renderPostDraftOffer();
         return;
       }
-      const mapState = RUN.getMapState && RUN.getMapState();
+      const mapState = RUN.getMapState();
       if (mapState) {
         renderMap();
       } else {
@@ -600,63 +620,24 @@ function continueRun() {
     showStartScreen();
   }
 }
-// Transient pre-run choice; runState.modifier holds the final value post-draft.
-let pendingNeowModifier = null;
 let pendingDraftMode = 'classic';
 
 function newRun(mode) {
   clearTransientGameUi();
-  // Desert Cube skips Neow (cube+boon interaction not designed).
   Modal.hide('gameover');
-  pendingNeowModifier = null;
   pendingDraftMode = mode || 'classic';
-  if (pendingDraftMode === 'desertCube') {
-    DRAFT.startDraft(pendingDraftMode);
-    inDraft = true;
-    renderDraft();
-    return;
-  }
-  showNeowChoice();
+  // The boon is the draft's pick #0 (see DRAFT.startDraft), so every mode
+  // -- including Desert Cube (no boon) -- goes straight into the draft screen.
+  DRAFT.startDraft(pendingDraftMode);
+  inDraft = true;
+  renderDraft();
 }
 
-function showNeowChoice() {
-  // alwaysOffered boons fill stable left positions; rest random-fill.
-  const TARGET_BOONS = 3;
-  const allIds = Object.keys(RUN_MODIFIERS);
-  const alwaysIds = allIds.filter(id => RUN_MODIFIERS[id].alwaysOffered);
-  const poolIds = allIds.filter(id => !RUN_MODIFIERS[id].alwaysOffered);
-
-  const shuffledPool = poolIds.slice();
-  for (let i = shuffledPool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffledPool[i], shuffledPool[j]] = [shuffledPool[j], shuffledPool[i]];
-  }
-  const fillCount = Math.max(0, TARGET_BOONS - alwaysIds.length);
-  const randomIds = shuffledPool.slice(0, fillCount);
-
-  const offered = [...alwaysIds, ...randomIds];
-
-  // Each boon renders AS the card it grants (every current RUN_MODIFIERS id is a
-  // real card tplId); a modifier with no card backing falls back to a synthetic
-  // "Boon" card. Routed through the shared card-pick modal.
-  const items = offered.map(id => {
-    const m = RUN_MODIFIERS[id];
-    if (CARDS[m.id]) return { card: ENGINE.makeCard(m.id), value: id };
-    const boonArt = m.art || (CARDS[m.id] && CARDS[m.id].art) || '✦';
-    return { synthetic: { name: m.name || '', type: 'Boon', text: m.text || '', art: boonArt, color: 'C', scale: 2 }, value: id };
-  });
-  showCardPickModal({
-    title: 'A Boon Awaits',
-    subtitle: 'Choose a gift to shape your run.',
-    items, onPick: pickNeow,
-    accent: '#4a90c8', accentText: '#9bd0ff',   // boon blue
-  });
-}
 
 // Unified card-pick modal — the one popup behind the Neow boons AND the post-draft
-// land offer (previously two separate modals). Fills the shared #cardPickModal
-// slots, routes the card row through renderCardPicker, and optionally shows a
-// drafted-color HUD (colorTpls). Modeled on the draft, the rich baseline.
+// land offer. Fills the shared #cardPickModal slots, routes the card row
+// through renderCardPicker, and optionally shows a drafted-color HUD
+// (colorTpls).
 function showCardPickModal({ title, subtitle, items, onPick, colorTpls, accent, accentText }) {
   const box = document.querySelector('#cardPickModal .picker-box');
   if (box) {
@@ -674,25 +655,29 @@ function showCardPickModal({ title, subtitle, items, onPick, colorTpls, accent, 
   Modal.show('cardPickModal', { dismissible: false });
 }
 
-function pickNeow(id) {
-  pendingNeowModifier = id;
-  Modal.hide('cardPickModal');
-  DRAFT.startDraft(pendingDraftMode);
-  inDraft = true;
-  renderDraft();
-}
 
 function pickDraft(tplId) {
   if (!inDraft) return;
   DRAFT.pickPlayer(tplId);
+  afterDraftPick();
+}
+
+// Growing Deck: pick one of the 3 offered buckets on the draft screen.
+function pickDraftBucket(idx) {
+  if (!inDraft) return;
+  DRAFT.pickBucketOffer(idx);
+  afterDraftPick();
+}
+
+// Shared draft-advance: complete → hand the deck to RUN; else repaint.
+function afterDraftPick() {
   if (DRAFT.isComplete()) {
     inDraft = false;
     document.getElementById('draftScreen').classList.remove('vis');
     const playerDeck = DRAFT.getPlayerDeck();
-    RUN.start(playerDeck, pendingNeowModifier);
-    pendingNeowModifier = null;
+    RUN.start(playerDeck);
     lastGameRecorded = false;
-    if (RUN.getPostDraftOffer && RUN.getPostDraftOffer()) {
+    if (RUN.getPostDraftOffer()) {
       renderPostDraftOffer();
       return;
     }
@@ -704,7 +689,7 @@ function pickDraft(tplId) {
 function nextGame() {
   if (!RUN.isActive()) return;
   if (RUN.getReward()) return;
-  const mapState = RUN.getMapState && RUN.getMapState();
+  const mapState = RUN.getMapState();
   Modal.hide('gameover');
   Modal.hide('rewardModal');
   if (mapState) {
@@ -731,6 +716,10 @@ function pickRewardCandidateClick(idx) {
 }
 function pickTransformReplacementClick(tplId) {
   RUN.pickTransformReplacement(tplId);
+  renderReward();
+}
+function pickBucketClick(idx) {
+  RUN.pickBucket(idx);
   renderReward();
 }
 
@@ -764,20 +753,16 @@ function applyTileColor(div, slot) {
   applyTileColorFromTpl(div, tpl);
 }
 
-// Build a small card-display element for the reward modal. Used by sticker
-// pair, transform, and ripUp candidates — anywhere we show a slot's card.
-// Returns a DOM element. `slot` is the runState slot (with current stickers);
-// `tpl` is the resolved template.
-// Reward-modal card tile. Delegates to makeCardEl (the same renderer used
-// for hand/board cards). The slot (when present) carries stickers /
-// staples / rolls; we build a runtime card with those baked in so the tile
-// reflects the slot's actual state (effective cost, statBoost stats,
-// sticker badges, granted keywords).
+// Reward-modal card tile. Used by sticker pair, transform, and ripUp
+// candidates — anywhere we show a slot's card. Delegates to makeCardEl (the
+// same renderer used for hand/board cards); when `slot` is present it
+// carries stickers/staples/rolls, so the built runtime card reflects the
+// slot's actual state (effective cost, statBoost stats, sticker badges,
+// granted keywords).
 //
 // Splice's "merged preview" passes slot=null with a synthesized template
 // not in CARDS — that case is handled inline in renderReward via
-// makeCard(baseTpl, [], ..., stapledTpls=[...]) so the merged card is a
-// real runtime card with all stapled mechanics; it doesn't come through
+// makeCard(baseTpl, [], ..., stapledTpls=[...]), so it doesn't come through
 // this function.
 function makeRewardCardEl(tpl, slot) {
   const tplId = (slot && slot.tplId) || tpl.tplId;
@@ -817,6 +802,84 @@ function appendRewardFlavor(parent, name, text, extraClass) {
   flavor.appendChild(textEl);
   parent.appendChild(flavor);
   return flavor;
+}
+
+// Growing Deck: one clickable bucket tile — story header, 3 card minis, and
+// a pip row for the 2 basic lands the bucket carries. Shared by the run-start
+// bucket draft (draft screen) and the addBucket reward's bucketPick phase.
+function makeBucketTileEl(bucket, onClick) {
+  const div = document.createElement('div');
+  div.className = 'rwd-pair rwd-pair-bucket';
+  // Only fallback bundles wear a flat label — themed buckets lead with the
+  // story itself, not a derived paraphrase (a recurring drift-bug source).
+  if (bucket.fallback) {
+    const labelEl = document.createElement('div');
+    labelEl.className = 'rwd-kind-label rwd-kind-bucket';
+    labelEl.textContent = 'REINFORCEMENTS';
+    div.appendChild(labelEl);
+  }
+  // Narrative framing: a bucket IS "a seed plus the
+  // friends it recruited" (cards[0] is the seed; growth order preserved),
+  // so tell that story instead of hiding it in a tooltip. Each friend
+  // shows ITS strongest edge reason — which may point at another friend,
+  // not the seed ("goblin rabble brings ITS friend carrion feeder" — fine,
+  // we just want to surface it). Reinforcements has no seed story (value-
+  // sampled goodstuff), so it keeps the flat label.
+  const pretty = r => {
+    const m = r.match(/^(\S+) feeds (\S+) \[(.+)\]$/);
+    if (m) {
+      const a = CARDS[m[1]] ? CARDS[m[1]].name : m[1];
+      const b = CARDS[m[2]] ? CARDS[m[2]].name : m[2];
+      return `${a} feeds ${b} (${m[3].replace('sub:', '')})`;
+    }
+    // Per-slot value fill: the seat joined on value, not edges —
+    // say so truthfully instead of inventing a synergy line.
+    if (/^\S+ joins \[value\]$/.test(r)) return 'a solid card in your colors';
+    const t = r.match(/^shared plan \[(.+)\]$/);
+    return t ? `shared plan: ${t[1]}` : r;
+  };
+  if ((bucket.why || []).length && bucket.cards.length && CARDS[bucket.cards[0]]) {
+    const story = document.createElement('div');
+    story.className = 'bucket-story';
+    const seedName = CARDS[bucket.cards[0]].name;
+    let html = '<b>' + seedName + '</b> wants to join your deck!';
+    for (const tplId of bucket.cards.slice(1)) {
+      if (!CARDS[tplId]) continue;
+      const line = (bucket.why || []).find(r => r.includes(tplId));
+      html += '<br>brings <b>' + CARDS[tplId].name + '</b>'
+        + (line ? ' — <span class="bucket-why">' + pretty(line) + '</span>' : '');
+    }
+    story.innerHTML = html;
+    div.appendChild(story);
+  }
+  // Offer overlay: preview where this bucket would attach to your deck
+  // (CONSTELLATION offer mode). stopPropagation — previewing must not pick.
+  const scopeBtn = document.createElement('button');
+  scopeBtn.className = 'bucket-scope-btn';
+  scopeBtn.textContent = '🔭 preview';
+  scopeBtn.title = 'See where this bucket attaches to your deck';
+  scopeBtn.onclick = (e) => { e.stopPropagation(); CONSTELLATION.showOffer(bucket.cards); };
+  div.appendChild(scopeBtn);
+  for (const tplId of bucket.cards) {
+    if (!CARDS[tplId]) continue;
+    // Draft-safe render path: no {inHand} view-model — castability reads the
+    // live game state, which is null during the run-start bucket draft.
+    const el = makeCardEl(ENGINE.makeCard(tplId));
+    el.style.setProperty('--scale', '2');
+    div.appendChild(el);
+  }
+  // Land pips: 'mountain' → {R} etc., rendered with the shared mana symbols.
+  const pips = (bucket.lands || [])
+    .map(id => CARDS[id] && CARDS[id].mana ? `{${CARDS[id].mana}}` : '')
+    .join('');
+  if (pips) {
+    const landsEl = document.createElement('div');
+    landsEl.className = 'bucket-lands';
+    landsEl.innerHTML = '+ lands ' + renderManaSymbols(pips);
+    div.appendChild(landsEl);
+  }
+  div.onclick = onClick;
+  return div;
 }
 
 // Map node tooltip -- tap shows briefly, long-press shows while held (mobile-friendly).
@@ -923,8 +986,6 @@ function hideIconTip() {
 }
 function positionIconTip(tip, host) {
   const r = host.getBoundingClientRect();
-  // Measure at origin, then place centered above the icon, clamped to the
-  // viewport; flip below if there isn't room above.
   tip.style.left = '0px';
   tip.style.top = '0px';
   const tr = tip.getBoundingClientRect();
@@ -940,9 +1001,8 @@ function positionIconTip(tip, host) {
 
 // Post-draft Innate offer: pick a basic land type to guarantee in opening hands.
 // Same card-pick modal as the boons; here we also surface the drafted-deck color
-// HUD (now that the draft is done) so the land choice is informed by deck colors.
+// HUD so the land choice is informed by deck colors.
 function renderPostDraftOffer() {
-  if (!RUN.getPostDraftOffer) return;
   const offer = RUN.getPostDraftOffer();
   if (!offer) { Modal.hide('cardPickModal'); return; }
   const items = offer.basics
@@ -994,7 +1054,7 @@ function renderMap() {
   const contBtn = document.getElementById('mapContinue');
   if (contBtn) {
     contBtn.style.display = 'block';
-    const ready = !hasChoice || !!selectedMapNode;   // a choice needs a selection first
+    const ready = !hasChoice || !!selectedMapNode;
     contBtn.disabled = !ready;
     contBtn.onclick = ready ? () => {
       if (hasChoice && !RUN.pickMapNode(selectedMapNode)) return;
@@ -1016,41 +1076,22 @@ function renderMap() {
   levelsContainer.innerHTML = '';
   // Bottom-up render: root at bottom, exit at top (climbing-the-tower feel).
   const levels = Object.keys(byLevel).map(Number).sort((a, b) => b - a);
-  const iconFor = (node) => {
-    if (node.type === 'boss') {
-      if (node.constructedId) {
-        const spec = (typeof DRAFT !== 'undefined' && DRAFT.getConstructedDeck)
-          ? DRAFT.getConstructedDeck(node.constructedId) : null;
-        if (spec && spec.icon) return spec.icon;
-      }
-      return '👹';
-    }
-    switch (node.type) {
-      case 'combat': return '⚔';
-      case 'elite':  return '☠';
-      case 'shop':   return '$';
-      case 'event':  return '?';
-      case 'rest':   return '🛏';
-      default:       return '?';
-    }
-  };
+  // Placeholder text glyphs for node icons. Boss nodes get NO face glyph: the
+  // boss tile + corner gem already mark them, and a letter on top would be a
+  // third, redundant boss signal.
+  const PLACEHOLDER_ICON = { combat: 'C', elite: 'E', shop: '$', event: '?', rest: 'R', boss: '' };
   // Tooltip combines type + color (e.g., "Red Draft Deck"). Constructed nodes use deck name.
   const COLOR_NAME = {W:'White', U:'Blue', B:'Black', R:'Red', G:'Green'};
   const labelForType = (type) => {
     switch (type) {
       case 'combat': return 'Draft Deck';
-      case 'elite':  return 'Elite Enemy';
-      case 'shop':   return 'Shop';
-      case 'event':  return 'Event';
-      case 'rest':   return 'Rest Site';
       case 'boss':   return 'Boss';
       default:       return 'Unknown';
     }
   };
   const tooltipFor = (node) => {
     if (node.constructedId) {
-      const spec = (typeof DRAFT !== 'undefined' && DRAFT.getConstructedDeck)
-        ? DRAFT.getConstructedDeck(node.constructedId) : null;
+      const spec = DRAFT.getConstructedDeck(node.constructedId);
       if (spec) return spec.name;
     }
     const base = labelForType(node.type);
@@ -1066,26 +1107,25 @@ function renderMap() {
       const el = document.createElement('div');
       el.className = 'map-node';
       el.id = 'map-' + n.id;
-      el.textContent = iconFor(n);
+      const mi = document.createElement('span');
+      mi.className = 'mi';
+      mi.textContent = PLACEHOLDER_ICON[n.type] ?? '?';
+      el.appendChild(mi);
       el.title = tooltipFor(n);
-      // Constructed: ring = spec's first color + ★ badge. Boss: 👹 badge.
+      // Corner badge = the node's color gem (constructed decks ring with
+      // their first color). Pure art: .map-color-badge paints gem_<C>.png.
       let ringColor = n.color;
-      let isConstructed = false;
-      const isBoss = (n.type === 'boss');
       if (n.constructedId) {
-        const spec = (typeof DRAFT !== 'undefined' && DRAFT.getConstructedDeck)
-          ? DRAFT.getConstructedDeck(n.constructedId) : null;
+        const spec = DRAFT.getConstructedDeck(n.constructedId);
         if (spec && spec.colors && spec.colors.length > 0) {
           ringColor = spec.colors[0];
-          isConstructed = true;
         }
       }
-      if (isBoss) el.classList.add('boss');
+      if (n.type === 'boss') el.classList.add('boss');
       if (ringColor) {
         el.classList.add('col-' + ringColor);
         const badge = document.createElement('div');
         badge.className = 'map-color-badge col-' + ringColor;
-        badge.textContent = isBoss ? iconFor(n) : (isConstructed ? '★' : ringColor);
         el.appendChild(badge);
       }
       if (n.id === current) el.classList.add('current');
@@ -1124,13 +1164,16 @@ function renderMap() {
       const y2 = tr.top + tr.height / 2 - canvasRect.top;
       const fromVisited = visited.has(e.from);
       const toLegal = legal.has(e.to);
-      const stroke = (fromVisited && toLegal) ? '#66ddaa' :
-                     fromVisited ? '#3a5a4a' : '#2a3540';
+      const stroke = (fromVisited && toLegal) ? '#7fd06a' :   // open (visited -> legal): green
+                     fromVisited ? '#a02619' :                 // travelled: heraldic red
+                     '#7a5a28';                                // future: brown
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       line.setAttribute('x1', x1); line.setAttribute('y1', y1);
       line.setAttribute('x2', x2); line.setAttribute('y2', y2);
       line.setAttribute('stroke', stroke);
-      line.setAttribute('stroke-width', '2');
+      line.setAttribute('stroke-width', '3');
+      line.setAttribute('shape-rendering', 'crispEdges');
+      if (!fromVisited) line.setAttribute('stroke-dasharray', '5 4');   // future edges dashed
       svg.appendChild(line);
     }
   });
@@ -1223,9 +1266,38 @@ function renderReward() {
     setText('rewardSubtitle', 'Pick one option to apply between games.');
     const slots = RUN.getSlots();
     reward.candidates.forEach((cand, idx) => {
-      const KNOWN_KINDS = ['sticker', 'twoStickers', 'transform', 'clone', 'ripUp', 'threeStickersBlind', 'splice'];
+      const KNOWN_KINDS = ['sticker', 'twoStickers', 'transform', 'clone', 'ripUp', 'threeStickersBlind', 'splice', 'addBucket'];
       if (!cand || !KNOWN_KINDS.includes(cand.kind)) {
         console.warn('Skipping reward candidate with unknown kind:', cand);
+        return;
+      }
+      // Growing Deck growth: the mixed-phase tile is a compact teaser (each
+      // bucket's seed card name); committing it opens the bucketPick phase
+      // where the full 3-card bundles render. No slotIdx by design — handle
+      // early, like threeStickersBlind.
+      if (cand.kind === 'addBucket') {
+        const div = document.createElement('div');
+        div.className = 'rwd-pair rwd-pair-bucket';
+        const labelEl = document.createElement('div');
+        labelEl.className = 'rwd-kind-label rwd-kind-bucket';
+        labelEl.textContent = 'GROW — ADD A BUCKET';
+        div.appendChild(labelEl);
+        const grow = makeSyntheticCard({
+          name: 'Reinforcements Arrive',
+          type: 'Reward',
+          text: '3 cards + 2 lands join your deck',
+          art: '📦',
+          color: 'C',
+          scale: 2,
+        });
+        div.appendChild(grow);
+        appendRewardConnector(div, '+++');
+        appendRewardFlavor(div, 'Choose one of three buckets',
+          cand.buckets.map(b => b.fallback ? 'Reinforcements'
+            : (CARDS[b.cards[0]] ? CARDS[b.cards[0]].name : b.cards[0]) + ' & friends')
+            .join(' · '));
+        div.onclick = () => pickRewardCandidateClick(idx);
+        optionsEl.appendChild(div);
         return;
       }
       // Blind reward — slot identity is hidden until pick. Render with no
@@ -1257,7 +1329,7 @@ function renderReward() {
         optionsEl.appendChild(div);
         return;
       }
-      // Splice — pre-rolled pair shown at offer time (v1.0.47+). Player sees
+      // Splice — pre-rolled pair shown at offer time. Player sees
       // both input cards and the merged-result preview before deciding. The
       // candidate carries baseSlotIdx and stapleSlotIdx, both pre-validated;
       // we render three card thumbnails (base + staple + merged) in a row.
@@ -1290,18 +1362,14 @@ function renderReward() {
         labelEl.className = 'rwd-kind-label rwd-kind-splice';
         labelEl.textContent = 'SPLICE';
         div.appendChild(labelEl);
-        // Base card (left).
         div.appendChild(makeRewardCardEl(baseTpl, baseSlot));
-        // Connector: plus between inputs.
         appendRewardConnector(div, '+');
-        // Staple card (middle).
         div.appendChild(makeRewardCardEl(stapleTpl, stapleSlot));
-        // Connector: arrow to result.
         appendRewardConnector(div, '→');
-        // Merged preview (right). Render via makeCardEl directly with the
-        // pre-built mergedCard (which already has stapled mechanics baked
-        // in). Sticker badges from the inputs don't show on the preview;
-        // they DO transfer at resolve time (see applySplice).
+        // makeCardEl directly, not makeRewardCardEl — mergedCard already has
+        // stapled mechanics baked in. Sticker badges from the inputs don't
+        // show on this preview; they DO transfer at resolve time (see
+        // applySplice).
         const mergedEl = makeCardEl(mergedCard, { inHand: true });
         mergedEl.style.setProperty('--scale', '2');
         div.appendChild(mergedEl);
@@ -1316,9 +1384,7 @@ function renderReward() {
       const div = document.createElement('div');
       div.className = 'rwd-pair';
       applyTileColor(div, slot);
-      // Click handler depends on candidate kind, but we set it once below.
 
-      // Top label so the player immediately sees what kind of choice this is.
       const labelEl = document.createElement('div');
       labelEl.className = 'rwd-kind-label rwd-kind-' + cand.kind;
       labelEl.textContent =
@@ -1329,7 +1395,6 @@ function renderReward() {
         cand.kind === 'ripUp'       ? 'RIP UP' : '';
       div.appendChild(labelEl);
 
-      // Card portion.
       div.appendChild(makeRewardCardEl(tpl, slot));
 
       if (cand.kind === 'sticker') {
@@ -1354,7 +1419,6 @@ function renderReward() {
           stickerName = `Empower (${empowerRollLabel(labelTpl, cand.empowerRoll)})`;
         }
         if (cand.sticker_id === 'subtype' && cand.subtypeRoll) {
-          // Show the rolled subtype so the player knows what they're getting.
           stickerName = `Subtype: ${cand.subtypeRoll}`;
         }
         stickerEl.innerHTML =
@@ -1410,6 +1474,17 @@ function renderReward() {
     return;
   }
 
+  // Growing Deck: pick one of the 3 generated buckets. Same tile the
+  // run-start bucket draft uses.
+  if (reward.phase === 'bucketPick') {
+    setText('rewardTitle', 'Choose a Bucket');
+    setText('rewardSubtitle', 'One bundle of 3 cards + 2 lands joins your deck.');
+    reward.buckets.forEach((bucket, idx) => {
+      optionsEl.appendChild(makeBucketTileEl(bucket, () => pickBucketClick(idx)));
+    });
+    return;
+  }
+
   if (reward.phase === 'twoStickersReveal') {
     const slots = RUN.getSlots();
     const slot = slots[reward.slotIdx];
@@ -1456,9 +1531,27 @@ function renderReward() {
     return;
   }
 }
+// Pick #0: the boon offer on the draft screen. Same picker as the packs; the
+// chosen card lands on DRAFT.state.boon and later rides into the deck.
+function renderBoonPhase() {
+  document.getElementById('draftPickNum').textContent = '0';
+  const totalEl = document.getElementById('draftPickTotal');
+  if (totalEl) totalEl.textContent = DRAFT.getProgress().total;
+  const subtitleEl = document.getElementById('draftSubtitle');
+  if (subtitleEl) subtitleEl.textContent = "✦ A boon awaits - your run's first pick. Choose one.";
+  renderCardPicker(
+    document.getElementById('draftPack'),
+    DRAFT.getPlayerPack().map(tplId => ({ card: ENGINE.makeCard(tplId), value: tplId })),
+    pickDraft,
+  );
+  document.getElementById('draftPicksList').textContent = '(none yet)';
+  renderColorHud('draftColors', []);
+}
+
 function renderDraft() {
   const screen = document.getElementById('draftScreen');
   screen.classList.add('vis');
+  if (DRAFT.isBoonPhase()) { renderBoonPhase(); return; }
   const progress = DRAFT.getProgress();
   document.getElementById('draftPickNum').textContent = (progress.picked + 1);
   // Total varies by mode — classic = 23 spell picks, Desert Cube = 40 full
@@ -1467,32 +1560,44 @@ function renderDraft() {
   const totalEl = document.getElementById('draftPickTotal');
   if (totalEl) totalEl.textContent = progress.total;
   const subtitleEl = document.getElementById('draftSubtitle');
+  const growing = DRAFT._state() && DRAFT._state().mode === 'growing';
   if (subtitleEl) {
-    subtitleEl.textContent = progress.total === 40
+    subtitleEl.textContent = growing
+      ? 'Choose one bucket — 3 cards + 2 lands. Your first pick sets your colors; your deck grows between fights.'
+      : progress.total === 40
       ? 'Choose one card. Lands appear in packs — draft your own manabase.'
       : 'Choose one card. Lands will be added automatically based on your colors.';
   }
-  const pack = DRAFT.getPlayerPack();
-  // Same shared card-picker loop as the boons + land offer. Build a vanilla
-  // instance per template (the pack isn't slot-bound yet — no stickers/runtime
-  // state). Cards render at 2× so they're readable; long-press is wired by
-  // makeCardEl. (--scale is a no-op on the classic 62×88 .card, a tolerable
-  // fallback for classic-mode picks.)
-  renderCardPicker(
-    document.getElementById('draftPack'),
-    pack.map(tplId => ({ card: ENGINE.makeCard(tplId), value: tplId })),
-    pickDraft,
-  );
-  // Footer: list of picks so far. If the player picked a Neow boon, show
-  // it as the first entry with a ✦ marker so it's visually distinct from
-  // drafted picks — gives continuity with the deck the boon will join at
-  // RUN.start time (whether that boon adds a card to the deck or modifies
-  // existing slots, the player sees they've already "committed" to it).
+  if (growing) {
+    // Growing Deck: the "pack" is 3 bucket tiles (same tile as the addBucket
+    // reward's pick phase).
+    const packEl = document.getElementById('draftPack');
+    packEl.innerHTML = '';
+    DRAFT.getBucketOffer().forEach((bucket, idx) => {
+      packEl.appendChild(makeBucketTileEl(bucket, () => pickDraftBucket(idx)));
+    });
+  } else {
+    const pack = DRAFT.getPlayerPack();
+    // Same shared card-picker loop as the boons + land offer. Build a vanilla
+    // instance per template (the pack isn't slot-bound yet — no stickers/runtime
+    // state). Cards render at 2× so they're readable; long-press is wired by
+    // makeCardEl. (--scale is a no-op on the classic 62×88 .card, a tolerable
+    // fallback for classic-mode picks.)
+    renderCardPicker(
+      document.getElementById('draftPack'),
+      pack.map(tplId => ({ card: ENGINE.makeCard(tplId), value: tplId })),
+      pickDraft,
+    );
+  }
+  // Footer: list of picks so far. If the player picked a Neow boon, show it as the
+  // first entry with a ✦ marker so it's visually distinct from drafted picks — the
+  // player sees they've already committed to the card it grants.
   const picks = DRAFT._state() ? DRAFT._state().youPicks : [];
   const draftedNames = picks.map(id => CARDS[id].name);
+  const _st = DRAFT._state();
   let boonName = null;
-  if (pendingNeowModifier && RUN_MODIFIERS[pendingNeowModifier]) {
-    boonName = '✦ ' + RUN_MODIFIERS[pendingNeowModifier].name;
+  if (_st && _st.boon && CARDS[_st.boon]) {
+    boonName = '✦ ' + CARDS[_st.boon].name;   // the draft's pick #0 -- a real card
   }
   const allEntries = boonName ? [boonName, ...draftedNames] : draftedNames;
   const summary = allEntries.join(', ');
@@ -1538,7 +1643,7 @@ function renderColorHud(elementId, tplIds) {
     pip.className = 'draft-pip col-' + c + (n === 0 ? ' dim' : '');
     // renderManaSymbols turns the {W} token into the same pip span used
     // everywhere else (cost displays, card text), so the draft counters
-    // get the emoji-glyph fallback / future PNG drop-in for free.
+    // get the same emoji-glyph fallback as those other renders.
     pip.innerHTML = `${renderManaSymbols('{' + c + '}')}<span>${n}</span>`;
     el.appendChild(pip);
   }
@@ -1560,7 +1665,6 @@ function onStateChange() {
     renderReward();
   }
   const actor = ENGINE.expectedActor();
-  // Dispatch AI if it's their turn.
   if (actor === 'opp' && !aiScheduled) {
     aiScheduled = true;
     aiThinking = true;
@@ -1622,10 +1726,8 @@ function onStateChange() {
       aiScheduled = false;
       aiThinking = false;
       updateThinkingUi();
-      // Re-check gameOver one more time before executing. AI.decide is
-      // synchronous in the heuristic implementation but the await is here
-      // to support future async deciders (LLM, MCTS) — and a long-running
-      // decide could see the game end out from under it.
+      // Re-check gameOver one more time before executing — decide is
+      // awaited, so a slow decide could see the game end out from under it.
       const stateNow = ENGINE.state();
       if (!stateNow || stateNow.gameOver) return;
       const ok = ENGINE.executeAction('opp', action);
@@ -1744,11 +1846,9 @@ function clickHand(iid) {
   // check until a mode is chosen.
   if (ENGINE.isModal(card)) {
     // Pre-flight: at least ONE mode must be currently castable to bother
-    // showing the picker. Walk the modes; for each, do the same legal-action
-    // check that non-modal cards do, but with mode-appropriate fake targets.
-    // Modal multi-target modes are supported via fakeTargetsForLegality —
-    // each mode's targeted effects get fake fills, including per-slot fakes
-    // for any slots-annotated effects in that mode.
+    // showing the picker, using the same legal-action check as non-modal
+    // cards but with mode-appropriate fake targets from fakeTargetsForLegality
+    // (per-slot fakes for slots-annotated effects, for multi-target modes).
     const modes = ENGINE.getModes(card);
     let anyCastable = false;
     for (let mIdx = 0; mIdx < modes.length; mIdx++) {
@@ -1803,9 +1903,9 @@ function clickBattlefield(iid) {
     return;
   }
 
-  // Edict forced-sacrifice (Diabolic/Vile Edict) — in-place selection (no modal,
-  // reverted from the popup): click one of your glowing eligible permanents to
-  // sac it. Out-of-pool clicks are rejected engine-side (isLegalAction checks
+  // Edict forced-sacrifice (Diabolic/Vile Edict) — in-place selection (no
+  // modal): click one of your glowing eligible permanents to sac it.
+  // Out-of-pool clicks are rejected engine-side (isLegalAction checks
   // pendingEdictChoice.pool), so a stray click just no-ops.
   if (G.pendingEdictChoice && G.pendingEdictChoice.who === 'you') {
     submit({type:'edictChoice', iid: card.iid});
@@ -1921,11 +2021,8 @@ function clickBattlefield(iid) {
     return;
   }
 
-  // Unified ability picker for non-land permanents (v1.0.64). Enumerate
-  // every legal-to-activate ability and either fire directly (if 1 option)
-  // or show a picker (2+ options). Previously the code only inspected
-  // abilities[0] — missing stapled creature+land merges whose mana ability
-  // is appended at index >= 1, and missing the multi-ability case entirely.
+  // Unified ability picker for non-land permanents — covers stapled
+  // creature+land merges whose mana ability may be appended at index >= 1.
   if (f.controller === 'you' && Array.isArray(card.abilities) && card.abilities.length > 0) {
     const options = [];
     for (let i = 0; i < card.abilities.length; i++) {
@@ -1967,9 +2064,9 @@ function clickBattlefield(iid) {
       if (!ENGINE.isLegalAction('you', probe)) continue;
       // Build a human-readable label. For mana abilities, "Tap for {color}"
       // form is clearer than the raw text. Everything else renders through
-      // the engine's own oracle via abilityPickerLabel (card-text.js) —
-      // audit A10-1 replaced a hand-rolled kind→label table here that lied
-      // about kinds, costs, permanence, and subjects.
+      // the engine's own oracle via abilityPickerLabel (card-text.js) — the
+      // single source of truth for ability labels, not a hand-rolled
+      // kind→label table (drifts on kinds, costs, permanence, subjects).
       let label;
       if (isMana) {
         const am = ab.effects[0].amounts || {};
@@ -2064,16 +2161,16 @@ function clickPlayerTarget(who) {
 }
 
 // Build the action to fire from the current pendingTarget state. For
-// single-slot picks (the common case), this constructs the action with the
-// just-picked target and submits immediately. For multi-slot picks, this
-// accumulates the picked target into pendingTarget.pickedSlots and returns
-// null until all slots are filled — caller stays in target-picking mode for
-// the next slot. When the last slot is picked, builds the final action with
+// single-slot picks (the common case), this returns the finished action for
+// the caller to submit. For multi-slot picks, this accumulates the picked
+// target into pendingTarget.pickedSlots and returns a {pending:true} sentinel
+// until all slots are filled — caller stays in target-picking mode for the
+// next slot. When the last slot is picked, builds the final action with
 // targets[] indexed by slot value.
 function buildPendingActionWithTarget(target) {
   if (!pendingTarget) return null;
-  // Append the target to the pickedSlots accumulator. Initialize on first
-  // pick if we haven't yet — older callers (single-slot path) didn't seed it.
+  // Append the target to the pickedSlots accumulator, initializing it if
+  // this is the first pick — single-slot callers don't pre-seed it.
   if (!Array.isArray(pendingTarget.pickedSlots)) pendingTarget.pickedSlots = [];
   pendingTarget.pickedSlots.push(target);
   const slotsNeeded = slotsNeededForPending(pendingTarget);
@@ -2084,12 +2181,11 @@ function buildPendingActionWithTarget(target) {
     return {pending: true};
   }
   // All slots picked — assemble the final targets array. slotsNeeded is
-  // sorted ascending; pickedSlots is in the same order. Place each pick
-  // at its slot's index. Sparse slots (e.g., a future card using slots 0
-  // and 2) get filled with placeholder copies of slot 0's pick so the
-  // array length covers the highest slot value; the validator only reads
-  // targets[slot] for each effect's actual slot, so placeholders are
-  // harmless.
+  // sorted ascending; pickedSlots is in the same order, placed at each
+  // slot's index. Sparse slot sets get filled with placeholder copies of
+  // slot 0's pick so the array length covers the highest slot value; the
+  // validator only reads targets[slot] for each effect's actual slot, so
+  // placeholders are harmless.
   const targets = [];
   for (let i = 0; i < slotsNeeded.length; i++) {
     targets[slotsNeeded[i]] = pendingTarget.pickedSlots[i];
@@ -2117,9 +2213,8 @@ function cancelTarget() {
   render();
 }
 
-// Player picked a mode for a modal spell. If the mode needs a target,
-// transition to target-picking; otherwise submit immediately. Called from
-// the UI's modal mode picker buttons.
+// Called from the UI's modal mode picker buttons when the player picks a
+// mode for a modal spell.
 function pickModalMode(modeIdx) {
   if (!pendingModalChoice) return;
   const cardIid = pendingModalChoice.cardIid;
@@ -2155,7 +2250,6 @@ function pickModalMode(modeIdx) {
     render();
     return;
   }
-  // Untargeted mode — submit directly.
   submit({type:'castSpell', cardIid, modeIdx});
 }
 
@@ -2189,8 +2283,6 @@ function concede() { ENGINE.concede(); }
 // drives the Pass / Done buttons from the very same predicates, so the two
 // input paths agree by construction rather than by one scraping the other.
 
-// True when the human owes a combat declaration — attackers on their own turn,
-// blockers on the opponent's. Pure function of engine state.
 function humanOwesDeclaration() {
   const G = ENGINE.state();
   if (!G) return false;
@@ -2279,7 +2371,6 @@ function attachLongPress(element, card) {
   element.addEventListener('mousemove', (e) => movePress(e.clientX, e.clientY));
   element.addEventListener('mouseup', cancelPress);
   element.addEventListener('mouseleave', cancelPress);
-  // Click suppression after long-press.
   element.addEventListener('click', (e) => {
     if (suppressNextClick) {
       suppressNextClick = false;
@@ -2292,12 +2383,12 @@ function attachLongPress(element, card) {
 // Pixel-art card popup. Built per the 80x112 frame spec, rendered at 4x
 // scale (320x448 actual) inside the existing #cardPopup dimmer overlay.
 
-// Helper: builds the "Repertoire" (Mercurial triggerPool) and "Built
-// Ability" (Codex build_on_draw) HTML sections for a card's popup. Returns
-// empty string if neither applies. Reads the SLOT (RUN.getSlots()[card.slotIdx]),
-// not the card, because the slot is the durable record across saves and
-// the slot's bonusTrigger may have updated more recently than the in-game
-// card instance (e.g. just before a re-draw triggers makeCard).
+// Builds the "Built Ability" (Codex build_on_draw) HTML section for a
+// card's popup; returns '' if it doesn't apply. Reads the SLOT
+// (RUN.getSlots()[card.slotIdx]), not the card, because the slot is the
+// durable record across saves and the slot's bonusTrigger may have
+// updated more recently than the in-game card instance (e.g. just before
+// a re-draw triggers makeCard).
 function buildPopupTriggerSections(card) {
   if (typeof card.slotIdx !== 'number') return '';
   if (typeof RUN === 'undefined' || !RUN.getSlots) return '';
@@ -2305,24 +2396,6 @@ function buildPopupTriggerSections(card) {
   const slot = slots && slots[card.slotIdx];
   if (!slot) return '';
   let html = '';
-  // Mercurial-style repertoire.
-  if (Array.isArray(slot.triggerPool) && slot.triggerPool.length > 0) {
-    const activeLabels = (card.triggers || []).map(t => t.label).filter(Boolean);
-    const items = slot.triggerPool.map(entry => {
-      const isActive = activeLabels.includes(entry.label);
-      const styleAttr = isActive
-        ? 'color:#ffe7a0;font-weight:bold;background:#3a2f1a;border-left:3px solid #ffd700;padding-left:6px'
-        : 'color:#888;padding-left:9px';
-      const marker = isActive ? '◆ ' : '○ ';
-      return `<div style="${styleAttr};font-size:11px;line-height:1.5;padding:3px 6px;margin:2px 0">${marker}<b>${entry.label}:</b> ${entry.text || ''}</div>`;
-    }).join('');
-    html += `
-      <div class="pop-stickers">
-        <div class="pop-stickers-title" style="color:#ffd700">Repertoire</div>
-        <div style="text-align:left">${items}</div>
-      </div>`;
-  }
-  // Codex-style built ability.
   const tpl = CARDS[card.tplId];
   if (tpl && tpl.build_on_draw) {
     let body;
@@ -2359,8 +2432,9 @@ function openCardPopup(card) {
     ? `<div style="width:320px;margin:8px auto 0;text-align:left">${extraSections}</div>`
     : '';
 
-  // Strip the modal-box chrome from #cardPopupCard -- the frame IS the
-  // visual now, no need for the box styling.
+  // The card-frame element is the entire visual; strip the modal-box
+  // chrome (border/shadow/padding) so it doesn't wrap a second box
+  // around the frame.
   inner.className = '';
   inner.style.cssText = 'background:transparent;border:none;box-shadow:none;padding:0;width:auto;max-width:none;text-align:center;cursor:default';
   inner.innerHTML = `
@@ -2388,12 +2462,10 @@ function closeCardPopup(e) {
   document.getElementById('cardPopup').classList.remove('vis');
 }
 
-// Zone viewer — opens a modal listing every card in the named zone for the
-// named player. Click a card row to drill in and see full text via the
-// existing card popup. Library is closed information for both players —
-// you don't peek at your own library either, since drawing order matters
-// to deck construction skill (knowing the next 5 cards trivializes
-// sequencing decisions). Only graveyard and exile are viewable.
+// Library is closed information for both players — you don't peek at
+// your own library either, since drawing order matters to deck
+// construction skill (knowing the next 5 cards trivializes sequencing
+// decisions). Only graveyard and exile are viewable.
 function openZone(who, zone) {
   // Library is closed info — never viewable, even your own.
   if (zone === 'library') return;
@@ -2419,7 +2491,6 @@ function openZone(who, zone) {
     for (const card of display) {
       const btn = document.createElement('div');
       btn.className = 'zone-card';
-      // Show card name with a small color/type hint.
       const typeHint = governingType(card) ? governingType(card).charAt(0) : '?';
       const cost = card.cost ? renderManaSymbols(formatCostBraced(card.cost)) : '';
       btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> <span class="card-name"></span>${cost ? ' <span style="opacity:0.7;font-size:10px">' + cost + '</span>' : ''}`;
@@ -2462,14 +2533,14 @@ function showManaColorPicker(card, colors, onPick) {
     G: { bg:'#ccffcc', fg:'#1a5a1a',  label:'Green ({G})' },
   };
   const dimmer = document.createElement('div');
-  dimmer.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:1300;padding:24px';
+  dimmer.className = 'picker-overlay vis';
   const box = document.createElement('div');
-  box.style.cssText = 'background:#1a1a26;border:2px solid #5a5a7a;border-radius:10px;padding:18px 16px;text-align:center;font-family:Georgia,serif;max-width:300px;width:100%';
+  box.className = 'picker-box picker-box-compact';
   const title = document.createElement('div');
-  title.style.cssText = 'color:#ffe7a0;font-size:14px;font-weight:bold;margin-bottom:4px';
+  title.className = 'picker-title';
   title.textContent = 'Tap ' + card.name + ' for:';
   const sub = document.createElement('div');
-  sub.style.cssText = 'color:#aaa;font-size:11px;margin-bottom:14px;font-style:italic';
+  sub.className = 'picker-subtitle';
   sub.textContent = 'Choose a color to add to your mana pool.';
   box.appendChild(title);
   box.appendChild(sub);
@@ -2479,7 +2550,9 @@ function showManaColorPicker(card, colors, onPick) {
     const info = COLOR_INFO[color] || { bg:'#888', fg:'#000', label: color };
     const b = document.createElement('button');
     b.textContent = info.label;
-    b.style.cssText = `background:${info.bg};color:${info.fg};border:1px solid #444;border-radius:5px;padding:8px 14px;font-size:13px;font-weight:bold;cursor:pointer;font-family:inherit`;
+    b.className = 'choice-btn choice-btn-sm';
+    b.style.background = info.bg;
+    b.style.color = info.fg;
     b.onclick = () => {
       document.body.removeChild(dimmer);
       onPick(color);
@@ -2489,11 +2562,10 @@ function showManaColorPicker(card, colors, onPick) {
   box.appendChild(btnRow);
   const cancel = document.createElement('button');
   cancel.textContent = 'Cancel';
-  cancel.style.cssText = 'margin-top:14px;background:#222;color:#aaa;border:1px solid #444;border-radius:5px;padding:6px 12px;font-size:11px;cursor:pointer;font-family:inherit';
+  cancel.className = 'choice-btn choice-btn-sm';
   cancel.onclick = () => document.body.removeChild(dimmer);
   box.appendChild(cancel);
   dimmer.appendChild(box);
-  // Click outside the box to cancel.
   dimmer.addEventListener('click', (e) => {
     if (e.target === dimmer) document.body.removeChild(dimmer);
   });
@@ -2505,17 +2577,17 @@ function showManaColorPicker(card, colors, onPick) {
 // existing ability and the staple appended a "tap for mana" ability).
 // `options` is an array of {label, onPick} objects. The picker shows each
 // as a button; clicking invokes the onPick callback. Tapping the dimmer
-// cancels. v1.0.64.
+// cancels.
 function showAbilityPicker(card, options) {
   const dimmer = document.createElement('div');
-  dimmer.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:1300;padding:24px';
+  dimmer.className = 'picker-overlay vis';
   const box = document.createElement('div');
-  box.style.cssText = 'background:#1a1a26;border:2px solid #5a5a7a;border-radius:10px;padding:18px 16px;text-align:center;font-family:Georgia,serif;max-width:340px;width:100%';
+  box.className = 'picker-box picker-box-compact';
   const title = document.createElement('div');
-  title.style.cssText = 'color:#ffe7a0;font-size:14px;font-weight:bold;margin-bottom:4px';
+  title.className = 'picker-title';
   title.textContent = card.name;
   const sub = document.createElement('div');
-  sub.style.cssText = 'color:#aaa;font-size:11px;margin-bottom:14px;font-style:italic';
+  sub.className = 'picker-subtitle';
   sub.textContent = 'Choose an ability to activate.';
   box.appendChild(title);
   box.appendChild(sub);
@@ -2527,7 +2599,7 @@ function showAbilityPicker(card, options) {
     // {W}", "{T}: Draw 1"). Route through renderManaSymbols so the
     // pips render instead of literal {X} text.
     b.innerHTML = renderManaSymbols(escapeHtml(opt.label));
-    b.style.cssText = 'background:#2a2a36;color:#ddd;border:1px solid #555;border-radius:5px;padding:10px 12px;font-size:12px;cursor:pointer;font-family:inherit;text-align:left';
+    b.className = 'choice-btn choice-btn-sm';
     b.onclick = () => {
       document.body.removeChild(dimmer);
       opt.onPick();
@@ -2537,7 +2609,7 @@ function showAbilityPicker(card, options) {
   box.appendChild(btnCol);
   const cancel = document.createElement('button');
   cancel.textContent = 'Cancel';
-  cancel.style.cssText = 'margin-top:14px;background:#222;color:#aaa;border:1px solid #444;border-radius:5px;padding:6px 12px;font-size:11px;cursor:pointer;font-family:inherit';
+  cancel.className = 'choice-btn choice-btn-sm';
   cancel.onclick = () => document.body.removeChild(dimmer);
   box.appendChild(cancel);
   dimmer.appendChild(box);
@@ -2578,23 +2650,27 @@ function escapeStatsAttribute(s) {
 // rows are pre-sorted; we slice to defaultN unless expanded.
 function renderTableWithToolbar(opts) {
   const { id, title, subtitle, rows: allRows, color, columns, defaultN } = opts;
-  if (!allRows.length) return `<div style="color:#666;font-size:10px;font-style:italic">${title}: no data yet</div>`;
+  if (!allRows.length) return `<div class="tbl-note">${title}: no data yet</div>`;
 
   const expanded = !!STATS_UI.expanded[id];
   const visibleRows = expanded ? allRows : allRows.slice(0, defaultN);
   const canExpand = allRows.length > defaultN;
 
-  let html = `<div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 4px;gap:8px;flex-wrap:wrap">`;
-  html += `<div style="color:${color};font-size:10px;font-weight:bold;letter-spacing:.1em">${title.toUpperCase()}</div>`;
-  html += `<div style="display:flex;gap:4px">`;
-  html += `<button onclick="CONTROLLER.copyTableAsTsv('${id}')" style="background:#1a2a3a;border:1px solid #335;color:#88ccff;font-size:9px;padding:3px 8px;border-radius:3px;cursor:pointer;font-family:inherit">copy</button>`;
+  // Presentation lives in CSS (.tbl-*); only `color` is inlined, because it is
+  // the one genuinely DYNAMIC value here — each table passes its own accent, so
+  // no stylesheet rule could know it. Everything else is a class, so the panels
+  // restyle from one place.
+  let html = `<div class="tbl-head">`;
+  html += `<div class="tbl-title" style="color:${color}">${title.toUpperCase()}</div>`;
+  html += `<div class="tbl-actions">`;
+  html += `<button class="tbl-btn" onclick="CONTROLLER.copyTableAsTsv('${id}')">copy</button>`;
   if (canExpand) {
-    html += `<button onclick="CONTROLLER.toggleStatsTable('${id}')" style="background:#1a1a2a;border:1px solid #335;color:#aaa;font-size:9px;padding:3px 8px;border-radius:3px;cursor:pointer;font-family:inherit">${expanded ? 'show top ' + defaultN : 'show all (' + allRows.length + ')'}</button>`;
+    html += `<button class="tbl-btn" onclick="CONTROLLER.toggleStatsTable('${id}')">${expanded ? 'show top ' + defaultN : 'show all (' + allRows.length + ')'}</button>`;
   }
   html += `</div></div>`;
 
   if (subtitle) {
-    html += `<div style="color:#666;font-size:9px;margin-bottom:4px;font-style:italic">${subtitle}</div>`;
+    html += `<div class="tbl-sub">${subtitle}</div>`;
   }
 
   // Hidden textarea holding the TSV form, used by copyTableAsTsv. We
@@ -2608,28 +2684,27 @@ function renderTableWithToolbar(opts) {
     columns.map(c => c.header).join('\t'),
     ...allRows.map(r => columns.map(c => (c.tsvFmt || c.fmt)(r)).join('\t')),
   ].join('\n');
-  // HTML-escape the TSV before putting it in the textarea value attribute.
-  // (Less critical since textarea content isn't parsed as HTML, but the
-  // attribute does need escaping for &, <, >, ", '.)
+  // Escaping is less critical here since textarea content isn't parsed as
+  // HTML, but the attribute value still needs escaping for &, <, >, ", '.
   html += `<textarea id="statsTsv-${id}" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true">${escapeStatsAttribute(tsv)}</textarea>`;
 
   // The actual visible table.
   const gridCols = columns.map(c => c.width || '1fr').join(' ');
-  html += '<div style="background:#0a0a14;border-radius:3px;overflow:hidden">';
-  html += `<div style="display:grid;grid-template-columns:${gridCols};gap:5px;padding:5px 8px;background:#181828;font-size:9px;color:#888;letter-spacing:.05em">`;
+  // grid-template-columns is computed per table (column widths are caller data),
+  // so it stays inline; the surface/rules come from .tbl-grid*.
+  html += '<div class="tbl-grid">';
+  html += `<div class="tbl-grid-head" style="grid-template-columns:${gridCols}">`;
   for (const c of columns) {
     const align = c.align === 'right' ? 'text-align:right' : '';
     html += `<div style="${align}"${c.title ? ' title="' + c.title + '"' : ''}>${c.header}</div>`;
   }
   html += `</div>`;
   for (const r of visibleRows) {
-    html += `<div style="display:grid;grid-template-columns:${gridCols};gap:5px;padding:4px 8px;font-size:10px;border-top:1px solid #1a1a2a">`;
+    html += `<div class="tbl-grid-row" style="grid-template-columns:${gridCols}">`;
     for (const c of columns) {
       const align = c.align === 'right' ? 'text-align:right;' : '';
-      // Per-column color: explicit `c.color`, or `c.colorize(row, tableColor)`
-      // (used when a particular column should take the table's accent color),
-      // else neutral grey. The first column (typically NAME) defaults to a
-      // brighter readable color.
+      // c.colorize(row, tableColor) is how a column adopts the table's
+      // accent color (the `color` argument passed to this renderer).
       let cellColor;
       if (c.colorize) cellColor = c.colorize(r, color);
       else if (c.color) cellColor = c.color;
@@ -2644,7 +2719,6 @@ function renderTableWithToolbar(opts) {
   return html;
 }
 
-// Toggle the expanded state of a table and re-render the stats panel.
 function toggleStatsTable(id) {
   STATS_UI.expanded[id] = !STATS_UI.expanded[id];
   renderStatsContent();
@@ -2719,20 +2793,16 @@ function buildDraftsBatchTsv(drafts, startIdx, endIdx) {
     const d = drafts[i];
     const draftId = i + 1;
     const finalColors = (Array.isArray(d.colors) && d.colors.length)
-      ? d.colors.slice().sort().join('')
+      ? d.colors.join('')
       : '';
     const result = d.result || '';
     const games = d.gamesPlayed || 0;
-    // Running color tally as we walk picks. A color is "committed" once
-    // we've picked ≥2 cards of that color — same threshold the draft UI
-    // uses elsewhere. (DRAFT.summarizeColors is a similar idea but uses a
-    // 1+ threshold, so the two aren't interchangeable.)
+    // Running color tally as we walk picks. Colors derive through the
+    // game's own rule (DRAFT.summarizeColors) so the export reports what
+    // the game would say, not a parallel re-derivation (audit A10, Joe's
+    // ruling: the stats screen reports on the game faithfully).
     const colorCounts = { W: 0, U: 0, B: 0, R: 0, G: 0 };
-    const committedSoFar = () => Object.entries(colorCounts)
-      .filter(([, n]) => n >= 2)
-      .map(([c]) => c)
-      .sort()
-      .join('');
+    const committedSoFar = () => DRAFT.summarizeColors(colorCounts).join('');
     (d.picks || []).forEach((p, pickIdx) => {
       const pickN = pickIdx + 1;
       const before = committedSoFar();
@@ -2806,7 +2876,6 @@ function renderStatsContent() {
       pickPositionsByCard[id].push(i + 1);
       seen.add(id);
     });
-    // For each unique card in this draft, record the draft's game length.
     for (const id of seen) {
       if (!runLengthsByCard[id]) runLengthsByCard[id] = [];
       runLengthsByCard[id].push(d.gamesPlayed || 0);
@@ -2830,7 +2899,7 @@ function renderStatsContent() {
         picks: s.picks,
         offers: s.offers,
         pickRate: s.pickRate,
-        pickOverRate: s.winRate,        // renamed in the UI; same number
+        pickOverRate: s.winRate,        // same number; UI label differs
         avgRunGames,                     // null if never picked
         avgPickPos,                      // null if never picked
         runSampleSize: runs.length,
@@ -2845,11 +2914,11 @@ function renderStatsContent() {
     .sort((a, b) => (b.avgRunGames || 0) - (a.avgRunGames || 0));
 
   const summary = `
-    <div style="background:#1a1a2a;border-radius:4px;padding:8px 10px;margin-bottom:10px;font-size:11px">
-      <div><span style="color:#888">Drafts logged:</span> <span style="color:#ffd700">${drafts.length}</span></div>
-      <div><span style="color:#888">Games played:</span> <span style="color:#ffd700">${totalGames}</span></div>
-      <div><span style="color:#888">Runs ended:</span> <span style="color:#ff8888">${losses}</span> <span style="color:#666;font-size:10px">(no win condition yet)</span></div>
-      <div><span style="color:#888">Cards with ≥3 offers:</span> <span style="color:#ffd700">${rows.length}</span></div>
+    <div class="stat-block">
+      <div><span class="stat-label">Drafts logged:</span> <span class="stat-value">${drafts.length}</span></div>
+      <div><span class="stat-label">Games played:</span> <span class="stat-value">${totalGames}</span></div>
+      <div><span class="stat-label">Runs ended:</span> <span class="stat-value-bad">${losses}</span> <span class="stat-hint">(no win condition yet)</span></div>
+      <div><span class="stat-label">Cards with ≥3 offers:</span> <span class="stat-value">${rows.length}</span></div>
     </div>
   `;
 
@@ -2865,13 +2934,11 @@ function renderStatsContent() {
     { key: 'sample', header: 'N', fmt: r => String(r.runSampleSize), align: 'right', width: '28px', title: 'Sample size (drafts containing this card)' },
   ];
 
-  // Sort descending for top, reversed-asc for bottom. Bottom uses sliced
-  // tail so the order is "worst first" within the visible slice.
   const topByRun = rowsWithRunData;                              // already sorted desc
   const botByRun = rowsWithRunData.slice().reverse();            // ascending = worst first
 
   const empty = drafts.length === 0
-    ? '<div style="color:#888;text-align:center;padding:20px;font-style:italic">No drafts logged yet. Pick cards in the draft screen to start building data.</div>'
+    ? '<div class="tbl-empty">No drafts logged yet. Pick cards in the draft screen to start building data.</div>'
     : '';
 
   document.getElementById('statsContent').innerHTML =
@@ -2942,8 +3009,8 @@ function insightsHtml(drafts, perCardRows) {
           key: 'combo',
           header: 'COMBO',
           fmt: r => r.combo === '(unknown)'
-            ? '<span style="color:#666;font-style:italic">unknown</span>'
-            : r.combo.split('').map(c => `<span class="draft-pip col-${c}" style="padding:0 4px;font-size:10px">${c}</span>`).join(' '),
+            ? '<span class="tbl-note">unknown</span>'
+            : r.combo.split('').map(c => `<span class="draft-pip draft-pip-sm col-${c}">${c}</span>`).join(' '),
           // Override TSV format so we don't get HTML in the copied output.
           tsvFmt: r => r.combo,
           width: '1fr',
@@ -2973,24 +3040,22 @@ function insightsHtml(drafts, perCardRows) {
     const avgLossGame = (totalLossGames / totalLosses).toFixed(1);
     const games = Object.keys(lossDist).map(Number).sort((a, b) => a - b);
     const maxCount = Math.max(...Object.values(lossDist));
-    // TSV form for the copy button.
     const lossTsv = ['GAME\tLOSSES', ...games.map(g => `${g}\t${lossDist[g]}`)].join('\n');
-    html += `<div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 4px;gap:8px;flex-wrap:wrap">`;
-    html += `<div style="color:#ff8888;font-size:10px;font-weight:bold;letter-spacing:.1em">LOSSES BY GAME #</div>`;
-    html += `<button onclick="CONTROLLER.copyTableAsTsv('lossHist')" style="background:#1a2a3a;border:1px solid #335;color:#88ccff;font-size:9px;padding:3px 8px;border-radius:3px;cursor:pointer;font-family:inherit">copy</button>`;
+    html += `<div class="tbl-head">`;
+    html += `<div class="tbl-title" style="color:#e0a09a">LOSSES BY GAME #</div>`;
+    html += `<button class="tbl-btn" onclick="CONTROLLER.copyTableAsTsv('lossHist')">copy</button>`;
     html += `</div>`;
-    html += `<div style="color:#666;font-size:9px;margin-bottom:4px;font-style:italic">When did losses happen? Avg loss at game ${avgLossGame} (${totalLosses} loss${totalLosses === 1 ? '' : 'es'} total).</div>`;
+    html += `<div class="tbl-sub">When did losses happen? Avg loss at game ${avgLossGame} (${totalLosses} loss${totalLosses === 1 ? '' : 'es'} total).</div>`;
     html += `<textarea id="statsTsv-lossHist" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true">${escapeStatsAttribute(lossTsv)}</textarea>`;
-    html += '<div style="background:#0a0a14;border-radius:3px;padding:6px 8px;display:flex;flex-direction:column;gap:3px">';
+    html += '<div class="tbl-well" style="display:flex;flex-direction:column;gap:3px">';
     for (const g of games) {
       const count = lossDist[g];
       const barWidth = Math.round((count / maxCount) * 100);
-      html += `<div style="display:flex;align-items:center;gap:6px;font-size:10px">
-        <div style="width:48px;color:#aaa">Game ${g}</div>
-        <div style="flex:1;background:#1a0a14;border-radius:2px;overflow:hidden;height:14px">
-          <div style="background:#cc4444;height:100%;width:${barWidth}%"></div>
-        </div>
-        <div style="width:24px;text-align:right;color:#ddd">${count}</div>
+      // Only the bar WIDTH is inline — it is the datum being visualised.
+      html += `<div class="hist-row">
+        <div class="hist-label">Game ${g}</div>
+        <div class="hist-track"><div class="hist-fill" style="width:${barWidth}%"></div></div>
+        <div class="hist-count">${count}</div>
       </div>`;
     }
     html += '</div>';
@@ -3088,22 +3153,20 @@ function insightsHtml(drafts, perCardRows) {
   if (drafts.length > 0) {
     const BATCH_SIZE = 10;
     const numBatches = Math.ceil(drafts.length / BATCH_SIZE);
-    html += `<div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 4px;gap:8px;flex-wrap:wrap">`;
-    html += `<div style="color:#ffaa66;font-size:10px;font-weight:bold;letter-spacing:.1em">RAW DRAFTS — BY BATCH</div>`;
+    html += `<div class="tbl-head">`;
+    html += `<div class="tbl-title" style="color:#e6b07a">RAW DRAFTS — BY BATCH</div>`;
     html += `</div>`;
-    html += `<div style="color:#666;font-size:9px;margin-bottom:6px;font-style:italic">Pick-by-pick TSV. One row per pick: draft_id, pick_n, picked, offered (3 cards, pipe-joined), colors_so_far, final_colors, result, games. Each batch ≈ ${BATCH_SIZE} drafts. Size shown on button — if it shows "copied!" but pasting truncates, batch is too big for clipboard transport.</div>`;
-    html += `<div style="background:#0a0a14;border-radius:3px;padding:8px;display:flex;flex-wrap:wrap;gap:6px">`;
+    html += `<div class="tbl-sub">Pick-by-pick TSV. One row per pick: draft_id, pick_n, picked, offered (3 cards, pipe-joined), colors_so_far, final_colors, result, games. Each batch ≈ ${BATCH_SIZE} drafts. Size shown on button — if it shows "copied!" but pasting truncates, batch is too big for clipboard transport.</div>`;
+    html += `<div class="tbl-well" style="display:flex;flex-wrap:wrap;gap:6px">`;
     for (let b = 0; b < numBatches; b++) {
       const startIdx = b * BATCH_SIZE;
       const endIdx = Math.min(startIdx + BATCH_SIZE, drafts.length);
       const startId = startIdx + 1;
       const endId = endIdx;
-      // Pre-compute approximate batch size so the user knows what they're
-      // about to copy. This is an estimate; the actual TSV may be slightly
-      // larger or smaller depending on card name lengths.
+      // Estimate — actual TSV size may vary slightly with card name lengths.
       const batchTsv = buildDraftsBatchTsv(drafts, startIdx, endIdx);
       const sizeKb = (batchTsv.length / 1024).toFixed(1);
-      html += `<button onclick="CONTROLLER.copyDraftsBatch(${startIdx},${endIdx})" style="background:#1a2218;border:1px solid #4a5a3a;color:#ccddaa;font-size:10px;padding:5px 10px;border-radius:3px;cursor:pointer;font-family:inherit">drafts ${startId}–${endId} (${sizeKb}KB)</button>`;
+      html += `<button class="tbl-btn" onclick="CONTROLLER.copyDraftsBatch(${startIdx},${endIdx})">drafts ${startId}–${endId} (${sizeKb}KB)</button>`;
     }
     html += `</div>`;
   }
@@ -3122,8 +3185,7 @@ function statsExport() {
   showStatsExportPicker(jsonPretty, filename);
 }
 
-// Gzip+base64 a string. Returns null if CompressionStream unavailable
-// (Chrome 80+, FF 113+, Safari 16.4+ have it).
+// Returns null if CompressionStream is unavailable (Chrome 80+, FF 113+, Safari 16.4+ have it).
 async function gzipBase64(str) {
   if (typeof CompressionStream === 'undefined') return null;
   const stream = new Blob([str]).stream().pipeThrough(new CompressionStream('gzip'));
@@ -3153,11 +3215,11 @@ function showStatsExportPicker(jsonPretty, filename) {
   const sizeKb = (jsonPretty.length / 1024).toFixed(1);
   const title = document.createElement('div');
   title.textContent = `Export stats (${sizeKb} KB)`;
-  title.style.cssText = 'color:#ffd700;font-size:14px;font-weight:bold;letter-spacing:1px';
+  title.className = 'picker-title';
   box.appendChild(title);
 
   const subtitle = document.createElement('div');
-  subtitle.style.cssText = 'color:#aaa;font-size:11px;line-height:1.5';
+  subtitle.className = 'picker-subtitle';
   subtitle.textContent =
     'The Claude in-app browser blocks several download paths. ' +
     'The compressed copy works in the sandbox; use it if your data is large.';
@@ -3169,17 +3231,16 @@ function showStatsExportPicker(jsonPretty, filename) {
       background:#222;border:1px solid #444;color:#ddd;padding:10px 14px;
       border-radius:5px;cursor:pointer;font-size:12px;font-family:inherit;
       text-align:left;line-height:1.5`;
-    b.innerHTML = `<div class="btn-label" style="color:#88ccff;font-weight:bold"></div>` +
-                  `<div class="btn-hint" style="color:#888;font-size:10px;margin-top:2px"></div>`;
+    b.innerHTML = `<div class="btn-label"></div>` +
+                  `<div class="btn-hint"></div>`;
     b.querySelector('.btn-label').textContent = label;
     b.querySelector('.btn-hint').textContent = hint;
     b.onclick = onClick;
     return b;
   };
 
-  // Path 1: Compressed copy. Compresses to ~5-15% of original size, then
-  // shows in textarea + tries execCommand('copy') for a one-tap copy.
-  // This is the recommended path for large datasets in the in-app browser.
+  // Path 1: Compressed copy — compresses to ~5-15% of original size.
+  // Recommended path for large datasets in the in-app browser.
   if (typeof CompressionStream !== 'undefined') {
     box.appendChild(mkBtn(
       'Compressed copy ★',
@@ -3227,7 +3288,6 @@ function showStatsExportPicker(jsonPretty, filename) {
     }
   ));
 
-  // Cancel.
   const cancel = document.createElement('button');
   cancel.textContent = 'Cancel';
   cancel.style.cssText = `
@@ -3241,9 +3301,9 @@ function showStatsExportPicker(jsonPretty, filename) {
   document.body.appendChild(overlay);
 }
 
-// Last-resort fallback: show the JSON in a modal textarea so the user can
-// long-press → select all → copy manually. Used only when both Clipboard
-// API and blob downloads have failed.
+// Modal textarea holding the export payload for manual copy (Copy button +
+// long-press → Select All). Reached from the picker's 'Compressed copy' and
+// 'Show as raw text' options.
 function showStatsExportTextarea(payload, compressed) {
   const overlay = document.createElement('div');
   overlay.style.cssText = `
@@ -3255,12 +3315,12 @@ function showStatsExportTextarea(payload, compressed) {
     max-width:520px;width:100%;max-height:80vh;display:flex;flex-direction:column;gap:10px`;
   const sizeKb = (payload.length / 1024).toFixed(1);
   const title = document.createElement('div');
-  title.style.cssText = 'color:#ddd;font-size:12px;line-height:1.5';
+  title.className = 'export-note';
   title.innerHTML = compressed
-    ? `<div style="color:#ffd700;font-weight:bold;margin-bottom:4px">Compressed picklog (${sizeKb} KB)</div>` +
+    ? `<div class="export-head">Compressed picklog (${sizeKb} KB)</div>` +
       `Tap <b>Copy</b> below. If that fails, long-press the text → Select All → Copy. ` +
       `Then paste the whole block to Claude — including the prefix.`
-    : `<div style="color:#ffd700;font-weight:bold;margin-bottom:4px">Raw picklog (${sizeKb} KB)</div>` +
+    : `<div class="export-head">Raw picklog (${sizeKb} KB)</div>` +
       `Tap <b>Copy</b> below. If that fails, long-press the text → Select All → Copy.`;
   const ta = document.createElement('textarea');
   ta.value = payload;
@@ -3271,7 +3331,7 @@ function showStatsExportTextarea(payload, compressed) {
     border:1px solid #333;border-radius:4px;padding:8px;font-family:monospace;
     font-size:11px;resize:none;word-break:break-all`;
   const status = document.createElement('div');
-  status.style.cssText = 'color:#888;font-size:10px;min-height:14px';
+  status.className = 'export-status';
 
   const btnRow = document.createElement('div');
   btnRow.style.cssText = 'display:flex;gap:8px';
@@ -3291,7 +3351,8 @@ function showStatsExportTextarea(payload, compressed) {
     ta.setSelectionRange(0, ta.value.length);   // mobile-friendly select-all
     let ok = false;
     try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
-    status.style.color = ok ? '#aaffaa' : '#ff8888';
+    status.classList.toggle('export-status-ok', ok);
+      status.classList.toggle('export-status-bad', !ok);
     status.textContent = ok
       ? `Copied ${sizeKb} KB. Paste it into the chat.`
       : 'Copy command not allowed. Long-press the text → Select All → Copy manually.';
@@ -3337,10 +3398,6 @@ function symmetricizeChoice(which) {
   submit({type: 'symmetricizeChoice', which});
 }
 
-function edictChoice(iid) {
-  submit({type: 'edictChoice', iid});
-}
-
 function optionalCost(pay) {
   submit({type: 'optionalCost', pay});
 }
@@ -3384,7 +3441,7 @@ return {
   init, gameOverClick, clickHand, clickBattlefield, clickStackTarget, clickPlayerTarget,
   closeCardPopup, attachLongPress,
   openZone, closeZone,
-  cancelTarget, endTurn, passAction, doneDeclaring, concede, searchPick, triggerBuildPick, numberChoice, symmetricizeChoice, edictChoice, optionalCost, toggleLog,
+  cancelTarget, endTurn, passAction, doneDeclaring, concede, searchPick, triggerBuildPick, numberChoice, symmetricizeChoice, optionalCost, toggleLog,
   canPass, humanOwesDeclaration,
   pickModalMode, cancelModalChoice,
   pendingModalChoice: () => pendingModalChoice,

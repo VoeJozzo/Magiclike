@@ -15,7 +15,6 @@ function check(label, ok, info) {
   if (ok) pass++; else fail++;
 }
 
-// A baseline creature, plus a per-key MUTATION that should make matchFilter reject.
 function baseCard() {
   return { types: ['Creature'], color: 'W', colors: ['W'], power: 2, toughness: 2,
            tapped: false, keywords: [], isToken: false };
@@ -54,7 +53,7 @@ console.log('\n=== controller filter: rendered + enforced ===');
 (() => {
   check('controller rendered', withFilter('target creature', { filter: { controller: 'opp' } }) !== 'target creature');
   const c = baseCard();
-  // controller:'self' but the card is the opponent's → reject (cardCtrl=opp, caster=you)
+  // cardCtrl=opp, caster=you
   check('controller:self rejects an opp creature', ENGINE.matchFilter(c, { controller: 'self' }, 'opp', 'you') === false);
   check('controller:opp rejects your own creature', ENGINE.matchFilter(c, { controller: 'opp' }, 'you', 'you') === false);
 })();

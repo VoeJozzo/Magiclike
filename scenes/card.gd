@@ -3,11 +3,10 @@ extends Card
 
 # Magiclike Card subclass: text overlays + addon hover/drag tweaks.
 # - Drag disabled (engine drives moves; release-drop would bounce lands back).
-# - Hover scale at 1.25x with compounding bug fixed via Vector2.ONE baseline.
+# - Hover scale at 1.25x; resets to Vector2.ONE before each tween to avoid compounding.
 # - Hover rotation opt-in via hover_animates_rotation (default false) — see
 #   below; we use rotation for tap state, addon's tween-to-0° would flicker it.
 # - Right-click → focus mode (3x scale, viewport center) for card inspection.
-# See docs/BACKLOG.md for the upstream-to-card-framework PR these all enable.
 
 const _PADDING := 6
 const _NAME_HEIGHT := 22
@@ -75,7 +74,7 @@ func _ready() -> void:
 	_build_text_overlay()
 
 
-# Build label nodes; apply_card_text() populates them post-card_info.
+# apply_card_text() populates them post-card_info.
 func _build_text_overlay() -> void:
 	var front_face: Node = get_node_or_null("FrontFace")
 	if front_face == null:
@@ -175,7 +174,6 @@ func apply_card_text() -> void:
 	if _name_label == null:
 		return  # _ready hasn't built the overlay yet
 
-	# Display name — fall back to "name" then card_id then "?"
 	_name_label.text = str(card_info.get("display_name",
 		card_info.get("name", card_info.get("card_id", "?"))))
 
@@ -189,7 +187,7 @@ func apply_card_text() -> void:
 		_cost_label.text = _fmt_cost(template.mana_cost)
 		_type_label.text = _fmt_type_line(template)
 		_color_tint.color = _tint_for(template)
-		# Empty oracle hides the backer so placeholder art shows through.
+		# So placeholder art shows through when oracle text is empty.
 		var oracle: String = str(template.text)
 		_oracle_label.text = oracle
 		_oracle_bg.visible = oracle != ""
@@ -208,7 +206,7 @@ func apply_card_text() -> void:
 		_pt_label.visible = false
 
 
-# Live P/T from inst (base+temp+counters), "(-N)" damage marker, color: red=damaged, green=pumped, gold=default.
+# current_power()/current_toughness() already fold in temp buffs and counters.
 func apply_creature_state(inst: CardInstance) -> void:
 	if _pt_label == null:
 		return
@@ -258,7 +256,6 @@ func _fmt_type_line(t: CardResource) -> String:
 	return "%s — %s" % [head, " ".join(tail)]
 
 
-# Color-identity tint over placeholder art.
 func _tint_for(t: CardResource) -> Color:
 	var primary: String = _primary_color(t)
 	match primary:
@@ -279,7 +276,6 @@ func _primary_color(t: CardResource) -> String:
 	return ""
 
 
-# State: "pending" (yellow), "committed" (green), "unblocked" (dim red), else clear.
 func set_combat_highlight(state: String) -> void:
 	if _combat_highlight == null:
 		return
@@ -294,11 +290,9 @@ func set_combat_highlight(state: String) -> void:
 			_combat_highlight.color = Color(0, 0, 0, 0)
 
 
-# Right-click inspection mode. Scales 3x, lifts above neighbors, recenters
-# globally so the giant card lands in the middle of the viewport regardless
-# of which zone the source was in. Doesn't touch mouse_filter — the addon's
-# state machine still sees mouse events; the _enter_state/_exit_state guards
-# (is_focused checks) prevent it from clobbering our visuals.
+# Doesn't touch mouse_filter — the addon's state machine still sees mouse
+# events; the _enter_state/_exit_state guards (is_focused checks) prevent
+# it from clobbering our visuals.
 func enter_focus() -> void:
 	if is_focused:
 		return
@@ -309,7 +303,7 @@ func enter_focus() -> void:
 	# holds the pre-hover-lift base — captured in _start_hover_animation. Use
 	# THAT when restoring on exit, otherwise each focus+dismiss cycle would
 	# leave the card one hover_distance higher than before, accumulating with
-	# every right-click. (Joe's "card crept up" report.)
+	# every right-click.
 	if current_state == DraggableState.HOVERING:
 		_focus_orig_position = original_position
 	else:
@@ -330,8 +324,8 @@ func enter_focus() -> void:
 	# parent CardContainer's offset is. card_size is the base size; the
 	# rendered footprint is card_size * _FOCUS_SCALE, so subtract half of
 	# the SCALED size to center the visible card on the viewport center.
-	# Read viewport size live (not a 960×540 hardcode) so focus stays centered
-	# at any window resolution/aspect under canvas_items stretch.
+	# Reads viewport size live so focus stays centered at any window
+	# resolution/aspect under canvas_items stretch.
 	var viewport_center := get_viewport_rect().size * 0.5
 	global_position = viewport_center - (card_size * _FOCUS_SCALE * 0.5)
 
@@ -341,7 +335,7 @@ func enter_focus() -> void:
 # in the zone, including the focused one — without this guard, the focused
 # card would slide from viewport center toward its battlefield slot, then
 # every subsequent pass-priority would re-fire the tween, producing the
-# "card creeps up the screen" symptom Joe reported.
+# "card creeps up the screen" symptom.
 func move(target_destination: Vector2, degree: float) -> void:
 	if is_focused:
 		return
@@ -391,19 +385,16 @@ func _handle_mouse_pressed() -> void:
 		card_container.on_card_pressed(self)
 
 
-# Position + scale hover, with rotation gated by `hover_animates_rotation`.
-# Compounding fix: snap to Vector2.ONE before starting a new tween, so a
-# rapid in-out sequence can't capture a mid-flight scale as the baseline.
-# Pivot is set to card center so the scale grows from the middle, not the
-# top-left. Skipped entirely when the card is focused — focus owns the
-# visual transform.
+# Snaps to Vector2.ONE before starting a new tween so a rapid in-out
+# sequence can't capture a mid-flight scale as the baseline. Focus owns
+# the visual transform, so this no-ops while focused.
 func _start_hover_animation() -> void:
 	if is_focused:
 		return
 	if hover_tween and hover_tween.is_valid():
 		hover_tween.kill()
 		hover_tween = null
-		scale = Vector2.ONE  # discard any in-flight scale value
+		scale = Vector2.ONE
 
 	original_position = position
 	original_hover_rotation = rotation  # only used when hover_animates_rotation

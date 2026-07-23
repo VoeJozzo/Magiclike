@@ -1,0 +1,28 @@
+{
+  "card_id": "cinder_ward",
+  "name": "Cinder Ward",
+  "art": "\ud83d\udee1\ufe0f",
+  "cost": {
+    "W": 1,
+    "R": 1
+  },
+  "types": [
+    "Sorcery"
+  ],
+  "keywords": [
+    "flash"
+  ],
+  "target": "your_creature",
+  "effects": [
+    {
+      "kind": "pump",
+      "power": 1,
+      "toughness": 0
+    },
+    {
+      "kind": "grant_keyword",
+      "keyword": "indestructible",
+      "duration": "eot"
+    }
+  ]
+}

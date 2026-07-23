@@ -17,7 +17,7 @@ function check(label, ok, info) {
 
 console.log('=== RUN.load backfills a missing empowerRoll once + idempotently ===');
 (() => {
-  // A save with an empower sticker but NO recorded roll (legacy shape).
+  // Legacy save shape (predates empowerRolls).
   localStorage.setItem(SAVE_KEY, JSON.stringify({
     version: SAVE_VERSION,
     runState: { slots: [{ tplId: 'divination', stickers: ['empower'] }], gameNum: 1, active: true },
@@ -31,8 +31,6 @@ console.log('=== RUN.load backfills a missing empowerRoll once + idempotently ==
     JSON.stringify(slot.empowerRolls));
   const roll = slot.empowerRolls[0];
   check('backfilled roll is a valid pointer (has a field)', !!roll && typeof roll.field === 'string', JSON.stringify(roll));
-  // The persisted roll must survive a second load unchanged — no re-roll, no
-  // duplicate. (This is the anti-flicker guarantee.)
   const snapshot = JSON.stringify(roll);
   RUN.load();
   const reloaded = JSON.parse(localStorage.getItem(SAVE_KEY)).runState.slots[0];
@@ -70,8 +68,6 @@ console.log('\n=== remapEmpowerRollForStaple keeps a base roll on the base effec
 
   check('null roll passes through', remapEmpowerRollForStaple(null, true, true, true, 1, 1, 1) === null);
 
-  // Pinning the real intent: a 2-effect staple spliced before a base, the base's
-  // 1st effect (effIdx 0) ends up at index 2 — exactly countEffects of the staple.
   const stapleTpl = { effects: [{ kind: 'damage', amount: 1 }, { kind: 'gain_life', amount: 1 }] };
   const baseRoll = { location: 'effects', subIdx: null, effIdx: 0, field: 'amount' };
   const remapped = remapEmpowerRollForStaple(baseRoll, false, false, false, countEffects(stapleTpl), 0, 0);

@@ -1,7 +1,7 @@
 class_name AIScoring
 extends RefCounted
 
-# Card heuristic scoring. Ported from js/ai.js::getCardValue.
+# Mirrors js/ai.js::getCardValue.
 # Constants are playtested values — DO NOT round; that would shift AI decisions.
 # Purpose: "kill" (board threat, cost is sunk) or "draft" (deckbuild, cost matters more).
 

@@ -1,12 +1,9 @@
-// exile_until_eot decomposition (Slice 3 / plan-effects-refactor §4.1):
-// the old monolithic exileUntilEOT handler is gone. Otherworldly Journey now
-// resolves as a top-level target() step plus two effects —
+// Otherworldly Journey resolves as a top-level target() step plus two effects —
 //   move_card(battlefield→exile, selector:target)
 //   schedule_delayed(when:end_step, effects:[move_card(exile→battlefield, selector:target)])
-// The end-step half re-enters the creature via placeCardOnBattlefield, which
-// mints a FRESH iid (§3.7) and re-fires ETB. A token that gets exiled ceases to
-// exist (it's not in any zone at end step, so the return move_card no-ops).
-// Opp-OWNED creatures route back to their owner's battlefield, not the caster's.
+// The end-step half re-enters the creature via placeCardOnBattlefield, which re-mints
+// its iid (§3.7). A token that gets exiled ceases to exist (it's not in any zone at end
+// step, so the return move_card no-ops).
 
 const setup = require('./_setup');
 setup.loadEngine();

@@ -1,9 +1,3 @@
-// Audit A2-13 — summoning sickness had no DIRECT test; its only fence was an
-// accidental choreography-coupled assertion in test_rules_infra.js (an A1-7
-// empty-combat-skip rework could silently delete the sick gate and stay green).
-// This pins the gate at both layers: the canCreatureAttack predicate and the
-// declareAttackers legality surface. Tests only; the gate (engine.js:942) is
-// correct. Land before any A1-7 remediation so enforcement can't vanish silently.
 const setup = require('./_setup');
 setup.loadEngine();
 
@@ -39,7 +33,7 @@ else {
     const G = newGame();
     const S = mk(VANILLA,'you'); S.power=2; S.toughness=2; S.sick=true;
     // A ready creature keeps a legal attacker available so COMBAT_ATTACK pauses
-    // (an all-sick board has no legal attacker -> the phase auto-skips, A1-7).
+    // (an all-sick board has no legal attacker -> the phase auto-skips).
     const R = mk(VANILLA,'you'); R.power=2; R.toughness=2; R.sick=false;
     G.you.battlefield.push(S, R); giveHold(G,'you'); readyMain(G,'you');
     passUntil(G, ()=>G.phase==='COMBAT_ATTACK');

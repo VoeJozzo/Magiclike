@@ -1,11 +1,5 @@
-// Audit A1-5 — three dispatch/phase switches had NO default arm: executeAction
-// silently no-op'd an unknown action.type (yet returned true — silent success),
-// and advancePhaseAfterPriority / step()'s phase switch left G.phase unchanged on
-// an unknown phase (step()'s while(true) then spins forever — the audit
-// reproduced an exit-124 hang). Loud defaults were added to all three (behavior-
-// neutral: unreachable on legal input). This pins the one genuinely reachable,
-// high-value leg — the step() unknown-phase HANG-GUARD: a corrupt phase now halts
-// loudly instead of hanging. (The other two defaults are fenced by suite-green.)
+// engine.js's step() runs a while(true) loop switching on G.phase;
+// an unrecognized value would otherwise spin it forever.
 const setup = require('./_setup');
 setup.loadEngine();
 let pass = 0, fail = 0;
@@ -18,9 +12,6 @@ console.log('=== A1-5: a corrupt G.phase makes the step loop halt loudly, not ha
   G.phase = 'BOGUS_PHASE';
   const ap = G.activePlayer;
   const t0 = Date.now();
-  // Drive the settle/step loop via a pass. WITHOUT the default arms this spins
-  // forever (audit reproduced exit 124). WITH them it returns; the bogus phase is
-  // left as-is (we don't pretend to recover it) and the loop exits.
   ENGINE.executeAction(ap, { type: 'pass' });
   const ms = Date.now() - t0;
   check('executeAction/step returned (did not hang) on a corrupt phase', ms < 3000, ms + 'ms');

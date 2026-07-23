@@ -1,5 +1,6 @@
 {
   "card_id": "embargo",
+  "boss": true,
   "art": "art.png",
   "cost": {
     "W": 1,
@@ -23,7 +24,6 @@
     }
   ],
   "name": "Embargo",
-  "special": true,
   "types": [
     "Sorcery"
   ]

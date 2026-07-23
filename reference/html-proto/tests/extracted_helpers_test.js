@@ -1,10 +1,6 @@
-// Boot smoke test: the engine initializes cleanly and basic state invariants
-// hold. (Formerly also carried a source-grep layer asserting resolveTarget /
-// pluckFromBattlefield call-site COUNTS — deleted: those tested how the code was
-// written, not what it does, broke on benign refactors, and missed the bug they
-// claimed to guard. The behavior those helpers centralize — clean fizzle on a
-// dead target, hexproof gating — is covered behaviorally in test_targeting /
-// test_targeting_cast / test_move_card.)
+// Clean fizzle on a dead target is covered behaviorally in
+// test_resolution_revalidation / test_move_card; hexproof gating in
+// test_targeting / test_targeting_cast. Not tested here.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -38,7 +34,7 @@ console.log('\n=== A1-4: startMainPhase helper drives to an open MAIN1 round ===
   check('startMainPhase: the requested player is the expected actor', ENGINE.expectedActor() === ap, 'actor=' + ENGINE.expectedActor());
   check('startMainPhase: stack empty', g.stack.length === 0);
   check('startMainPhase: a priority round is open (passes is a Set)', g.priority && g.priority.passes instanceof Set);
-  // The other seat exercises the authoritative fallback path.
+  // Exercises the authoritative fallback path.
   const other = ap === 'you' ? 'opp' : 'you';
   const g2 = setup.startMainPhase(other);
   check('startMainPhase(other seat): MAIN1 + that seat is the actor', g2.phase === 'MAIN1' && ENGINE.expectedActor() === other);

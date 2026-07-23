@@ -1,14 +1,8 @@
-// Audit A7-1 — extra-cost mana abilities (a mana ability whose cost includes
-// anything beyond {T}/mana, e.g. "{T}, sacrifice a creature: add {B}{B}") were
-// triple-bypassed: surfaced ONLY as a tapLandForMana auto-action, executed by
-// doTapLandForMana which paid only the tap (silently SKIPPING the sacrifice),
-// and counted as a FREE mana source by the solver. Refuter widening: a TAPLESS
-// extra-cost mana ability was also surfaced and WRONGLY tapped. P2 LATENT (no
-// pool card has the shape today; 18 trivial {T}-only mana dorks must keep
-// auto-paying). Joe GO + guard: the autotapper must NEVER auto-pay a non-trivial
-// cost, so extra-cost mana abilities are EXCLUDED from every auto path
-// (enumeration, legality, doTapLandForMana, solver) and surface only as explicit
-// activated abilities; a boot tripwire flags the unsupported shape.
+// Extra-cost mana abilities — any mana ability whose cost includes something
+// beyond {T}/mana, e.g. "{T}, sacrifice a creature: add {B}{B}" — must never
+// be auto-paid, tapped or not: they are excluded from every auto path
+// (enumeration, legality, doTapLandForMana, solver) and surface only as
+// explicit activated abilities. A boot tripwire flags the unsupported shape.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -50,7 +44,7 @@ function newGame() {
 const SAC_MANA = [{ cost: { tap: true, sacrifice: 'creature' }, effects: [{ kind: 'add_mana', amounts: { B: 2 } }] }];
 const TAPLESS_SAC_MANA = [{ cost: { sacrifice: 'creature' }, effects: [{ kind: 'add_mana', amounts: { B: 1 } }] }];
 const TRIVIAL_MANA = [{ cost: { tap: true }, effects: [{ kind: 'add_mana', choose: ['G'] }] }];
-const MANA_ONLY_COST = [{ cost: { tap: true, mana: { C: 1 } }, effects: [{ kind: 'add_mana', amounts: { W: 1, U: 1 } }] }]; // filter-land shape
+const MANA_ONLY_COST = [{ cost: { tap: true, mana: { C: 1 } }, effects: [{ kind: 'add_mana', amounts: { W: 1, U: 1 } }] }];
 
 console.log('=== A7-1 boot tripwire: extra-cost mana abilities flagged; trivial ones not ===');
 (() => {
@@ -64,7 +58,6 @@ console.log('=== A7-1 boot tripwire: extra-cost mana abilities flagged; trivial 
   check('tapless sacrifice: add mana flagged', r.schemaErrors.some(e => e.startsWith('taplessSacAltar:')));
   check('trivial {T}-only mana dork NOT flagged (the 18 pool dorks)', !r.schemaErrors.some(e => e.startsWith('okDork:')));
   check('filter-land ({1},{T}: add WU) IS flagged (auto-payer cannot pay the mana cost)', r.schemaErrors.some(e => e.startsWith('filterLand:')));
-  // The live pool has no extra-cost mana ability today.
   const live = quiet(() => ENGINE.validateAllCardEffects(CARDS));
   check('live pool has no extra-cost mana ability', !live.schemaErrors.some(e => /non-tap cost/.test(e)),
     live.schemaErrors.filter(e => /non-tap cost/.test(e)).join('; '));
@@ -84,12 +77,9 @@ console.log('\n=== A7-1: extra-cost mana abilities are excluded from the tapLand
 })();
 
 console.log('\n=== A7-1: an extra-cost mana ability IS reachable via the explicit activateAbility lane (PR #134 review) ===');
-// The A7 design says extra-cost mana abilities "surface only as explicit
-// activated abilities". getLegalActions used to skip EVERY mana ability from the
-// activate lane (keying on isManaAbility), so a costly altar was excluded from
-// the tap lane (can't pay the sac there) AND the activate lane → legal via
-// isLegalAction yet enumerable nowhere. Now the activate lane skips only
-// isAutoUsableManaAbility, the exact complement of the tap lane. (Thaumaturge-ChatGPT.)
+// getLegalActions' activate lane skips only isAutoUsableManaAbility — the
+// exact complement of the tap lane — so a costly ability excluded from the
+// tap lane is still enumerable via activateAbility.
 (() => {
   const G = newGame();
   const victim = mk('gray_ogre', 'you');             // a creature to satisfy the sac cost
@@ -119,7 +109,6 @@ console.log('\n=== A7-1: doTapLandForMana refuses extra-cost abilities (defense-
   check('no {B} mana was produced (cost not silently skipped)', (G.you.mana.B || 0) === beforeB, 'B=' + (G.you.mana.B || 0));
   check('the victim was NOT sacrificed', G.you.battlefield.some(c => c.iid === victim.iid));
 
-  // Tapless widening: a tapless extra-cost mana ability must not be wrongly tapped.
   const altar2 = mk('gray_ogre', 'you', TAPLESS_SAC_MANA);
   G.you.battlefield.push(altar2);
   ENGINE.executeAction('you', { type: 'tapLandForMana', cardIid: altar2.iid, abilityIdx: 0 });
@@ -132,9 +121,9 @@ console.log('\n=== A7-1: the mana SOLVER excludes extra-cost abilities as source
   // see an extra-cost ability — else a spell auto-casts off it without paying
   // the sacrifice. This pins the gate the tap-lane/legality assertions above do
   // NOT cover: reverting the manaAbilityOf trivial-cost gate re-opens
-  // auto-cast-off-a-sac-source (the finding's headline "counted as a FREE source").
-  // landProducibleColors is land-only and reads manaAbilityOf (the solver's
-  // source scan), so use LAND bases to exercise the gate directly.
+  // auto-cast-off-a-sac-source.
+  // landProducibleColors is land-only and reads manaAbilityOf, so use LAND
+  // bases to exercise the gate directly.
   const altar = mk('gray_ogre', 'you', SAC_MANA); altar.types = ['Land'];
   const dork = mk('gray_ogre', 'you', TRIVIAL_MANA); dork.types = ['Land'];
   const altarColors = ENGINE.landProducibleColors(altar);
@@ -143,8 +132,7 @@ console.log('\n=== A7-1: the mana SOLVER excludes extra-cost abilities as source
     Array.isArray(altarColors) && altarColors.length === 0, JSON.stringify(altarColors));
   check('landProducibleColors(trivial dork) is non-empty (still a source)',
     Array.isArray(dorkColors) && dorkColors.length >= 1, JSON.stringify(dorkColors));
-  // Filter-land follow-up: a {1},{T} mana cost is also non-auto-payable, so the
-  // solver excludes it too (else it would net free fixing).
+  // Skipping this cost would let auto-cast net free color fixing.
   const filterLand = mk('gray_ogre', 'you', MANA_ONLY_COST); filterLand.types = ['Land'];
   const filterColors = ENGINE.landProducibleColors(filterLand);
   check('landProducibleColors(filter-land {1},{T}) is [] (mana cost not auto-payable)',

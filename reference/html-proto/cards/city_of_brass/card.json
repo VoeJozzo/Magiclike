@@ -1,9 +1,9 @@
 {
   "card_id": "city_of_brass",
+  "boon": true,
   "art": "art.png",
   "mana": "C",
   "name": "City of Brass",
-  "special": true,
   "abilities": [
     {
       "cost": {
@@ -19,5 +19,8 @@
   ],
   "types": [
     "Land"
+  ],
+  "keywords": [
+    "innate"
   ]
 }

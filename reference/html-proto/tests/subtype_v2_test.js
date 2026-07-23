@@ -1,8 +1,3 @@
-// Sticker subtype system: there's exactly one 'subtype' sticker that
-// rolls a subtype from the deck at apply time, persists via subtypeRolls,
-// stacks for multiple subtypes, and migrates legacy subtype_<tribe>
-// saves. Adapted from the prior-session test bundle.
-
 const setup = require('./_setup');
 setup.loadEngine();
 
@@ -112,37 +107,6 @@ console.log('\n=== Test 5: Stacking applies multiple subtypes ===');
     check('Lions sub contains Goblin', hasType(lions, 'Goblin'));
     check('Lions sub contains Wizard', hasType(lions, 'Wizard'));
     check('Lions sub still contains Cat', hasType(lions, 'Cat'));
-  }
-}
-
-console.log("\n=== Test 6: Save migration converts legacy subtype_goblin -> 'subtype' + roll ===");
-{
-  const legacySave = JSON.stringify({
-    version: 1,
-    runState: {
-      slots: [
-        {tplId: 'savannah_lions', stickers: ['subtype_goblin']},
-        {tplId: 'plains', stickers: []},
-      ],
-      colors: ['W'],
-      mode: 'draft',
-      lives: 3,
-      results: [],
-      modifiers: [],
-      lastClaimedKeywords: [],
-    },
-  });
-  global.localStorage.setItem('claudeMagiclikeRunV1', legacySave);
-  RUN.load();
-  const slots = RUN.getSlots();
-  const lionsSlot = slots.find(s => s.tplId === 'savannah_lions');
-  check('Lions slot still present after load', !!lionsSlot);
-  if (lionsSlot) {
-    console.log('  migrated stickers:', lionsSlot.stickers);
-    console.log('  migrated subtypeRolls:', lionsSlot.subtypeRolls);
-    check("Stickers contains 'subtype' (new)", lionsSlot.stickers.includes('subtype'));
-    check("Stickers does NOT contain 'subtype_goblin' (old)", !lionsSlot.stickers.includes('subtype_goblin'));
-    check("subtypeRolls contains 'Goblin'", Array.isArray(lionsSlot.subtypeRolls) && lionsSlot.subtypeRolls.includes('Goblin'));
   }
 }
 

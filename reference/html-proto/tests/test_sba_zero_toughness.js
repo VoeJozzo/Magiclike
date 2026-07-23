@@ -1,17 +1,13 @@
-// Audit fix A1-3 — indestructible creatures still die at toughness <= 0.
+// Indestructible creatures still die at toughness <= 0.
 //
 // Canon (docs/wiki/rules/1100-state-based-actions.md, MTG 704.5f):
 // indestructible exempts a creature from the lethal-damage / deathtouch
 // death checks, but a creature whose toughness is 0 or less dies anyway —
 // 0-toughness death is not "destruction", so indestructible doesn't apply.
 //
-// Before the fix, checkDeaths()'s indestructible `continue` skipped ALL
-// three death causes (damage >= t, t <= 0, dealtDeathtouch), so a creature
-// shrunk to 0 toughness by -X/-X effects illegally survived.
-//
 // This file pins:
-//   1. control: a plain creature at toughness <= 0 dies (already worked)
-//   2. the fix: an INDESTRUCTIBLE creature at toughness <= 0 dies
+//   1. control: a plain creature at toughness <= 0 dies
+//   2. an INDESTRUCTIBLE creature at toughness <= 0 dies
 //   3. the keyword's actual job: an indestructible creature with marked
 //      damage >= toughness (toughness still > 0) SURVIVES
 
@@ -70,7 +66,7 @@ if (!VANILLA) {
     c.tempTou = -3;   // effective toughness 0 (a -X/-X debuff)
     G.you.battlefield.push(c);
     readyMain(G, 'you');
-    advanceOnePhase(G);   // runs SBAs at the transition
+    advanceOnePhase(G);
     check('plain creature at t<=0 died',
       !G.you.battlefield.some(x => x.iid === c.iid));
     check('plain creature routed to graveyard',
@@ -113,7 +109,7 @@ if (!VANILLA) {
     const c = mk(VANILLA, 'you');
     c.keywords = ['indestructible'];
     c.power = 2; c.toughness = 3;
-    c.damage = 5;   // damage >= toughness, toughness positive
+    c.damage = 5;
     G.you.battlefield.push(c);
     readyMain(G, 'you');
     advanceOnePhase(G);

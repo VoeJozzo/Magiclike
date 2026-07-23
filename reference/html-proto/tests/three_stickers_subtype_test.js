@@ -1,5 +1,5 @@
 // pushStickerWithRoll is reachable from both the RUN public path and
-// the opp-AI direct-slot path. Adapted from the prior-session bundle.
+// the opp-AI direct-slot path.
 
 const setup = require('./_setup');
 setup.loadEngine();

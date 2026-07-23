@@ -1,36 +1,11 @@
-// A3-2 — Stackable infrastructure (plan-stackable.md Phases 0-2, everything-
-// stackable). Per Joe's PR #98 round-5 ruling: the `stackable` boolean exists
-// on trigger AND activated-ability definitions, ABSENT defaults TRUE
-// (gracefully — no card carries the field yet), and every shipped definition
-// stays stackable tonight; the unstackable arms exist but are dormant pending
-// Joe's dedicated classification pass.
+// Stackable infrastructure. The `stackable` boolean exists on trigger AND
+// activated-ability definitions; absent, it defaults to true (no card
+// carries the field yet), every shipped definition is stackable, and the
+// unstackable arms are dormant pending a dedicated classification pass.
 //
-// Arms:
-//   (a) KEY (RED pre-build) — a targeted activated ability (Prodigal
-//       Sorcerer's ping) now takes a kind:'ability' stack entry: activation
-//       pays costs + locks targets, the opponent gets a real response window
-//       (§603 handoff), and the effect has NOT happened yet. Pre-build it
-//       resolved inline with no window.
-//   (b) KEY (RED pre-build) — respond-with-removal kills the ability's
-//       target: §1006.1/§704.1 re-validation fizzles the ability at
-//       resolution, WITH a log; costs stay paid. Also pins that "target
-//       spell" enumeration sees the responding spell but never the ability
-//       entry.
-//   (c) Guard — mana abilities stay hardcoded off-stack (canon §705): both
-//       the creature-dork activateAbility path and tapLandForMana resolve
-//       instantly with no stack entry.
-//   (d) Default + dormant arm — a trigger with NO stackable field stacks
-//       exactly as today (control), while a constructed stackable:false
-//       trigger exercises the drain-time-immediate arm: resolves at drain,
-//       before any stack push, logged ("split second"), no response window.
-//   (e) Boot validation — a present-but-non-boolean `stackable` on a trigger
-//       or ability is a loud schema error; boolean/absent boots clean.
-//   (f) Counter parity (§1004.6) — the counter handler refuses kind:'ability'
-//       entries the same way it refuses triggers, and targetsForFilter('spell')
-//       excludes them.
-//   (g) AI sanity — the AI's own activation doesn't wedge its decision loop
-//       (it sees the entry, passes, the ability resolves), and it answers a
-//       human-owned ability entry with a legal action.
+// (b) §1006.1/§704.1 govern the target re-validation that fizzles the ability.
+// (f) §1004.6 — the counter handler refuses kind:'ability' entries the same
+//     way it refuses triggers.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -65,9 +40,8 @@ function newGame() {
   return G;
 }
 function logHas(G, re) { return G.log.some(e => re.test(e.msg)); }
-// Pass-until-settled (bounded): drives whoever holds priority to pass until
-// the stack drains. Auto-pass handles the no-action seats; this only feeds
-// the explicit passes a parked (anchored) seat owes.
+// Auto-pass handles the no-action seats; this only feeds the explicit
+// passes a parked (anchored) seat owes.
 function settle(G) {
   let safety = 8;
   while (G.stack.length > 0 && safety-- > 0) {
@@ -114,7 +88,7 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['lightning_bolt'] || !CARD
     check('KEY: the opponent can actually respond (bolt is castable)',
       ENGINE.isLegalAction('opp', { type: 'castSpell', cardIid: bolt.iid,
         targets: [{ kind: 'creature', iid: sorcerer.iid, label: sorcerer.name }] }));
-    // Decline to respond: the ability resolves through resolveTopOfStack.
+    // Resolves through resolveTopOfStack().
     ENGINE.executeAction('opp', { type: 'pass' });
     check('after the response window closes, the ping resolves (victim dead)',
       !G.opp.battlefield.some(c => c.iid === victim.iid)
@@ -141,19 +115,15 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['lightning_bolt'] || !CARD
       targets: [{ kind: 'creature', iid: victim.iid, label: victim.name }] });
     check('setup: ability entry on the stack', G.stack.length === 1 && G.stack[0].kind === 'ability');
     const abilityEntry = G.stack[0];
-    // Opp responds: bolts their OWN creature (the ability's target).
     ENGINE.executeAction('opp', { type: 'castSpell', cardIid: bolt.iid,
       targets: [{ kind: 'creature', iid: victim.iid, label: victim.name }] });
     check('setup: bolt above the ability on the stack', G.stack.length === 2);
-    // Targeting parity while both are stacked: "target spell" sees the bolt,
-    // never the ability entry (§1004.6 mechanism).
+    // §1004.6 mechanism.
     const spellTargets = ENGINE.targetsForFilter('spell', 'you');
     check('targetsForFilter(\'spell\') includes the responding spell',
       spellTargets.some(t => t.stackItem && t.stackItem.card && t.stackItem.card.iid === bolt.iid));
     check('targetsForFilter(\'spell\') excludes the kind:\'ability\' entry',
       !spellTargets.some(t => t.stackItem === abilityEntry));
-    // Let everything resolve: bolt kills the victim, then the ability
-    // re-validates and fizzles.
     settle(G);
     check('bolt resolved first (victim dead)', !G.opp.battlefield.some(c => c.iid === victim.iid));
     check('KEY: the ability fizzled at resolution (no crash, stack empty)',
@@ -186,7 +156,6 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['lightning_bolt'] || !CARD
 
   console.log('\n=== (d) absent field = stackable (control) vs stackable:false drain-time-immediate (dormant arm) ===');
   (() => {
-    // Control: an ETB gain-life trigger WITHOUT the field goes on the stack.
     const G = newGame();
     // Untapped sorcerer anchors: hasNoAction stays false, so step() parks
     // instead of auto-pass-cascading through the resolution moments we want
@@ -201,7 +170,7 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['lightning_bolt'] || !CARD
     G.you.hand.push(etb);
     const life0 = G.you.life;
     ENGINE.executeAction('you', { type: 'castSpell', cardIid: etb.iid });
-    // Two passes resolve the creature spell; its ETB trigger then drains.
+    // Two passes resolve the creature spell.
     ENGINE.executeAction('opp', { type: 'pass' });
     ENGINE.executeAction('you', { type: 'pass' });
     check('control: the default-stackable ETB trigger is ON the stack',
@@ -212,8 +181,6 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['lightning_bolt'] || !CARD
     check('control: trigger resolved after the window (life +2)',
       G.you.life === life0 + 2, 'life=' + G.you.life);
 
-    // Dormant arm: the same trigger with stackable:false resolves at drain —
-    // no stack entry, no response window, logged.
     const G2 = newGame();
     G2.you.battlefield.push(mk('prodigal_sorcerer', 'you'));
     const etb2 = mk(VANILLA, 'you');
@@ -226,8 +193,7 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['lightning_bolt'] || !CARD
     G2.you.hand.push(etb2);
     const life2 = G2.you.life;
     ENGINE.executeAction('you', { type: 'castSpell', cardIid: etb2.iid });
-    // Two passes resolve the creature spell; its unstackable ETB then
-    // resolves AT DRAIN — before any player gets a window over it.
+    // Two passes resolve the creature spell.
     ENGINE.executeAction('opp', { type: 'pass' });
     ENGINE.executeAction('you', { type: 'pass' });
     check('KEY: unstackable trigger resolved at drain (life +2 immediately)',
@@ -292,7 +258,6 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['lightning_bolt'] || !CARD
     check('targeting site: targetsForFilter(\'spell\') enumerates NO targets',
       ENGINE.targetsForFilter('spell', 'opp').length === 0,
       'targets=' + ENGINE.targetsForFilter('spell', 'opp').length);
-    // Handler site: a counter effect aimed straight at the entry refuses it.
     ENGINE.applyEffect({ controller: 'opp', sourceName: 'Test Counter', sourceIid: -1 },
       { kind: 'counter' }, { kind: 'stack', stackItem: entry, label: 'ability' });
     check('handler site: the entry is still on the stack', G.stack.length === 1 && G.stack[0] === entry);
@@ -302,8 +267,6 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['lightning_bolt'] || !CARD
 
   console.log('\n=== (g) AI sanity: own ability entry doesn\'t wedge the loop; legal answer to a human entry ===');
   (() => {
-    // AI activates its own ability, then must pass over its own entry and
-    // let it resolve (bounded drive, every action legal).
     const G = newGame();
     G.activePlayer = 'opp'; G.priorityHolder = 'opp';
     const sorcerer = mk('prodigal_sorcerer', 'opp');
@@ -329,7 +292,6 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['lightning_bolt'] || !CARD
       !G.you.battlefield.some(c => c.iid === victim.iid) || victim.damage > 0,
       'stack=' + G.stack.length);
 
-    // Human-owned entry on the stack: the AI's answer is a legal action.
     const G2 = newGame();
     const mySorc = mk('prodigal_sorcerer', 'you');
     G2.you.battlefield.push(mySorc);

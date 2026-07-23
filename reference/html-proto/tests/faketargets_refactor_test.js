@@ -1,7 +1,5 @@
 // fakeTargetsForLegality is the shared probe for "could this effect ever
-// have legal targets" — used by both AI and the legality checker. Refactor
-// protection: the helper exists at module scope and handles the basic
-// shapes. Adapted from the prior-session bundle.
+// have legal targets", used by both AI and the legality checker.
 
 const setup = require('./_setup');
 setup.loadEngine();
