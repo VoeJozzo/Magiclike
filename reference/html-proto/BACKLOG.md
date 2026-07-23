@@ -25,52 +25,34 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 - **`effectiveCastCost` returns the live cost object on two paths** (`js/engine.js` ~1815). The header claims "returns a copy," but the `!card.cost` and `bump === 0` early returns hand back `card.cost` itself — a caller that mutates the result when no bump is active corrupts the card's real cost. Either spread on every path or fix the contract comment after auditing callers for mutation. Found by the wave-2 comment sweep (2026-07-21); comment left in place as evidence.
 - **Archdemon bargain count can be silently lost** (`js/engine.js` ~7084). The number-choice resolution stashes `bargainsNum` via `findCard(sourceIid)`, but `findCard` searches battlefields only (the adjacent comment wrongly claims all zones; `findCardAnyZone` exists and is unused here). If the Archdemon leaves the battlefield before the choice resolves, the dies trigger reads no bargain count. Switch to `findCardAnyZone` (or decide the departed-source case intentionally voids the bargain) + pin with a test. Found by the wave-2 comment sweep (2026-07-21); comment left in place as evidence.
 
-- **Mana-symbol rendering has no single source of truth** (Joe flagged, board-reskin
-  session) — symbols silently degrade to letters/emoji whenever a surface misses the art
-  wiring, and it keeps recurring. Root cause: pip art is duplicated/optional per render
-  path instead of centralized. Two failure modes: (1) `renderManaPool` had its OWN
-  `.mp*` letter-in-a-colored-circle pips running parallel to `renderManaSymbols`' `.mana-*`
-  SVG pips — fixed this session (pool now routes through `renderManaSymbols`, `.mp*` deleted),
-  but it's evidence of the pattern; (2) the SVG art is CSS-keyed via the relative path
-  `../../assets/mana/*.svg`, which only resolves when served from the **repo root** — wrong
-  serve root → 404 → silent fallback to the underlying glyph (emoji for WUBRG, letter for
-  C/T/X). Durable fix (deferred, Joe's call): make `renderManaSymbols` the ONE pip renderer
-  (audit for any other hand-rolled pip markup), make a missing-SVG failure **loud** (a boot
-  check that fetches one mana SVG and warns on 404, instead of degrading silently), and/or
-  kill the path fragility (inline the SVGs or use a root-absolute path so serve context stops
-  mattering).
-- **"target opponent" vs "your opponent" text voice** (Joe, Wave 2 — parked at
-  "tentatively fine") — a 1v1 roguelike can fairly render implicit opp-targets
-  as "Your opponent loses 1 life" instead of MTG's "target opponent." ~5-line
-  generator change + golden updates; now touches blood_artist, toll_of_secrets,
-  rakdos_underboss, backlash_mage, charnel_chorister, ashclot_zealot
-  identically. Joe's style call.
-- **Art batch for the 36 emoji-placeholder cards** (32 Wave 2 + 4 un-parked
-  Wave 1 holds) — all shipped with emoji art; regenerate via the
-  magiclike-card-art skill when art credits/time are available.
-- **Triage Cleric cost watch** — the any-ETB correction (v2.2.11) makes her
-  near-"gain 2 per creature you play" in ETB-dense decks at 1W 2/2. Playtest
-  before re-costing; the assay can't see power level.
-- **UR is now the thinnest pair (12 plans, v2.2.13 assay)** — note for the
-  next wave's targeting; every other pair is 15+.
-- **Extraction-audit pool sweep** (Joe's idea, queued since Wave 2) — sweep
-  the whole pool for cards deserving want/provide rules
-  (smite_the_wicked's tapped-want was invisible until Wave 2 measured it).
-- **Constellation P3: pool codex fog-of-war** (Joe, 2026-07-13: "something
-  I DO want to implement, but now is not quite the time — I haven't thought
-  through that FoW system yet"). Dim un-encountered cards in the Pool tab;
-  blocked on Joe designing what "encountered" means (owned? offered? seen
-  in battle?). P4 (realized-synergy postgame report — light only the edges
-  that actually FIRED during play) also parked; Joe notes it should tie
-  into PICKLOG, the existing data-gathering tool.
-- **Wave 3 candidate: second payoffs per tribe** — 13 of 14 tribes have
-  exactly 1 payoff (goblins, with 2, are the tribe Joe said "feels better");
-  banked subtypes Wolf/Hydra/Construct/Hound/Spider have 0. GATED on
-  playtesting v2.2.13 first — whether 1-payoff tribes feel samey is a
-  hypothesis the assay can't test. Flavor-pass protocol learnings for the
-  next wave are ledgered in docs/plans/plan-pool-waves.md (drop scoring
-  judges, keep proposer menus, deterministic lint).
+- **Mana-symbol rendering has no single source of truth** (Joe flagged, board-reskin session) — symbols silently degrade to letters/emoji whenever a surface misses the art wiring, and it keeps recurring. Root cause: pip art is duplicated/optional per render path instead of centralized. Two failure modes: (1) `renderManaPool` had its OWN `.mp*` letter-in-a-colored-circle pips running parallel to `renderManaSymbols`' `.mana-*` SVG pips — fixed this session (pool now routes through `renderManaSymbols`, `.mp*` deleted), but it's evidence of the pattern; (2) the SVG art is CSS-keyed via the relative path `../../assets/mana/*.svg`, which only resolves when served from the **repo root** — wrong serve root → 404 → silent fallback to the underlying glyph (emoji for WUBRG, letter for C/T/X). Durable fix (deferred, Joe's call): make `renderManaSymbols` the ONE pip renderer (audit for any other hand-rolled pip markup), make a missing-SVG failure **loud** (a boot check that fetches one mana SVG and warns on 404, instead of degrading silently), and/or kill the path fragility (inline the SVGs or use a root-absolute path so serve context stops mattering).
+- **"target opponent" vs "your opponent" text voice** (Joe, Wave 2 — parked at "tentatively fine") — a 1v1 roguelike can fairly render implicit opp-targets as "Your opponent loses 1 life" instead of MTG's "target opponent." ~5-line generator change + golden updates; now touches blood_artist, toll_of_secrets, rakdos_underboss, backlash_mage, charnel_chorister, ashclot_zealot identically. Joe's style call.
+- **Art batch for the 36 emoji-placeholder cards** (32 Wave 2 + 4 un-parked Wave 1 holds) — all shipped with emoji art; regenerate via the magiclike-card-art skill when art credits/time are available.
+- **Triage Cleric cost watch** — the any-ETB correction (v2.2.11) makes her near-"gain 2 per creature you play" in ETB-dense decks at 1W 2/2. Playtest before re-costing; the assay can't see power level.
+- **UR is now the thinnest pair (12 plans, v2.2.13 assay)** — note for the next wave's targeting; every other pair is 15+.
+- **Extraction-audit pool sweep** (Joe's idea, queued since Wave 2) — sweep the whole pool for cards deserving want/provide rules (smite_the_wicked's tapped-want was invisible until Wave 2 measured it).
+- **Constellation P3: pool codex fog-of-war** (Joe, 2026-07-13: "something I DO want to implement, but now is not quite the time — I haven't thought through that FoW system yet"). Dim un-encountered cards in the Pool tab; blocked on Joe designing what "encountered" means (owned? offered? seen in battle?). P4 (realized-synergy postgame report — light only the edges that actually FIRED during play) also parked; Joe notes it should tie into PICKLOG, the existing data-gathering tool.
+- **Wave 3 candidate: second payoffs per tribe** — 13 of 14 tribes have exactly 1 payoff (goblins, with 2, are the tribe Joe said "feels better"); banked subtypes Wolf/Hydra/Construct/Hound/Spider have 0. GATED on playtesting v2.2.13 first — whether 1-payoff tribes feel samey is a hypothesis the assay can't test. Flavor-pass protocol learnings for the next wave are ledgered in docs/plans/plan-pool-waves.md (drop scoring judges, keep proposer menus, deterministic lint).
 
+- **Stats button on main menu does not work** — the stats button isn't functional.
+
+- **Boons do not appear in the deck graph preview when adding buckets** — boons are missing from the graph visualization, possibly in other places as well.
+
+- **Check to confirm boon pull rules work** — verify that boon pulling rules are functioning correctly, particularly for Elystra which is not pulling buff effects highly.
+
+- **Should transform reward use bucket weights?** — evaluate whether reward transforms should use bucket weights in their selection logic.
+
+- **Some wireframe UI remains** — several UI elements still have wireframe/placeholder styling that needs proper theming: "target opponent", "cancel cast", and likely others. Audit and polish all remaining wireframe elements.
+
+- **Symmetricize should not target symmetric creatures** — the Symmetricize ability should exclude creatures that are already symmetric from its targeting.
+
+- **What boss you face should be visibly on campaign map** — the player should be able to see which boss they will face displayed on the campaign map before entering the encounter.
+
+- **AI pings appear to not factor each other into targeting** — the AI's targeting logic for multiple ping effects from the same source doesn't account for previously selected targets (e.g., multiple pings from the same card all targeted the same 1/1 instead of spreading damage).
+
+- **Raise the Alarm token type mismatch** — Raise the Alarm states that the tokens are soldiers, but when created they are humans. This may be a broader bug in token creation logic that needs investigation.
+
+- **'Add two random stickers' on lands in 2c deck only added one sticker** — in a 2-color deck, lands with "add two random stickers" effects only received one sticker (e.g., a Swamp received 'plains' subtype but no 'innate' type).
 
 - **Redo card art for Lightning Bolt, Murder, Sword and Sorcery, Unsummon** — these four received first-pass / "slush" art from the card-art A/B eval and were placed as stopgaps; they need a proper redo. Lightning Bolt's current art is the *figure* version (it should be figure-free — a force of nature, not a person being struck); Murder wants bespoke marquee art (it's a premium removal spell); Sword and Sorcery and Unsummon never produced a roll that legibly captured the mechanic. Regenerate via the merged C2 card-art skill when art credits are available. (Gilded Seat, Veil of Mists, and Hedge Squire got keeper-grade art from the same eval and are fine.)
 
