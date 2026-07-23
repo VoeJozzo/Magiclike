@@ -1,7 +1,7 @@
 // CARD TEXT — generates rules text from card data. Pure read-only.
 // Returns {text, highlight}[] segments — bumped values get highlight:true
 // (empower visual emphasis). describeCardText is the flat-string wrapper.
-// Cards with custom_text:true (Endomorph, Codex, Elystra) keep hand-authored text.
+// Cards with custom_text:true keep hand-authored text.
 // ENGINE dependencies: sevToNum, plus addSubtypeKeywords and
 // synthesizeStapledTemplate (those two guarded for load order).
 
@@ -1321,7 +1321,7 @@ function describeCardSegments(card, opts) {
       // Forest with an "Also a Island" sticker → "Basic Land — Forest Island")
       // is suppressed too, mirroring paper dual lands.
       if (!opts.landManaExplicit && hasType(card,'Land') && ab.cost && ab.cost.tap && !ab.cost.mana
-          && ab.effects && ab.effects.length === 1 && ab.effects[0].kind === 'add_mana') {
+          && ab.effects && ab.effects.length === 1 && ENGINE.isManaAbility(ab)) {
         const eff = ab.effects[0];
         const produced = manaEffectColors(eff);
         const conveyed = basicLandTypeColors(card);

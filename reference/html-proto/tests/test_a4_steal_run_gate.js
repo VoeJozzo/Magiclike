@@ -52,6 +52,9 @@ console.log('=== A4-15: an OPP-controlled steal must NOT touch the human run dec
   const beforeIids = new Set(
     G.opp.library.filter(c => c.tplId === 'gray_ogre').map(c => c.iid));
   ENGINE.applyEffect(ctx, { kind: 'steal' }, { kind: 'creature', iid: mine.iid });
+  const durationLog = G.log.find(e => /theirs for this fight\.$/.test(e.msg));
+  check('opponent steal log says the theft lasts for this fight',
+    !!durationLog, durationLog && durationLog.msg);
   check('creature left the human battlefield', G.you.battlefield.length === 0);
   check('human run deck did NOT grow (no phantom duplicate slot)',
     RUN.getSlots().length === slotsBefore,
@@ -75,7 +78,10 @@ console.log('\n=== control: the HUMAN-controlled steal still mints a slot ===');
   const slotsBefore = RUN.getSlots().length;
   const ctx = { controller: 'you', sourceName: 'Steal', sourceIid: null };
   ENGINE.applyEffect(ctx, { kind: 'steal' }, { kind: 'creature', iid: theirs.iid });
-  check('human steal appends a run slot (yours forever)',
+  const durationLog = G.log.find(e => /yours for the rest of the run\.$/.test(e.msg));
+  check('human steal log says the theft lasts for the rest of the run',
+    !!durationLog, durationLog && durationLog.msg);
+  check('human steal appends a run-persistent slot',
     RUN.getSlots().length === slotsBefore + 1,
     'slots ' + slotsBefore + ' -> ' + RUN.getSlots().length);
   const fresh = G.you.library.find(c => c.tplId === 'gray_ogre');

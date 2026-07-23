@@ -86,5 +86,44 @@ console.log('\n=== tap-lane resolves through the shared path: color choice + unt
   RUN.clearSave && RUN.clearSave();
 })();
 
+console.log('\n=== UI/text consumers use the canonical targeting-aware classifier ===');
+(() => {
+  RUN.clearSave && RUN.clearSave();
+  RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
+  RUN.startNextGame();
+  const G = setup.startMainPhase('you');
+  const creatureId = Object.keys(CARDS).find(id => hasType(CARDS[id], 'Creature') && !isUndraftable(CARDS[id]));
+  const target = ENGINE.makeCard(creatureId);
+  target.controller = 'opp'; target.owner = 'opp'; target.sick = false;
+  G.opp.battlefield.push(target);
+
+  const hybridLand = ENGINE.makeCard('plains');
+  hybridLand.controller = 'you'; hybridLand.owner = 'you'; hybridLand.tapped = false;
+  hybridLand.abilities = [M([{ kind: 'add_mana', amounts: { W: 1 } }], { target: 'opp_creature' })];
+  G.you.battlefield.push(hybridLand);
+  CONTROLLER.clickBattlefield(hybridLand.iid);
+  const pending = CONTROLLER.pendingTarget();
+  check('targeted mana-leading land enters normal ability targeting',
+    pending && pending.kind === 'ability' && pending.cardIid === hybridLand.iid,
+    pending && JSON.stringify(pending));
+  CONTROLLER.cancelTarget();
+
+  G.opp.battlefield = [];
+  const hybridCreature = ENGINE.makeCard(creatureId);
+  hybridCreature.controller = 'you'; hybridCreature.owner = 'you';
+  hybridCreature.tapped = false; hybridCreature.sick = false;
+  hybridCreature.abilities = [M([{ kind: 'add_mana', amounts: { W: 1 } }], { target: 'opp_creature' })];
+  G.you.battlefield.push(hybridCreature);
+  check('targeted mana-leading ability does not glow without a legal target',
+    activationGlowAvailable(hybridCreature, 'you') === false);
+
+  const textLand = ENGINE.makeCard('plains');
+  textLand.abilities = [M([{ kind: 'add_mana', amounts: { W: 1 } }], { target: 'opp_creature' })];
+  const text = describeCardText(textLand);
+  check('targeted mana-leading land ability is not hidden as intrinsic land mana',
+    /add \{W\}/i.test(text), text);
+  RUN.clearSave && RUN.clearSave();
+})();
+
 console.log('\n=== TOTAL: '+pass+' passed, '+fail+' failed ===');
 if (fail > 0) process.exit(1);

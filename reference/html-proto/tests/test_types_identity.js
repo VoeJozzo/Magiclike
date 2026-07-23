@@ -119,5 +119,14 @@ console.log('\n=== multi-type governance + carry-through (the Phase-4 generaliza
   delete CARDS.__robotProbe;
 })();
 
+console.log('\n=== Soldier tokens carry only their authored subtype ===');
+(() => {
+  const soldier = ENGINE.makeToken('soldier_w_1_1', 'you');
+  check('minted Soldier token has the Soldier subtype', hasType(soldier, 'Soldier'));
+  check('minted Soldier token does not gain the Human subtype', !hasType(soldier, 'Human'));
+  check('Soldier token type line is Creature — Soldier',
+    typeLine(soldier) === 'Creature — Soldier', typeLine(soldier));
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

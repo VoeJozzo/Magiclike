@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.45`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.46`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -3222,3 +3222,13 @@ not the lands), splice_core subIdx invariant wording, two stale test
 labels (blackKnight→chupacabra; pre-fix-comment reference). One item
 backlogged: test_ai_targeting pins a weaker scenario than its comment
 claims. Suite 151 files / 3004 green; lint clean; Godot 12/12.
+
+v2.2.46: small backlog correctness sweep. Stats now opens above the main
+menu; Soldier tokens no longer gain the Human subtype; `effectiveCastCost`
+returns an independent cost object on every cost-bearing path; and the
+four UI/text mana classifiers share `isManaAbility`. Archdemon, Pacifism,
+and Steal authored text now matches controller-relative behavior, with
+Steal's resolution log distinguishing run-persistent player theft from
+fight-only opponent theft. Dropped a combat test's non-rules kill-order
+pin and added focused regressions for each fix. Suite 151 files / 3010
+green; lint clean; 500-game selfplay clean.

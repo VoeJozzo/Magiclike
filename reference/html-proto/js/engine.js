@@ -1815,10 +1815,9 @@ function totalStaticCostBump() {
 // Effective cast cost = base + totalStaticCostBump. Returns a copy.
 function effectiveCastCost(card) {
   if (!card.cost) return card.cost;
-  const bump = totalStaticCostBump();
-  if (bump === 0) return card.cost;
   const cost = {...card.cost};
-  cost.C = (cost.C || 0) + bump;
+  const bump = totalStaticCostBump();
+  if (bump !== 0) cost.C = (cost.C || 0) + bump;
   return cost;
 }
 
@@ -2680,7 +2679,9 @@ const EFFECTS = {
     // stack→graveyard).
     emitZoneChange(fresh, ctx.controller, 'none', 'library', undefined, ctx.sourceIid);
     const verb = fromStack ? 'counters and shuffles' : 'shuffles';
-    log(`${ctx.sourceName} ${verb} ${stolenCardName} into ${pname(ctx.controller)}'s library — yours forever.`, 'sp');
+    const libraryName = ctx.controller === 'you' ? 'your library' : `${pname(ctx.controller)}'s library`;
+    const duration = ctx.controller === 'you' ? 'yours for the rest of the run' : 'theirs for this fight';
+    log(`${ctx.sourceName} ${verb} ${stolenCardName} into ${libraryName} — ${duration}.`, 'sp');
   },
   counter(ctx, params, target) {
     if (!target || !target.stackItem) {

@@ -1998,7 +1998,7 @@ function clickBattlefield(iid) {
   // (e.g. Deepseam Quarry's reanimate) falls through to the unified ability
   // picker below, so the player can choose tap-for-mana OR the other ability.
   const landOnlyTapsForMana = hasType(card, 'Land') && (!Array.isArray(card.abilities)
-    || card.abilities.every(ab => ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana'));
+    || card.abilities.every(ab => ENGINE.isManaAbility(ab)));
   if (f.controller === 'you' && !card.tapped && landOnlyTapsForMana) {
     const producible = ENGINE.landProducibleColors(card);
     if (producible.length > 1) {  // §3.9: multi-color land → color picker
@@ -2021,13 +2021,14 @@ function clickBattlefield(iid) {
     return;
   }
 
-  // Unified ability picker for non-land permanents — covers stapled
-  // creature+land merges whose mana ability may be appended at index >= 1.
+  // Unified ability picker for permanents not handled by the simple land tap
+  // lane — covers targeted hybrids and stapled creature+land merges whose mana
+  // ability may be appended at index >= 1.
   if (f.controller === 'you' && Array.isArray(card.abilities) && card.abilities.length > 0) {
     const options = [];
     for (let i = 0; i < card.abilities.length; i++) {
       const ab = card.abilities[i];
-      const isMana = ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana';
+      const isMana = ENGINE.isManaAbility(ab);
       const abNeedsTarget = objNeedsTarget(ab, ab.effects);  // §3.5: top-level target() or per-effect
       const needsSac = ab.cost && ab.cost.sacrifice;
       const selfSac = needsSac && ab.cost.sacrifice === 'self';

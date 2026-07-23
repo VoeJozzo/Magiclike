@@ -44,10 +44,27 @@ console.log('\n=== apply_sticker + move_card idiom is not a false-match on flick
 
 console.log('\n=== cards that genuinely need authored text keep custom_text:true ===');
 (() => {
-  for (const id of ['city_guardian', 'phylactery', 'elystra_the_immortal', 'stapler', 'architects_codex',
-                    'archdemon_of_bargains', 'steal', 'pacifism']) {
-    check(id + ' keeps custom_text:true', CARDS[id].custom_text === true);
-  }
+  const expected = ['city_guardian', 'phylactery', 'elystra_the_immortal', 'stapler', 'architects_codex',
+    'archdemon_of_bargains', 'steal', 'pacifism', 'mercurial_adept'].sort();
+  const actual = Object.values(CARDS).filter(c => c.custom_text === true).map(c => c.tplId).sort();
+  check('custom_text inventory is complete', JSON.stringify(actual) === JSON.stringify(expected),
+    'got ' + JSON.stringify(actual));
+
+  const archdemonText = "Flying, Trample. When this enters, its controller's opponent chooses a number from 1 to 5; put that many stickers on permanents its controller controls. When this leaves play, put that many stickers on permanents its controller's opponent controls.";
+  check('Archdemon face text names both controller-relative sides',
+    describeCardText(CARDS.archdemon_of_bargains) === archdemonText,
+    describeCardText(CARDS.archdemon_of_bargains));
+  check('Archdemon ETB label names the controller\'s opponent as chooser',
+    triggerLogText(CARDS.archdemon_of_bargains.triggers[0])
+      === "When ~ enters, ~'s controller's opponent chooses 1-5: put that many stickers on permanents ~'s controller controls.",
+    triggerLogText(CARDS.archdemon_of_bargains.triggers[0]));
+  check('Pacifism states its opponent-only target restriction',
+    describeCardText(CARDS.pacifism) === "Target creature an opponent controls can't attack or block.",
+    describeCardText(CARDS.pacifism));
+  check('Steal states the player-run and opponent-fight durations',
+    describeCardText(CARDS.steal)
+      === "Counter target non-token spell or take target non-token permanent, then shuffle it into the caster's library. If the player cast this, the theft lasts for the rest of the run; otherwise, it lasts for the rest of the fight.",
+    describeCardText(CARDS.steal));
 })();
 
 console.log('\n=== scarification generates (no custom_text) so empower shows in the text ===');

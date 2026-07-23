@@ -129,5 +129,18 @@ console.log('\n=== staple: land + land merges colors into one choose ability ===
   check('merged land has exactly one mana ability (merged, not duplicated)', manaAbs.length === 1, 'count=' + manaAbs.length);
 })();
 
+console.log('\n=== effectiveCastCost returns an independent cost object at zero bump ===');
+(() => {
+  G.you.battlefield = [];
+  G.opp.battlefield = [];
+  const card = ENGINE.makeCard('grizzly_bears');
+  const original = { ...card.cost };
+  const effective = ENGINE.effectiveCastCost(card);
+  check('zero-bump effective cost is a copy', effective !== card.cost);
+  effective.C = (effective.C || 0) + 99;
+  check('mutating effective cost does not mutate the live card cost',
+    JSON.stringify(card.cost) === JSON.stringify(original), JSON.stringify(card.cost));
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

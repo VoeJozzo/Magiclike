@@ -114,7 +114,7 @@ async function loadCards() {
 // TOKENS — minted by effects. Vanish on leave-play (dies-triggers still fire).
 const TOKENS = {
   spirit_w_1_1:  {name:'Spirit',  types:['Creature','Spirit'],  power:1, toughness:1, art:'👻', color:'W', keywords:['flying']},
-  soldier_w_1_1: {name:'Soldier', types:['Creature','Human','Soldier'], power:1, toughness:1, art:'⚔', color:'W'},
+  soldier_w_1_1: {name:'Soldier', types:['Creature','Soldier'], power:1, toughness:1, art:'⚔', color:'W'},
   goblin_r_1_1:  {name:'Goblin',  types:['Creature','Goblin'],  power:1, toughness:1, art:'👺', color:'R', keywords:['haste']},
 };
 

@@ -897,7 +897,7 @@ function activationGlowAvailable(card, who) {
     // has → activating changes nothing, so don't advertise it.
     if (ab.effects.every(e => e.kind === 'add_type'
         && (e.types || []).every(t => hasType(card, t)))) return false;
-    if (ab.effects[0].kind === 'add_mana') return true;
+    if (ENGINE.isManaAbility(ab)) return true;
     const targetedEff = ab.effects.find(ENGINE.effectNeedsTarget);
     const probe = targetedEff
       ? {type:'activateAbility', cardIid: card.iid, abilityIdx: i,

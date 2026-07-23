@@ -16,7 +16,7 @@
     }
   ],
   "name": "Steal",
-  "text": "Counter target non-token spell or take target non-token permanent. The card becomes yours forever — shuffle it into your library.",
+  "text": "Counter target non-token spell or take target non-token permanent, then shuffle it into the caster's library. If the player cast this, the theft lasts for the rest of the run; otherwise, it lasts for the rest of the fight.",
   "custom_text": true,
   "keywords": [
     "flash"
