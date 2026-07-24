@@ -10,7 +10,8 @@
 //                  globals get stubbed, then the modules are eval'd in
 //                  the right load order with CONTROLLER.init() stripped.
 //                  After return, ENGINE / AI / RUN / DRAFT / CARDS /
-//                  STICKERS / CONTROLLER / PICKLOG are on `global`.
+//                  STICKERS / BUCKETS / CONSTELLATION / CONTROLLER / PICKLOG
+//                  are on `global`.
 //                  Idempotent — second call is a no-op.
 
 const fs = require('fs');
@@ -126,7 +127,7 @@ function installDomStubs() {
 // and run.js / draft.js / picklog.js for their respective IIFE exports.
 const EXPOSED = [
   // Public module objects (top of each .js file).
-  'ENGINE', 'AI', 'RUN', 'DRAFT', 'CARDS', 'STICKERS', 'BUCKETS',
+  'ENGINE', 'AI', 'RUN', 'DRAFT', 'CARDS', 'STICKERS', 'BUCKETS', 'CONSTELLATION',
   // §7b cast-path coverage sets (ai.js module scope).
   'TARGET_SCORED_KINDS', 'NOT_TARGET_SCORED_KINDS',
   'CONTROLLER', 'PICKLOG', 'VERSION', 'Modal', 'SETTINGS',

@@ -5,8 +5,8 @@
 // Pure presentation: reads BUCKETS.edgeBetween + RUN.getSlots, writes
 // nothing. Settle runs offline; redraw fires on hover — no rAF loop,
 // reduced-motion friendly.
-// Not in tests/_setup's EXPOSED list — UI-only; verify manually in-browser
-// per CLAUDE.md's testing note.
+// The canvas UI remains browser-verified per CLAUDE.md; the Node harness only
+// exercises the pure offer-graph construction through a narrow test seam.
 const CONSTELLATION = (() => {
   const MTG = { W: '#e8dfae', U: '#5598e7', B: '#9a8fb0', R: '#e66767',
     G: '#57a15a', M: '#d9a53f', C: '#a8a49c' };
@@ -129,13 +129,16 @@ const CONSTELLATION = (() => {
   }
 
   // The current deck's tplIds: run slots when a run is live, else the
-  // draft picks so far (the run-start bucket draft happens PRE-run).
+  // draft picks so far (the run-start bucket draft happens PRE-run). The
+  // pick-#0 boon is stored beside youPicks until RUN.start, but it is already
+  // part of the player's deck and must appear in bucket attachment previews.
   function deckIds() {
     if (typeof RUN !== 'undefined' && RUN.isActive && RUN.isActive()) {
       return RUN.getSlots().map(s => s.tplId);
     }
     const ds = (typeof DRAFT !== 'undefined' && DRAFT._state) ? DRAFT._state() : null;
-    return (ds && ds.youPicks) ? ds.youPicks.slice() : [];
+    if (!ds || !ds.youPicks) return [];
+    return ds.boon ? [ds.boon, ...ds.youPicks] : ds.youPicks.slice();
   }
   let offerCards = null;   // non-null => offer-preview mode
   function load() {
@@ -261,5 +264,9 @@ const CONSTELLATION = (() => {
   }
   function hide() { modal.style.display = 'none'; tipEl.style.display = 'none'; }
 
-  return { show, hide, showOffer };
+  return {
+    show, hide, showOffer,
+    // Test seam: exercise the exact offer-preview graph without a canvas.
+    _offerGraphForTest: (offerTplIds) => buildGraph(deckIds(), 1, offerTplIds || []),
+  };
 })();
