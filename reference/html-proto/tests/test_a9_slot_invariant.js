@@ -66,5 +66,30 @@ console.log('\n=== A9-3: the REMOVED index is dropped, not just decremented ==='
   check('bystander slotIdx decremented to 0', bystander.slotIdx === 0, 'slotIdx=' + bystander.slotIdx);
 })();
 
+console.log('\n=== slot ownership survives temporary opposing control ===');
+(() => {
+  const G = newGame();
+  G.you.library = [];
+  const victim = mk('gray_ogre', 'you');
+  victim.slotIdx = 0;
+  victim.controller = 'opp';
+  const shifted = mk('gray_ogre', 'you');
+  shifted.slotIdx = 1;
+  shifted.controller = 'opp';
+  const opponentCard = mk('gray_ogre', 'opp');
+  opponentCard.slotIdx = 2;
+  G.opp.battlefield = [victim, shifted, opponentCard];
+
+  ENGINE.applyEffect(ripCtx, { kind: 'rip' },
+    { controller: 'you', slotIdx: 0, iid: victim.iid, label: 'Victim' });
+
+  check('removed human-owned slot leaves the opposing battlefield',
+    !G.opp.battlefield.some(c => c.iid === victim.iid));
+  check('higher human-owned slot shifts under opposing control',
+    shifted.slotIdx === 0, 'slotIdx=' + shifted.slotIdx);
+  check('opponent-owned slot pointer is untouched',
+    opponentCard.slotIdx === 2, 'slotIdx=' + opponentCard.slotIdx);
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

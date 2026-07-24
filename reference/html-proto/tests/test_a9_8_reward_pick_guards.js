@@ -67,6 +67,61 @@ console.log('\n=== A9-8 happy path (reward-pick coverage seed) ===');
   check('valid ripUp removes one slot', RUN.getSlots().length === before - 1, 'len=' + RUN.getSlots().length);
 })();
 
+console.log('\n=== two-sticker offers exclude slots with only one initial application ===');
+(() => {
+  freshRun();
+  const initial = stickersForSlot(RUN.getSlots()[0], ['W']);
+  check('fixture has exactly one eligible sticker', initial.length === 1,
+    initial.map(s => s.id).join(','));
+  const savedRandom = Math.random;
+  Math.random = () => 0.55; // Selects twoStickers first from the fixed reward weights.
+  try {
+    RUN.recordResult('you', [], []);
+  } finally {
+    Math.random = savedRandom;
+  }
+  const offer = RUN.getReward();
+  check('two-sticker candidate is not offered for the one-option slot',
+    !!offer && !offer.candidates.some(c => c.kind === 'twoStickers'));
+})();
+
+console.log('\n=== two-sticker offers retain a sole repeatable application ===');
+(() => {
+  RUN.clearSave();
+  RUN.start({ cards: ['fiery_rush'].concat(Array(11).fill('mountain')), colors: ['R'] }, null);
+  const fieryIdx = RUN.getSlots().findIndex(s => s.tplId === 'fiery_rush');
+  const initial = stickersForSlot(RUN.getSlots()[fieryIdx], ['R']);
+  check('repeatable fixture has one stackable eligible sticker',
+    initial.length === 1 && initial[0].stackable === true,
+    initial.map(s => s.id).join(','));
+  const savedRandom = Math.random;
+  Math.random = () => 0.55;
+  try {
+    RUN.recordResult('you', [], []);
+  } finally {
+    Math.random = savedRandom;
+  }
+  const offer = RUN.getReward();
+  check('two-sticker candidate is offered for the repeatable one-option slot',
+    !!offer && offer.candidates.some(c => c.kind === 'twoStickers' && c.slotIdx === fieryIdx));
+})();
+
+console.log('\n=== two-sticker offers exclude a stackable application that exhausts eligibility ===');
+(() => {
+  RUN.clearSave();
+  RUN.start({ cards: ['aerial_maneuver'].concat(Array(11).fill('plains')), colors: ['W'] }, null);
+  const savedRandom = Math.random;
+  Math.random = () => 0.55;
+  try {
+    RUN.recordResult('you', [], []);
+  } finally {
+    Math.random = savedRandom;
+  }
+  const offer = RUN.getReward();
+  check('two-sticker candidate is not offered when the first reduction exhausts the sole option',
+    !!offer && !offer.candidates.some(c => c.kind === 'twoStickers'));
+})();
+
 console.log('\n=== two-sticker reward is atomic when only one application is eligible ===');
 (() => {
   freshRun();

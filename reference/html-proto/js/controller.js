@@ -479,7 +479,7 @@ function sandboxSpawn(tplId) {
   card.controller = side;
   if (zone === 'board' && isPermanent(card)) {
     card.sick = false;  // ready to act immediately (sandbox convenience)
-    G[side].battlefield.push(card);
+    ENGINE.enterBattlefield(card, side);
   } else {
     // Sorceries (non-permanents) can't sit on the battlefield — route to hand.
     G[side].hand.push(card);
@@ -1916,7 +1916,9 @@ function clickBattlefield(iid) {
 
   // Trigger target prompt — clicking a creature submits it as the trigger target.
   if (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you') {
-    const target = {kind:'creature', iid: card.iid, ctrl: f.controller, label: card.name};
+    const target = {kind:'creature', iid: card.iid,
+      battlefieldIncarnation: card.battlefieldIncarnation,
+      ctrl: f.controller, label: card.name};
     submit({type:'triggerTargetPick', target});
     return;
   }
@@ -1956,7 +1958,9 @@ function clickBattlefield(iid) {
     // uses kind:'permanent').
     const eff = pendingTargetEffect(pendingTarget);
     const targetKind = (eff && (eff.target === 'permanent' || eff.target === 'permanent_or_spell')) ? 'permanent' : 'creature';
-    const action = buildPendingActionWithTarget({kind: targetKind, iid: card.iid, label: card.name});
+    const action = buildPendingActionWithTarget({kind: targetKind, iid: card.iid,
+      battlefieldIncarnation: card.battlefieldIncarnation,
+      ctrl: f.controller, label: card.name});
     if (action && action.pending) {
       // Multi-target spell: accumulated this pick, more slots remain. Re-render
       // so the highlighter and prompt update to show the next slot's valid

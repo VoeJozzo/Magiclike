@@ -101,5 +101,37 @@ check('cancelTarget removes dynamic graveyard picker', elements.graveTargetPicke
 check('cancelTarget leaves no modal-stack entry', Modal._stack.length === 0);
 
 global.document = previousDocument;
+
+console.log('\n=== Battlefield clicks lock the current incarnation ===');
+RUN.start({ cards: Array(12).fill('plains'), colors: ['B'] }, null);
+RUN.startNextGame();
+const game = ENGINE.state();
+setup.startMainPhase('you');
+game.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
+const doomBlade = ENGINE.makeCard('doom_blade');
+doomBlade.owner = 'you';
+doomBlade.controller = 'you';
+game.you.hand.push(doomBlade);
+const clickTarget = ENGINE.makeCard('gray_ogre');
+clickTarget.owner = 'opp';
+clickTarget.controller = 'opp';
+ENGINE.enterBattlefield(clickTarget, 'opp');
+CONTROLLER.clickHand(doomBlade.iid);
+const originalExecuteAction = ENGINE.executeAction;
+let submitted = null;
+ENGINE.executeAction = (who, action) => { submitted = {who, action}; return true; };
+CONTROLLER.clickBattlefield(clickTarget.iid);
+check('cast click submits the chosen battlefield target',
+  !!submitted && submitted.action.type === 'castSpell');
+check('cast target carries the current battlefield incarnation',
+  !!submitted && submitted.action.targets[0].battlefieldIncarnation === clickTarget.battlefieldIncarnation);
+game.pendingTriggerTarget = { controller: 'you' };
+submitted = null;
+CONTROLLER.clickBattlefield(clickTarget.iid);
+check('trigger target carries the current battlefield incarnation',
+  !!submitted && submitted.action.target.battlefieldIncarnation === clickTarget.battlefieldIncarnation);
+ENGINE.executeAction = originalExecuteAction;
+game.pendingTriggerTarget = null;
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

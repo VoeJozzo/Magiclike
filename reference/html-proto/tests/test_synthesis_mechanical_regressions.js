@@ -24,7 +24,8 @@ function runtimeCard(tplId, controller, stapledTpls) {
 }
 
 function targetOf(card) {
-  return { kind: 'creature', iid: card.iid, label: card.name };
+  return { kind: 'creature', iid: card.iid,
+    battlefieldIncarnation: card.battlefieldIncarnation, label: card.name };
 }
 
 function drainStack(G) {
@@ -66,6 +67,10 @@ console.log('=== Artifact permanents remain permanent synthesis inputs ===');
     ingenuityStapler.abilities.some(ab => (ab.effects || []).some(e => e.kind === 'apply_in_game_splice')));
   check('a pure Artifact staple does not become an empty ETB trigger',
     (ingenuityStapler.triggers || []).length === 0);
+
+  const staplerIngenuity = ENGINE.synthesizeStapledTemplate('stapler', ['ingenuity_unbounded']);
+  check('an Artifact staple contributes its mana-spending feature',
+    staplerIngenuity.spend_mana_as_any_color === true);
 })();
 
 console.log('\n=== spell synthesis appends target descriptors and effect slots ===');
@@ -156,6 +161,170 @@ console.log('\n=== live Stapler resolution preserves a consumed spell locked tar
     growthTarget.tempPower === 3 && growthTarget.tempTou === 3,
     JSON.stringify([growthTarget.tempPower, growthTarget.tempTou]));
   check('consumed Giant Growth leaves the live stack', !G.stack.includes(growthItem));
+})();
+
+console.log('\n=== live Stapler fast-resolution preserves human chooses continuations ===');
+(() => {
+  const G = newGame();
+  const base = runtimeCard('iron_sentinel', 'you');
+  const victim = runtimeCard('gray_ogre', 'you');
+  const stapler = runtimeCard('stapler', 'you');
+  ENGINE.enterBattlefield(base, 'you');
+  ENGINE.enterBattlefield(victim, 'you');
+  ENGINE.enterBattlefield(stapler, 'you');
+
+  const edict = runtimeCard('diabolic_edict', 'opp');
+  const edictItem = { card: edict, controller: 'opp',
+    targets: [{ kind: 'player', who: 'you', label: 'You' }] };
+  G.stack.push(edictItem);
+  const baseTarget = { kind: 'permanent', iid: base.iid,
+    battlefieldIncarnation: base.battlefieldIncarnation, label: base.name };
+  const stackTarget = { kind: 'stack', stackItem: edictItem, label: edict.name };
+  ENGINE.applyEffect({ controller: 'you', sourceName: stapler.name, sourceIid: stapler.iid,
+    sourceCard: stapler, allTargets: [baseTarget, stackTarget] },
+  { kind: 'apply_in_game_splice' }, baseTarget);
+
+  check('consumed Edict opens the human sacrifice prompt',
+    !!G.pendingEdictChoice && G.pendingEdictChoice.pool.some(c => c.iid === victim.iid));
+  check('chosen-dependent effect waits for the prompt',
+    G.you.battlefield.some(c => c.iid === victim.iid));
+  ENGINE.executeAction('you', { type: 'edictChoice', iid: victim.iid });
+  check('consumed Edict resumes against the human choice',
+    !G.you.battlefield.some(c => c.iid === victim.iid));
+  check('consumed Edict leaves the live stack', !G.stack.includes(edictItem));
+})();
+
+console.log('\n=== Stapler queues multiple human chooses continuations ===');
+(() => {
+  const G = newGame();
+  const firstVictim = runtimeCard('gray_ogre', 'you');
+  const secondVictim = runtimeCard('bear_cub', 'you');
+  const stapler = runtimeCard('stapler', 'you');
+  ENGINE.enterBattlefield(firstVictim, 'you');
+  ENGINE.enterBattlefield(secondVictim, 'you');
+  ENGINE.enterBattlefield(stapler, 'you');
+  const firstEdict = runtimeCard('diabolic_edict', 'opp');
+  const secondEdict = runtimeCard('diabolic_edict', 'opp');
+  const playerTarget = { kind: 'player', who: 'you', label: 'You' };
+  const firstItem = { card: firstEdict, controller: 'opp', targets: [playerTarget] };
+  const secondItem = { card: secondEdict, controller: 'opp', targets: [playerTarget] };
+  G.stack.push(firstItem, secondItem);
+  const firstTarget = { kind: 'stack', stackItem: firstItem, label: firstEdict.name };
+  const secondTarget = { kind: 'stack', stackItem: secondItem, label: secondEdict.name };
+  ENGINE.applyEffect({ controller: 'you', sourceName: stapler.name, sourceIid: stapler.iid,
+    sourceCard: stapler, allTargets: [firstTarget, secondTarget] },
+  { kind: 'apply_in_game_splice' }, firstTarget);
+
+  check('two consumed Edicts keep one active and one queued prompt',
+    !!G.pendingEdictChoice && G.pendingEdictChoiceQueue.length === 1);
+  ENGINE.executeAction('you', { type: 'edictChoice', iid: firstVictim.iid });
+  check('answering the first Edict promotes the second prompt',
+    !!G.pendingEdictChoice && G.pendingEdictChoiceQueue.length === 0
+      && G.pendingEdictChoice.pool.some(c => c.iid === secondVictim.iid));
+  ENGINE.executeAction('you', { type: 'edictChoice', iid: secondVictim.iid });
+  check('both consumed Edict continuations resolve',
+    !G.pendingEdictChoice && !G.you.battlefield.some(c => c.iid === firstVictim.iid)
+      && !G.you.battlefield.some(c => c.iid === secondVictim.iid));
+})();
+
+console.log('\n=== consuming Stapler as a staple transfers its remaining charges ===');
+(() => {
+  RUN.clearSave();
+  RUN.start({ cards: ['iron_sentinel', 'stapler'].concat(Array(10).fill('plains')),
+    colors: ['W'] }, null);
+  RUN.startNextGame();
+  const G = ENGINE.state();
+  setup.startMainPhase('you');
+  const slots = RUN.getSlots();
+  const baseSlotIdx = slots.findIndex(s => s.tplId === 'iron_sentinel');
+  const staplerSlotIdx = slots.findIndex(s => s.tplId === 'stapler');
+  slots[staplerSlotIdx].charges = 3;
+  const takeFromDeck = (tplId) => {
+    for (const zoneName of ['hand', 'library']) {
+      const zone = G.you[zoneName];
+      const idx = zone.findIndex(c => c.tplId === tplId);
+      if (idx >= 0) return zone.splice(idx, 1)[0];
+    }
+    return null;
+  };
+  const base = takeFromDeck('iron_sentinel');
+  const stapler = takeFromDeck('stapler');
+  check('charge-transfer fixture finds both runtime cards',
+    !!base && !!stapler && base.slotIdx === baseSlotIdx && stapler.slotIdx === staplerSlotIdx);
+  ENGINE.enterBattlefield(base, 'you');
+  ENGINE.enterBattlefield(stapler, 'you');
+  const baseTarget = { kind: 'permanent', iid: base.iid,
+    battlefieldIncarnation: base.battlefieldIncarnation, label: base.name };
+  const staplerTarget = { kind: 'permanent', iid: stapler.iid,
+    battlefieldIncarnation: stapler.battlefieldIncarnation, label: stapler.name };
+  ENGINE.applyEffect({ controller: 'you', sourceName: stapler.name, sourceIid: stapler.iid,
+    sourceCard: stapler, allTargets: [baseTarget, staplerTarget] },
+  { kind: 'apply_in_game_splice' }, baseTarget);
+
+  const mergedSlot = RUN.getSlots()[base.slotIdx];
+  check('merged permanent keeps Stapler activation',
+    base.abilities.some(ab => (ab.effects || []).some(e => e.kind === 'apply_in_game_splice')));
+  check('merged slot carries the post-activation charge count',
+    !!mergedSlot && mergedSlot.charges === 2, mergedSlot ? 'charges=' + mergedSlot.charges : 'no slot');
+  check('merged runtime card carries the post-activation charge count',
+    base.chargesLeft === 2, 'chargesLeft=' + base.chargesLeft);
+})();
+
+console.log('\n=== opponent-controlled Stapler ability never writes the human run ===');
+(() => {
+  const G = newGame();
+  const before = JSON.stringify(RUN.getSlots());
+  const source = runtimeCard('iron_sentinel', 'opp', ['stapler']);
+  source.slotIdx = 0;
+  const base = runtimeCard('gray_ogre', 'opp');
+  base.slotIdx = 1;
+  const staple = runtimeCard('plains', 'you');
+  staple.slotIdx = 0;
+  ENGINE.enterBattlefield(source, 'opp');
+  ENGINE.enterBattlefield(base, 'opp');
+  ENGINE.enterBattlefield(staple, 'you');
+  const baseTarget = { kind: 'permanent', iid: base.iid,
+    battlefieldIncarnation: base.battlefieldIncarnation, label: base.name };
+  const stapleTarget = { kind: 'permanent', iid: staple.iid,
+    battlefieldIncarnation: staple.battlefieldIncarnation, label: staple.name };
+  ENGINE.applyEffect({ controller: 'opp', sourceName: source.name, sourceIid: source.iid,
+    sourceCard: source, allTargets: [baseTarget, stapleTarget] },
+  { kind: 'apply_in_game_splice' }, baseTarget);
+
+  check('opponent-controlled merge leaves human slot metadata byte-for-byte unchanged',
+    JSON.stringify(RUN.getSlots()) === before);
+  check('opponent-controlled merged card has no human run pointer', base.slotIdx == null);
+})();
+
+console.log('\n=== reward splice carries Stapler charge state into the merged slot ===');
+(() => {
+  RUN.clearSave();
+  RUN.start({ cards: ['iron_sentinel', 'stapler'].concat(Array(10).fill('plains')),
+    colors: ['W'] }, null);
+  const slots = RUN.getSlots();
+  const baseSlotIdx = slots.findIndex(s => s.tplId === 'iron_sentinel');
+  const staplerSlotIdx = slots.findIndex(s => s.tplId === 'stapler');
+  slots[staplerSlotIdx].charges = 2;
+  check('reward splice accepts Stapler as the Artifact staple',
+    RUN.applySplice(baseSlotIdx, staplerSlotIdx) === true);
+  const mergedSlot = RUN.getSlots().find(s => s.tplId === 'iron_sentinel'
+    && Array.isArray(s.stapledTpls) && s.stapledTpls.includes('stapler'));
+  check('reward-spliced slot keeps Stapler charges',
+    !!mergedSlot && mergedSlot.charges === 2, mergedSlot ? 'charges=' + mergedSlot.charges : 'no slot');
+  RUN.startNextGame();
+  const G = ENGINE.state();
+  const runtime = ['hand', 'library'].flatMap(z => G.you[z])
+    .find(c => c.slotIdx === RUN.getSlots().indexOf(mergedSlot));
+  check('reward-spliced runtime card restores Stapler charges',
+    !!runtime && runtime.chargesLeft === 2, runtime ? 'chargesLeft=' + runtime.chargesLeft : 'no card');
+  delete mergedSlot.charges;
+  RUN.save();
+  check('legacy merged-slot save reloads', RUN.load() === true);
+  const backfilled = RUN.getSlots().find(s => s.tplId === 'iron_sentinel'
+    && Array.isArray(s.stapledTpls) && s.stapledTpls.includes('stapler'));
+  check('legacy merged-slot save backfills finite Stapler charges',
+    !!backfilled && backfilled.charges === CARDS.stapler.charges_at_run_start,
+    backfilled ? 'charges=' + backfilled.charges : 'no slot');
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

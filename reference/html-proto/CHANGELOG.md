@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.48`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.49`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -3248,3 +3248,29 @@ intentionally absent because every constellation view excludes lands. The
 bucket analyzer and active addBucket candidate flow were already boon-aware;
 no bucket-selection semantics changed. Suite 151 files / 3011 green; lint
 clean; browser preview verified Elystra present with zero app errors.
+
+v2.2.49: mechanical audit fixes across engine, persistence, AI, and browser
+wiring. Battlefield targets and trigger/ability sources now carry a zone-
+incarnation marker, so bounce/recast cannot reattach old targets or self
+effects while persistent card `iid` identity remains stable. Copy effects
+materialize color, static taxes, and subtype-implied keywords and restore the
+base card on leave-play. Staple synthesis now treats Artifacts as permanents,
+retains their abilities and engine-consumed features, carries finite charge
+state through both splice paths, merges spell target descriptors and slot
+indices, and forwards locked live-spell targets and human-choice continuations
+through Stapler.
+
+Resolution lifecycle now tracks the currently resolving card during run-slot
+removal, follows human-owned slots across temporary opposing control, queues
+simultaneous Codex builds and forced-choice prompts, and runs deferred-choice housekeeping after the
+answer. Land priority, legendary enumeration,
+control-change sickness, combat type loss, self-Steal slot reuse, and
+spell deathtouch/trample assignment now agree with their existing dispatch
+contracts. Sticker reconstruction, two-sticker rewards, multi-target AI
+scoring, generated token text, stale controller timers, popup modal gating,
+and graveyard-target cancellation were brought back into producer/consumer
+parity. No card data, balance, or game-design policy changed. Suite 156 files /
+3161 green; lint clean; the initial 5000/5000, post-review 1000/1000,
+and final 500/500 bughunt self-play batches all finished clean with zero
+crashes, invariant violations, stuck/runaway games, or illegal AI actions; headless Chrome verified popup and graveyard-overlay modal cleanup
+with zero console errors.

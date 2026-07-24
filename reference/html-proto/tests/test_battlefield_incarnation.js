@@ -82,7 +82,8 @@ console.log('=== locked target distinguishes a bounced and recast permanent ==='
   if (!bounceCast) return;
   ENGINE.executeAction('you', bounceCast);
   driveUntil(G, () => G.you.hand.includes(sprite)
-    && G.stack.some(item => item.card === doom));
+    && G.stack.some(item => item.card === doom)
+    && ENGINE.expectedActor() === 'you');
   check('normal bounce preserves persistent iid', sprite.iid === doomCast.targets[0].iid);
 
   const recast = castAction('you', sprite.iid);
@@ -137,7 +138,8 @@ console.log('\n=== queued self trigger does not bind a recast source with the sa
   if (!bounce) return;
   ENGINE.executeAction('opp', bounce);
   driveUntil(G, () => G.you.hand.includes(sprite)
-    && G.stack.some(item => item === queued));
+    && G.stack.some(item => item === queued)
+    && ENGINE.expectedActor() === 'you');
 
   const recast = castAction('you', sprite.iid);
   check('source can be flash-recast before its old trigger resolves', !!recast);

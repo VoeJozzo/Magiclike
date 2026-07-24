@@ -361,6 +361,7 @@ function load() {
     let dirty = false;
     let stalePruned = 0;
     let rollsBackfilled = 0;
+    let chargesBackfilled = 0;
     if (Array.isArray(runState.slots)) {
       for (const slot of runState.slots) {
         if (!Array.isArray(slot.stickers)) continue;
@@ -381,6 +382,13 @@ function load() {
         if (slot.empowerRolls.length > empowerCount) {
           slot.empowerRolls.length = empowerCount;
         }
+        if (typeof slot.charges !== 'number') {
+          const tpl = tplForSlot(slot);
+          if (tpl && typeof tpl.charges_at_run_start === 'number') {
+            slot.charges = tpl.charges_at_run_start;
+            chargesBackfilled++;
+          }
+        }
       }
       if (stalePruned > 0) {
         console.log(`Pruned ${stalePruned} stale sticker reference(s) from save.`);
@@ -388,7 +396,10 @@ function load() {
       if (rollsBackfilled > 0) {
         console.log(`Backfilled ${rollsBackfilled} empower roll(s) on legacy save.`);
       }
-      if (stalePruned > 0 || rollsBackfilled > 0) dirty = true;
+      if (chargesBackfilled > 0) {
+        console.log(`Backfilled charges on ${chargesBackfilled} legacy slot(s).`);
+      }
+      if (stalePruned > 0 || rollsBackfilled > 0 || chargesBackfilled > 0) dirty = true;
     }
     // Config backfill: saves from before the Growing Deck have no config —
     // they are classic runs by definition.
@@ -881,7 +892,7 @@ function rollOneCandidate(type, alreadyOffered) {
   }
   if (type === 'twoStickers') {
     const allIdx = runState.slots.map((_, i) => i);
-    const eligibleSlots = filterByPlayed(allIdx.filter(i => stickersFor(i).length > 0));
+    const eligibleSlots = filterByPlayed(allIdx.filter(canApplyTwoStickers));
     if (eligibleSlots.length === 0) return null;
     for (let tries = 0; tries < 30; tries++) {
       const slotIdx = eligibleSlots[Math.floor(Math.random() * eligibleSlots.length)];
@@ -944,13 +955,31 @@ function filterByPlayed(slotIdxs) {
 }
 
 // Player-side wraps stickersForSlot with the keyword-claim gate (only claimed kws offerable).
-function stickersFor(slotIdx) {
-  const slot = runState && runState.slots && runState.slots[slotIdx];
-  if (!slot) return [];
+function stickerOptionsForSlot(slot) {
   const base = stickersForSlot(slot, deckColors());
   const claimed = runState && runState.lastClaimedKeywords;
   if (claimed === undefined || !Array.isArray(claimed)) return base;
   return base.filter(s => s.kind !== 'keyword' || claimed.includes(s.keyword));
+}
+function stickersFor(slotIdx) {
+  const slot = runState && runState.slots && runState.slots[slotIdx];
+  return slot ? stickerOptionsForSlot(slot) : [];
+}
+
+function canApplyTwoStickers(slotIdx) {
+  const slot = runState && runState.slots && runState.slots[slotIdx];
+  if (!slot) return false;
+  return stickersFor(slotIdx).some(first => {
+    const simulated = {
+      ...slot,
+      stickers: slot.stickers.concat([first.id]),
+      empowerRolls: Array.isArray(slot.empowerRolls) ? slot.empowerRolls.slice() : [],
+      subtypeRolls: Array.isArray(slot.subtypeRolls) ? slot.subtypeRolls.slice() : [],
+    };
+    if (first.id === 'empower') simulated.empowerRolls.push(null);
+    if (first.id === 'subtype') simulated.subtypeRolls.push(null);
+    return stickerOptionsForSlot(simulated).length > 0;
+  });
 }
 
 function deckColors() {
@@ -1250,10 +1279,10 @@ function applySplice(baseSlotIdx, stapleSlotIdx) {
   // permanent buffs are stickers, so they ride the sticker concat.)
   const merged = mergeSpliceData(
     { tplId: baseSlot.tplId, stickers: baseSlot.stickers, empowerRolls: baseSlot.empowerRolls,
-      subtypeRolls: baseSlot.subtypeRolls,
+      subtypeRolls: baseSlot.subtypeRolls, charges: baseSlot.charges,
       bonusTrigger: baseSlot.bonusTrigger, priorStaples: baseSlot.stapledTpls },
     { tplId: stapleSlot.tplId, stickers: stapleSlot.stickers, empowerRolls: stapleSlot.empowerRolls,
-      subtypeRolls: stapleSlot.subtypeRolls,
+      subtypeRolls: stapleSlot.subtypeRolls, charges: stapleSlot.charges,
       bonusTrigger: stapleSlot.bonusTrigger });
   writeMergedSpliceToSlot(baseSlot, merged);
   // Remove the staple slot. If staple comes BEFORE base, removing it

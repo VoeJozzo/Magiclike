@@ -208,6 +208,8 @@ function mergeSpliceData(base, staple) {
     empowerRolls: (base.empowerRolls || []).concat(remappedRolls),
     subtypeRolls: (base.subtypeRolls || []).concat(staple.subtypeRolls || []),
     bonusTrigger: base.bonusTrigger || staple.bonusTrigger || null,
+    charges: typeof base.charges === 'number' ? base.charges
+      : (typeof staple.charges === 'number' ? staple.charges : null),
   };
 }
 
@@ -222,6 +224,7 @@ function writeMergedSpliceToSlot(slot, merged) {
   slot.empowerRolls = merged.empowerRolls;
   if (merged.subtypeRolls.length > 0) slot.subtypeRolls = merged.subtypeRolls;
   if (merged.bonusTrigger) slot.bonusTrigger = merged.bonusTrigger;
+  if (typeof merged.charges === 'number') slot.charges = merged.charges;
 }
 
 // §3.9: lands and creature dorks both produce mana via a tap-for-mana ability.
@@ -572,6 +575,11 @@ function mergePermanentFeatures(merged, stapleTpl) {
     }
   }
   if (stapleTpl.permanent_eot) merged.permanent_eot = true;
+  if (stapleTpl.spend_mana_as_any_color) merged.spend_mana_as_any_color = true;
+  if (typeof stapleTpl.charges_at_run_start === 'number'
+      && typeof merged.charges_at_run_start !== 'number') {
+    merged.charges_at_run_start = stapleTpl.charges_at_run_start;
+  }
 }
 
 // Mutate `merged` to add the staple's contribution. §3.10: dispatch on the
@@ -1132,13 +1140,11 @@ function makePlayer(name, deck, ownerSide) {
   // Stamp live charges and rewrite "N charges" text from slot data (Stapler etc.).
   for (let i = 0; i < deck.length; i++) {
     const entry = deck[i];
-    const tplId = (typeof entry === 'string') ? entry : entry.tplId;
-    const tpl = CARDS[tplId];
-    if (!tpl || typeof tpl.charges_at_run_start !== 'number') continue;
+    const card = cards[i];
     const slotCharges = (typeof entry === 'object' && typeof entry.charges === 'number')
       ? entry.charges
-      : tpl.charges_at_run_start;
-    const card = cards[i];
+      : (typeof card.charges_at_run_start === 'number' ? card.charges_at_run_start : null);
+    if (slotCharges == null) continue;
     card.chargesLeft = slotCharges;
     if (typeof card.text === 'string' && /^\d+ charges\b/.test(card.text)) {
       card.text = card.text.replace(/^\d+ charges[^.]*\./,
@@ -1224,7 +1230,8 @@ function makeState(playerDeck, oppDeck) {
     // Modal-prompt slots. Each gets PENDING_DECISIONS entry above; engine pauses while non-null.
     pendingNumberChoice: null,        // {who, source, min, max, sourceIid, callback?} — Bargain
     pendingSymmetricizeChoice: null,  // {who, source, targetIid, ..., values:{power,toughness,cost}}
-    pendingEdictChoice: null,         // {who, source, sourceIid, controller, filter, pool, trailingEffects} — human forced-sacrifice (edict) prompt (GAP 2)
+    pendingEdictChoice: null,         // current human forced-sacrifice prompt
+    pendingEdictChoiceQueue: [],      // later chooses() prompts opened in one resolution
     pendingOptionalCost: null,        // {who, cost, source, sourceIid, item} — "you may pay {cost}" trigger (Land+Spell staple ETB)
     forcedDiscard: null,              // {who, remaining}
     pendingSearch: null,              // {who, filter, source} — tutors
@@ -1626,6 +1633,29 @@ function choosesDescriptor(c, who) {
 // logs). Chooser derivation matches the handler exactly: the established
 // player target (curTgt from a target() step), else a player in
 // ctx.allTargets, else the controller's opponent.
+function activateEdictPrompt(prompt) {
+  const pool = choosesEligiblePool(prompt.who, prompt.filter);
+  if (pool.length === 0) {
+    log(`${prompt.source} — ${pname(prompt.who)} has no ${prompt.filter} to choose.`, 'sp');
+    resumeTrailingEffects({
+      controller: prompt.controller, sourceName: prompt.source,
+      sourceIid: prompt.sourceIid,
+      sourceBattlefieldIncarnation: prompt.sourceBattlefieldIncarnation,
+      chosen: null,
+    }, prompt.trailingEffects);
+    return false;
+  }
+  prompt.pool = pool.map(c => choosesDescriptor(c, prompt.who));
+  G.pendingEdictChoice = prompt;
+  log(`${prompt.source}: ${pname(prompt.who)} must choose a ${prompt.filter} to lose.`, 'sp');
+  return true;
+}
+function advanceEdictChoiceQueue() {
+  G.pendingEdictChoice = null;
+  while (G.pendingEdictChoiceQueue.length > 0) {
+    if (activateEdictPrompt(G.pendingEdictChoiceQueue.shift())) return;
+  }
+}
 function maybeDeferHumanChooses(ctx, eff, effList, curTgt) {
   const playerTgt = (curTgt && curTgt.kind === 'player') ? curTgt
     : (ctx.allTargets || []).find(t => t && t.kind === 'player');
@@ -1635,18 +1665,18 @@ function maybeDeferHumanChooses(ctx, eff, effList, curTgt) {
   const pool = choosesEligiblePool(chooser, choosesFilter);
   if (pool.length === 0) return false;  // handler logs "no <noun> to choose"
   const idx = effList.indexOf(eff);
-  G.pendingEdictChoice = {
+  const prompt = {
     who: chooser,
     source: ctx.sourceName,
     sourceIid: ctx.sourceIid,
     sourceBattlefieldIncarnation: ctx.sourceBattlefieldIncarnation,
     controller: ctx.controller,
     filter: choosesFilter,
-    pool: pool.map(c => choosesDescriptor(c, chooser)),
+    pool: [],
     trailingEffects: effList.slice(idx + 1).map(e => ({ ...e })),
   };
-  const noun = choosesFilter;   // 'creature' | 'permanent' | 'land'
-  log(`${ctx.sourceName}: ${pname(chooser)} must choose a ${noun} to lose.`, 'sp');
+  if (G.pendingEdictChoice) G.pendingEdictChoiceQueue.push(prompt);
+  else activateEdictPrompt(prompt);
   return true;
 }
 
@@ -3333,6 +3363,7 @@ const EFFECTS = {
       return;
     }
     const { baseR, stapleR, baseCard, stapleCard } = pair;
+    const sourceConsumedAsStaple = ctx.sourceIid === stapleCard.iid && stapleR.kind === 'perm';
     // A5-2 (Joe ruled FIZZLE, PR #98): stapling a just-cast SPELL onto a
     // non-creature battlefield PERMANENT is illegal — the spell fizzles.
     // canonicalSplicePair ranks by template TYPE with no zone awareness, so a
@@ -3376,6 +3407,15 @@ const EFFECTS = {
       for (const eff of activeEffects) {
         let tgt = null;
         let snap = null;
+        if (eff.kind === 'chooses') {
+          if (maybeDeferHumanChooses(spellCtx, eff, activeEffects, curTgt)) break;
+          applyEffect(spellCtx, eff, curTgt, curSnap);
+          if (spellCtx.chosen) {
+            curTgt = spellCtx.chosen;
+            curSnap = snapshotTarget(spellCtx.chosen);
+          }
+          continue;
+        }
         if (eff.scope === 'self') {
           if (effectOperatesOnCreature(eff)) {
             tgt = {kind:'creature', iid: spellCard.iid, label: spellCard.name};
@@ -3394,7 +3434,9 @@ const EFFECTS = {
           snap = curSnap;
         }
         applyEffect(spellCtx, eff, tgt, snap);
+        if (maybeDeferTrailingForHumanPrompt(spellCtx, eff, activeEffects)) break;
       }
+      spellCtx.chosen = null;
       const stIdx = G.stack.indexOf(item);
       if (stIdx >= 0) G.stack.splice(stIdx, 1);
     };
@@ -3409,23 +3451,32 @@ const EFFECTS = {
     // Identical math to the reward-time RUN.applySplice path — the in-game
     // path layers the runtime-card rebuild, slot mint, and combat-state
     // transfer below on top of the same merge.
+    const persistentChargesOf = (card) => {
+      if (card && card.owner === 'you' && typeof card.slotIdx === 'number'
+          && typeof RUN !== 'undefined' && RUN.getSlots) {
+        const slot = RUN.getSlots()[card.slotIdx];
+        if (slot && typeof slot.charges === 'number') return slot.charges;
+      }
+      return card && typeof card.chargesLeft === 'number' ? card.chargesLeft : null;
+    };
     const merged = mergeSpliceData(
       { tplId: baseCard.tplId, stickers: baseCard.stickers, empowerRolls: baseCard.empowerRolls,
-        subtypeRolls: baseCard.subtypeRolls,
+        subtypeRolls: baseCard.subtypeRolls, charges: persistentChargesOf(baseCard),
         bonusTrigger: baseCard.bonusTrigger, priorStaples },
       { tplId: stapleCard.tplId, stickers: stapleCard.stickers, empowerRolls: stapleCard.empowerRolls,
-        subtypeRolls: stapleCard.subtypeRolls,
+        subtypeRolls: stapleCard.subtypeRolls, charges: persistentChargesOf(stapleCard),
         bonusTrigger: stapleCard.bonusTrigger });
     const newStapledTpls = merged.stapledTpls;
     const mergedStickers = merged.stickers;
     const mergedRolls = merged.empowerRolls;
     const mergedSubtypeRolls = merged.subtypeRolls;
     const mergedBonus = merged.bonusTrigger;
-    // Ownership: caster owns the merge IFF they contributed an input. Pure
-    // opp+opp splices are attrition only (no slot mint, stays on base's bf).
+    // Ownership: caster owns the in-game merge IFF they contributed an input.
+    // RUN stores only the human deck, so opponent-controlled merges never mint
+    // or rewrite persistent slots.
     const callerContributes = (baseCard.owner === ctx.controller) || (stapleCard.owner === ctx.controller);
     const resultOwner = callerContributes ? ctx.controller : baseCard.owner;
-    const mintSlot = callerContributes;
+    const mintSlot = callerContributes && ctx.controller === 'you';
     if (baseR.kind === 'perm') {
       if (stapleR.kind === 'perm') {
         const stapleBf = G[stapleR.controller].battlefield;
@@ -3433,7 +3484,8 @@ const EFFECTS = {
         if (stapleIdx >= 0) stapleBf.splice(stapleIdx, 1);
         clearRestrictionsFromSource(stapleCard.iid);
       }
-      if (stapleCard.owner === 'you' && typeof stapleCard.slotIdx === 'number'
+      if (ctx.controller === 'you' && stapleCard.owner === 'you'
+          && typeof stapleCard.slotIdx === 'number'
           && typeof RUN !== 'undefined' && RUN.removeSlotByIdx) {
         const removedIdx = stapleCard.slotIdx;
         RUN.removeSlotByIdx(removedIdx);
@@ -3457,9 +3509,8 @@ const EFFECTS = {
           }
         }
       }
-      // newSlotIdx may be null for opp-only splices — makeCard accepts
-      // that (slotIdx becomes null on the rebuilt card, matching opp's
-      // transient-slot convention).
+      // newSlotIdx stays null for opponent-controlled merges — makeCard accepts
+      // that (slotIdx becomes null, matching opponent transient-slot state).
       const rebuilt = makeCard(baseCard.tplId, mergedStickers, newSlotIdx,
                                mergedRolls, mergedBonus, newStapledTpls, mergedSubtypeRolls);
       const preservedIid = baseCard.iid;
@@ -3548,10 +3599,9 @@ const EFFECTS = {
       }
     } else {
       // ─── SPELL-BASE PATH (S+S) ─────────────────────────────────────
-      // Both inputs were spells. Their effects already fired above.
-      // If caster contributed (at least one of their spells), mint a new
-      // merged slot for caster. If neither was the caster's (opp's two
-      // spells consumed), no slot is minted — pure removal/dispatch.
+      // Both inputs were spells. Their effects already fired above. The human
+      // caster mints a merged run slot when they contributed an input; opponent-
+      // controlled merges are in-game only because RUN stores no opponent deck.
       //
       // Like the perm-base path, every removeSlotByIdx call shifts the
       // indices of higher slots down by 1. After each removal, we fix up
@@ -3564,13 +3614,15 @@ const EFFECTS = {
       // Per-removal fixup: decrement cached slotIdx pointers AND remap
       // playedSlotIdxs (audit A9-3 — via the shared contract helper).
       const fixupSlotIdxAfter = (removedIdx) => fixupSlotPointersAfterRemoval('you', removedIdx);
-      if (baseCard.owner === 'you' && typeof baseCard.slotIdx === 'number'
+      if (ctx.controller === 'you' && baseCard.owner === 'you'
+          && typeof baseCard.slotIdx === 'number'
           && typeof RUN !== 'undefined' && RUN.removeSlotByIdx) {
         const removedIdx = baseCard.slotIdx;
         RUN.removeSlotByIdx(removedIdx);
         fixupSlotIdxAfter(removedIdx);
       }
-      if (stapleR.kind === 'spell' && stapleCard.owner === 'you' && typeof stapleCard.slotIdx === 'number'
+      if (ctx.controller === 'you' && stapleR.kind === 'spell'
+          && stapleCard.owner === 'you' && typeof stapleCard.slotIdx === 'number'
           && typeof RUN !== 'undefined' && RUN.removeSlotByIdx) {
         // A5-2 zone guard: only a genuine STACK-ITEM staple gets the manual
         // shift. A stack item isn't in any zone, so fixupSlotIdxAfter (which
@@ -3596,13 +3648,14 @@ const EFFECTS = {
         }
         log(`${ctx.sourceName} staples ${stapleCard.name} onto ${baseCard.name} — new spell added to your deck for next game.`, 'sp');
       } else {
-        // Opp-only S+S: both spells resolved, nothing minted.
+        // Non-persistent S+S: both spells resolved, nothing minted.
         log(`${ctx.sourceName} fast-resolves ${baseCard.name} and ${stapleCard.name}.`, 'sp');
       }
     }
     // ─── Charge accounting ────────────────────
-    const stapler = ctx.sourceCard;
-    if (stapler && typeof stapler.slotIdx === 'number' && stapler.owner === 'you'
+    const stapler = sourceConsumedAsStaple ? baseCard : ctx.sourceCard;
+    if (ctx.controller === 'you' && stapler && typeof stapler.slotIdx === 'number'
+        && stapler.owner === 'you'
         && typeof RUN !== 'undefined' && RUN.getSlots) {
       const slots = RUN.getSlots();
       const stSlot = slots[stapler.slotIdx];
@@ -6095,14 +6148,21 @@ function cardBelongsToSlotOwner(card, item, who) {
 function removeCardForRemovedSlot(who, removedIdx) {
   const zones = ['library', 'hand', 'battlefield', 'graveyard', 'exile'];
   let removed = null;
-  for (const zoneName of zones) {
-    const zone = G[who][zoneName];
-    if (!zone) continue;
-    const idx = zone.findIndex(c => c.slotIdx === removedIdx);
-    if (idx < 0) continue;
-    removed = zone.splice(idx, 1)[0];
-    if (zoneName === 'battlefield') clearRestrictionsFromSource(removed.iid);
-    break;
+  for (const side of ['you', 'opp']) {
+    for (const zoneName of zones) {
+      const zone = G[side][zoneName];
+      if (!zone) continue;
+      const idx = zone.findIndex(c => cardBelongsToSlotOwner(c, {controller: side}, who)
+        && c.slotIdx === removedIdx);
+      if (idx < 0) continue;
+      removed = zone.splice(idx, 1)[0];
+      if (zoneName === 'battlefield') {
+        removeFromCombat(removed.iid);
+        clearRestrictionsFromSource(removed.iid);
+      }
+      break;
+    }
+    if (removed) break;
   }
   if (!removed) {
     const stackIdx = G.stack.findIndex(item => item.card
@@ -6120,11 +6180,14 @@ function removeCardForRemovedSlot(who, removedIdx) {
 }
 function fixupSlotPointersAfterRemoval(who, removedIdx) {
   const zones = ['library', 'hand', 'battlefield', 'graveyard', 'exile'];
-  for (const zoneName of zones) {
-    const zone = G[who][zoneName];
-    if (!zone) continue;
-    for (const c of zone) {
-      if (typeof c.slotIdx === 'number' && c.slotIdx > removedIdx) c.slotIdx -= 1;
+  for (const side of ['you', 'opp']) {
+    for (const zoneName of zones) {
+      const zone = G[side][zoneName];
+      if (!zone) continue;
+      for (const c of zone) {
+        if (cardBelongsToSlotOwner(c, {controller: side}, who)
+            && typeof c.slotIdx === 'number' && c.slotIdx > removedIdx) c.slotIdx -= 1;
+      }
     }
   }
   for (const item of slotBearingStackItems()) {
@@ -7251,6 +7314,7 @@ function doEdictChoice(who, iid) {
   // human pause). ctx.chosen is set, so non-self trailing effects (sacrifice/
   // annihilate/rip) operate on the pick.
   resumeTrailingEffects(ctx, p.trailingEffects);
+  advanceEdictChoiceQueue();
   finishDeferredEffectsBoundary();
   drainTriggers();
 }
@@ -8414,6 +8478,8 @@ return {
   // inline at the end of the hand row.
   castableSpellEntries,
   makeCard,
+  // Sandbox uses the same battlefield-entry identity seam as rules-driven arrivals.
+  enterBattlefield,
   // Re-derive seam (template + stickers + subtype-implied), exposed for tests.
   intrinsicKeywords,
   // Subtype-implied keyword injection (Wall→defender, Dragon→flying, …). Exposed so
