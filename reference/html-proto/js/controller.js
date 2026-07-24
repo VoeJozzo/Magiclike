@@ -62,12 +62,21 @@ let uiBlk = new Map();          // blocker → attacker
 let uiPickBlk = null;           // selected blocker awaiting attacker click
 let aiScheduled = false;
 let aiThinking = false;
+let schedulingGeneration = 0;
 let inDraft = false;
 let lastGameRecorded = false;
 let sandboxMode = false;              // true while a RUN-less card-test game is running
 let sandboxSpawnTarget = 'you-hand';  // '<side>-<zone>' for the spawn panel
 
+function invalidateScheduledUi() {
+  schedulingGeneration++;
+  aiScheduled = false;
+  aiThinking = false;
+  if (document.body && document.body.classList) document.body.classList.remove('ai-thinking');
+}
+
 function clearTransientGameUi() {
+  invalidateScheduledUi();
   pendingTarget = null;
   pendingModalChoice = null;
   selectedMapNode = null;
@@ -1201,6 +1210,7 @@ function advanceFromMap() {
 
 // Wraps startNextGame to fire boss banner. All startNextGame callers route through here.
 function startNextGameWithBossBanner() {
+  invalidateScheduledUi();
   const info = RUN.startNextGame();
   if (info && info.bossName) showBossBanner(info.bossName, info.bossIcon);
 }
@@ -1669,7 +1679,9 @@ function onStateChange() {
     aiScheduled = true;
     aiThinking = true;
     updateThinkingUi();
+    const generation = schedulingGeneration;
     setTimeout(async () => {
+      if (generation !== schedulingGeneration) return;
       // Re-check state at fire time. The 100ms delay between scheduling and
       // firing is enough for a player action (or stack resolution from a
       // prior AI cast) to end the game. AI.decide also has its own gameOver
@@ -1689,6 +1701,7 @@ function onStateChange() {
         console.warn('AI dispatch failed unexpectedly:', e);
         action = {type: 'pass'};
       }
+      if (generation !== schedulingGeneration) return;
       // If the AI's pass would cause a stack item to resolve (i.e., the
       // player has already passed and the AI is about to make it both-
       // passed), inject a delay so the player has time to read the spell
@@ -1705,6 +1718,7 @@ function onStateChange() {
           && stateAtFire.priority.passes
           && stateAtFire.priority.passes.has('you')) {
         await new Promise(r => setTimeout(r, 500));
+        if (generation !== schedulingGeneration) return;
         // Re-check world after the wait. Player could have cast a
         // response or the game could have ended.
         const post = ENGINE.state();
@@ -1750,7 +1764,9 @@ function onStateChange() {
   // automatically aborts the autopilot here.
   const inForced = ENGINE.playerOwesDecision('you');
   if (actor === 'you' && G.endTurnPending && G.priority && G.stack.length === 0 && !inForced) {
+    const generation = schedulingGeneration;
     setTimeout(() => {
+      if (generation !== schedulingGeneration) return;
       const cur = ENGINE.state();
       const stillForced = ENGINE.playerOwesDecision('you');
       if (cur.endTurnPending && cur.priority && cur.stack.length === 0
@@ -1769,7 +1785,9 @@ function onStateChange() {
     const top = G.stack[G.stack.length - 1];
     const aiPassed = G.priority.passes && G.priority.passes.has('opp');
     if (top.controller === 'you' && aiPassed) {
+      const generation = schedulingGeneration;
       setTimeout(() => {
+        if (generation !== schedulingGeneration) return;
         const cur = ENGINE.state();
         if (!cur.priority || cur.stack.length === 0) return;
         const curTop = cur.stack[cur.stack.length - 1];
@@ -2210,6 +2228,9 @@ function buildPendingActionWithTarget(target) {
 
 function cancelTarget() {
   pendingTarget = null;
+  Modal.hide('zoneModal');
+  const gravePicker = document.getElementById('graveTargetPicker');
+  if (gravePicker) gravePicker.remove();
   render();
 }
 
@@ -2453,13 +2474,13 @@ function openCardPopup(card) {
     </div>
     ${extrasHtml}
   `;
-  popup.classList.add('vis');
+  Modal.show('cardPopup');
 }
 
 function closeCardPopup(e) {
   // Only close if the click is on the dimmer itself, not on the card content.
   if (e && e.target.id !== 'cardPopup') return;
-  document.getElementById('cardPopup').classList.remove('vis');
+  Modal.hide('cardPopup');
 }
 
 // Library is closed information for both players — you don't peek at

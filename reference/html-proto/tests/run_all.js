@@ -17,6 +17,7 @@ const CATEGORY_A = [
   'sticker_kinds_dispatch_test.js',
   'keyword_icons_test.js',
   'modal_helper_test.js',
+  'controller_ui_test.js',
   'trigger_generator_test.js',
   'ai_burn_lethal_test.js',
   'choice_prompts_test.js',
