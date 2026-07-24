@@ -3,7 +3,7 @@ type: rules
 tags: [magiclike, rules, meta-game]
 section: "1500"
 created: 2026-06-04
-updated: 2026-06-11
+updated: 2026-07-23
 ---
 
 # 1500. The Run (Roguelike Meta)
@@ -30,7 +30,7 @@ Runs are **endless**, organized into **sectors**: each sector has its own map (�
 ## 1504. Rewards
 After winning a game, the player picks one of up to three reward offers. Reward types (weighted):
 - **Sticker** (weight 12) — apply a sticker to a slot in the deck.
-- **TwoStickers** (3) — apply two stickers to the **same** slot (a polarized threat).
+- **TwoStickers** (3) — apply **exactly two successful stickers** to the same slot (a polarized threat); slots that cannot complete two sequential legal applications are not offered.
 - **Transform** (2) — replace a slot with a draft pack of 3 cards, pick one.
 - **Clone** (2) — duplicate a random slot in your deck (lands included); you may decline the offer. (The *opponent's* clone instead duplicates its highest-value non-land slots, scaling with depth — see §1503; audit A5-11.)
 - **Splice** (2) — combine two slots into a single multi-effect card.

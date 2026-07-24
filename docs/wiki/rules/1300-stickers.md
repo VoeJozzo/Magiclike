@@ -3,7 +3,7 @@ type: rules
 tags: [magiclike, rules, meta-game]
 section: "1300"
 created: 2026-06-04
-updated: 2026-06-04
+updated: 2026-07-23
 ---
 
 # 1300. Stickers
@@ -27,6 +27,7 @@ Each sticker type has eligibility rules:
 - Stat stickers require a creature.
 - Empower stickers require the card to have at least one empowerable effect (damage, draw, pump, etc.).
 - Lifelink keyword stickers require a damage-dealing source.
+- Combat-trophy `kw_*` stickers may be offered only when that keyword was claimed in the preceding game. Innate is a normal land sticker, not a combat trophy; it needs no claim and is redundant on a card already intrinsically or sticker-granted Innate.
 
 ## 1304. Stacking and limits
 - Multiple stickers can stack on a single slot.

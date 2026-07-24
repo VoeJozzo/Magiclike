@@ -152,7 +152,7 @@ STICKERS['plus1_plus1'] = {
 STICKERS['innate'] = {
   id: 'innate', name: 'Innate',
   text: 'Starts in your opening hand.',
-  appliesTo: (c) => hasType(c, 'Land'),
+  appliesTo: (c) => hasType(c, 'Land') && !(c.keywords || []).includes('innate'),
   stackable: false,
   weight: 10,
   kind: 'keyword', keyword: 'innate',
@@ -373,6 +373,10 @@ for (const kw of KEYWORDS) {
     weight: KEYWORD_STICKER_WEIGHTS[kw] || 10,
     kind: 'keyword',
     keyword: kw,
+    // Only combat-trophy keyword stickers require this keyword to have been
+    // claimed in the game that produced the reward. Application kind is not
+    // provenance: Innate is also kind:'keyword' but is a normal land mod.
+    claimKeyword: kw,
   };
 }
 // Lose Defender — the one keyword-REMOVAL sticker. Defender is pure downside

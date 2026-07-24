@@ -881,7 +881,8 @@ function rollOneCandidate(type, alreadyOffered) {
   }
   if (type === 'twoStickers') {
     const allIdx = runState.slots.map((_, i) => i);
-    const eligibleSlots = filterByPlayed(allIdx.filter(i => stickersFor(i).length > 0));
+    const eligibleSlots = filterByPlayed(allIdx.filter(i =>
+      materializeRandomStickerSequence(i, 2, false) !== null));
     if (eligibleSlots.length === 0) return null;
     for (let tries = 0; tries < 30; tries++) {
       const slotIdx = eligibleSlots[Math.floor(Math.random() * eligibleSlots.length)];
@@ -943,14 +944,157 @@ function filterByPlayed(slotIdxs) {
   return filtered.length > 0 ? filtered : slotIdxs;
 }
 
-// Player-side wraps stickersForSlot with the keyword-claim gate (only claimed kws offerable).
-function stickersFor(slotIdx) {
-  const slot = runState && runState.slots && runState.slots[slotIdx];
+// Player-side sticker eligibility adds the combat-trophy claim gate to the
+// shared slot rules. Only generated kw_* entries carry claimKeyword; Innate is
+// a normal land modifier even though its application kind is also `keyword`.
+function rewardStickersForSlot(slots, slotIdx) {
+  const slot = slots && slots[slotIdx];
   if (!slot) return [];
-  const base = stickersForSlot(slot, deckColors());
+  const base = stickersForSlot(slot, deckColorsFromSlots(slots));
   const claimed = runState && runState.lastClaimedKeywords;
   if (claimed === undefined || !Array.isArray(claimed)) return base;
-  return base.filter(s => s.kind !== 'keyword' || claimed.includes(s.keyword));
+  return base.filter(s => !s.claimKeyword || claimed.includes(s.claimKeyword));
+}
+
+function stickersFor(slotIdx) {
+  return rewardStickersForSlot(runState && runState.slots, slotIdx);
+}
+
+function cloneSlotsForStickerSequence(slots) {
+  return slots.map(slot => {
+    const copy = {...slot, stickers: (slot.stickers || []).slice()};
+    if (Array.isArray(slot.empowerRolls)) {
+      copy.empowerRolls = slot.empowerRolls.map(roll => roll ? {...roll} : roll);
+    }
+    if (Array.isArray(slot.subtypeRolls)) copy.subtypeRolls = slot.subtypeRolls.slice();
+    return copy;
+  });
+}
+
+// Build the current effective effect surface without rolling any legacy blanks.
+// This matters for capped empower targets: once severity reaches exile, another
+// empower aimed there would be stored but would not materialize a change.
+function effectiveEmpowerViewForSlot(slot) {
+  const tpl = tplForSlot(slot);
+  if (!tpl) return null;
+  const view = deepCloneStickerShape(tpl);
+  let empowerCursor = 0;
+  for (const entry of (slot.stickers || [])) {
+    const sticker = resolveSticker(entry);
+    if (!sticker) continue;
+    if (sticker.kind === 'empower') {
+      const roll = (slot.empowerRolls || [])[empowerCursor++];
+      if (roll) applyEmpowerRoll(view, roll, sticker.amount || 1);
+    } else if (sticker.kind !== 'subtype') {
+      applyStickerKindEffect(view, sticker);
+    }
+  }
+  return view;
+}
+
+// Enumerate concrete, materialized outcomes for one sticker. Roll-bearing
+// stickers are represented by their actual roll, so null subtype results never
+// enter a plan or count as an application.
+function stickerMaterializations(sticker, slots, slotIdx) {
+  if (sticker.kind === 'subtype') {
+    return subtypeRollOptionsFromDeck(slots, slotIdx)
+      .map(option => ({ subtypeRoll: option.subtype, weight: option.weight }));
+  }
+  if (sticker.kind === 'empower') {
+    const view = effectiveEmpowerViewForSlot(slots[slotIdx]);
+    return view ? enumerateEmpowerTargets(view).map(empowerRoll => ({ empowerRoll })) : [];
+  }
+  return [{}];
+}
+
+function applyStickerMaterialization(slot, sticker, materialization) {
+  if (!slot || !sticker || !materialization) return false;
+  if (!sticker.stackable && slot.stickers.includes(sticker.id)) return false;
+  if (sticker.kind === 'subtype' && !materialization.subtypeRoll) return false;
+  if (sticker.kind === 'empower' && !materialization.empowerRoll) return false;
+  slot.stickers.push(sticker.id);
+  if (sticker.kind === 'subtype') {
+    if (!Array.isArray(slot.subtypeRolls)) slot.subtypeRolls = [];
+    slot.subtypeRolls.push(materialization.subtypeRoll);
+  } else if (sticker.kind === 'empower') {
+    if (!Array.isArray(slot.empowerRolls)) slot.empowerRolls = [];
+    slot.empowerRolls.push({...materialization.empowerRoll});
+  }
+  return true;
+}
+
+function pickMaterialization(sticker, materializations) {
+  if (sticker.kind !== 'subtype') {
+    return materializations[Math.floor(Math.random() * materializations.length)];
+  }
+  let total = 0;
+  for (const materialization of materializations) total += materialization.weight;
+  let roll = Math.random() * total;
+  for (const materialization of materializations) {
+    roll -= materialization.weight;
+    if (roll <= 0) return materialization;
+  }
+  return materializations[materializations.length - 1];
+}
+
+// Plan a complete sequential application before mutating the real slot. Each
+// step is kept only if the remaining steps can also materialize. Probe mode is
+// deterministic and consumes no RNG; commit mode preserves sticker rarity and
+// the existing uniform-empower / deck-weighted-subtype rolls.
+function planRandomStickerSequence(slots, slotIdx, remaining, randomize) {
+  if (remaining === 0) return [];
+  const viable = [];
+  for (const sticker of rewardStickersForSlot(slots, slotIdx)) {
+    const materializations = stickerMaterializations(sticker, slots, slotIdx);
+    const viableMaterializations = [];
+    for (const materialization of materializations) {
+      const nextSlots = cloneSlotsForStickerSequence(slots);
+      if (!applyStickerMaterialization(nextSlots[slotIdx], sticker, materialization)) continue;
+      if (planRandomStickerSequence(nextSlots, slotIdx, remaining - 1, false) !== null) {
+        viableMaterializations.push(materialization);
+      }
+    }
+    if (viableMaterializations.length > 0) {
+      viable.push({ sticker, materializations: viableMaterializations });
+    }
+  }
+  if (viable.length === 0) return null;
+  const chosenSticker = randomize
+    ? pickWeightedSticker(viable.map(entry => entry.sticker))
+    : viable[0].sticker;
+  const chosenEntry = viable.find(entry => entry.sticker === chosenSticker);
+  const materialization = randomize
+    ? pickMaterialization(chosenSticker, chosenEntry.materializations)
+    : chosenEntry.materializations[0];
+  const nextSlots = cloneSlotsForStickerSequence(slots);
+  applyStickerMaterialization(nextSlots[slotIdx], chosenSticker, materialization);
+  const rest = planRandomStickerSequence(nextSlots, slotIdx, remaining - 1, randomize);
+  if (rest === null) return null;
+  return [{ sticker: chosenSticker, materialization }, ...rest];
+}
+
+// Shared exact-count gate + commit path for twoStickers. Eligibility calls it
+// with commit=false; pick-time application calls it with commit=true. The real
+// slot changes only after a complete plan exists, so a successful reveal cannot
+// contain fewer than `count` applications.
+function materializeRandomStickerSequence(slotIdx, count, commit) {
+  if (!runState || !Array.isArray(runState.slots)) return null;
+  if (slotIdx < 0 || slotIdx >= runState.slots.length || count < 1) return null;
+  const planningSlots = cloneSlotsForStickerSequence(runState.slots);
+  const plan = planRandomStickerSequence(planningSlots, slotIdx, count, !!commit);
+  if (!plan || plan.length !== count) return null;
+  if (!commit) return plan;
+  const committedSlot = cloneSlotsForStickerSequence(runState.slots)[slotIdx];
+  for (const step of plan) {
+    if (!applyStickerMaterialization(committedSlot, step.sticker, step.materialization)) return null;
+  }
+  const slot = runState.slots[slotIdx];
+  slot.stickers = committedSlot.stickers;
+  if (Array.isArray(committedSlot.empowerRolls)) slot.empowerRolls = committedSlot.empowerRolls;
+  else delete slot.empowerRolls;
+  if (Array.isArray(committedSlot.subtypeRolls)) slot.subtypeRolls = committedSlot.subtypeRolls;
+  else delete slot.subtypeRolls;
+  return plan.map(step => step.sticker.id);
 }
 
 function deckColors() {
@@ -1086,14 +1230,11 @@ function pickRewardCandidate(idx) {
       save();
       return;
     }
-    const applied = [];
-    for (let i = 0; i < 2; i++) {
-      const opts = stickersFor(slotIdx);
-      if (opts.length === 0) break;
-      const sticker = pickWeightedSticker(opts);
-      const slot = runState.slots[slotIdx];
-      pushStickerWithRoll(slot, sticker.id, runState.slots);
-      applied.push(sticker.id);
+    const applied = materializeRandomStickerSequence(slotIdx, 2, true);
+    if (!applied || applied.length !== 2) {
+      runState.pendingReward = null;
+      save();
+      return;
     }
     runState.pendingReward = {
       phase: 'twoStickersReveal',
@@ -1122,6 +1263,9 @@ function pickRewardCandidate(idx) {
     const chosen = finalSlots[Math.floor(Math.random() * finalSlots.length)];
     const slotIdx = chosen.i;
     const applied = [];
+    // Intentionally remains best-effort: the selected repair is the exact-two
+    // contract. Sharing its planner here would change the separate mystery
+    // reward's saturation behavior and is out of scope.
     for (let i = 0; i < 3; i++) {
       const opts = stickersFor(slotIdx);
       if (opts.length === 0) break;
@@ -1380,10 +1524,20 @@ function removeSlotByIdx(idx) {
 function _setPendingRewardForTest(reward) {
   if (runState) runState.pendingReward = reward;
 }
+function _rollOneCandidateForTest(type) {
+  return rollOneCandidate(type, new Set());
+}
+function _rewardStickerIdsForTest(slotIdx) {
+  return stickersFor(slotIdx).map(sticker => sticker.id);
+}
+function _canMaterializeStickerSequenceForTest(slotIdx, count) {
+  return materializeRandomStickerSequence(slotIdx, count, false) !== null;
+}
 
 return { start, startNextGame, recordResult, getStats: getRunStats, isActive,
          pickRewardCandidate, pickTransformReplacement, pickBucket, dismissReveal, getReward, getSlots,
-         applySplice, _setPendingRewardForTest,
+         applySplice, _setPendingRewardForTest, _rollOneCandidateForTest,
+         _rewardStickerIdsForTest, _canMaterializeStickerSequenceForTest,
          // Reward-type odds — exported so the opp sticker-burst roll derives
          // from the same table the player rewards use (audit A12/A13).
          REWARD_TYPE_WEIGHTS,

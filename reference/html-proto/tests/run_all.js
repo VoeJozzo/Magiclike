@@ -12,6 +12,9 @@ const CATEGORY_A = [
   'three_stickers_subtype_test.js',
   'faketargets_refactor_test.js',
   'stickersfor_consolidation_test.js',
+  // twoStickers is exact: offer feasibility and commit share one sequential
+  // materialization planner (claim gates, stacking, subtype nulls included).
+  'test_two_sticker_exact_contract.js',
   'template_isolation_test.js',
   'extracted_helpers_test.js',
   'sticker_kinds_dispatch_test.js',

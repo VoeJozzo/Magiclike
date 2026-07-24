@@ -366,14 +366,15 @@ function applyEmpowerRoll(card, roll, amount) {
   e[field] = cur + (cur < 0 ? -amount : amount);
 }
 
-// Roll a creature subtype for targetSlotIdx, weighted by deck token frequency.
-// Excludes subtypes the target already has. Null if nothing eligible.
-function rollSubtypeFromDeck(slots, targetSlotIdx) {
-  if (!Array.isArray(slots)) return null;
+// Enumerate creature-subtype rolls for targetSlotIdx, weighted by deck token
+// frequency. Excludes subtypes the target already has. The deterministic list
+// lets reward feasibility inspect outcomes without consuming randomness.
+function subtypeRollOptionsFromDeck(slots, targetSlotIdx) {
+  if (!Array.isArray(slots)) return [];
   const target_slot = slots[targetSlotIdx];
-  if (!target_slot) return null;
+  if (!target_slot) return [];
   const targetTpl = tplForSlot(target_slot);
-  if (!targetTpl) return null;
+  if (!targetTpl) return [];
   const targetTokens = new Set(subtypesOf(targetTpl));
   for (const r of (target_slot.subtypeRolls || [])) {
     if (r) targetTokens.add(r);
@@ -390,16 +391,21 @@ function rollSubtypeFromDeck(slots, targetSlotIdx) {
       tokenCount[tok] = (tokenCount[tok] || 0) + 1;
     }
   }
-  const entries = Object.entries(tokenCount);
-  if (entries.length === 0) return null;
+  return Object.entries(tokenCount).map(([subtype, weight]) => ({ subtype, weight }));
+}
+
+// Roll one entry from subtypeRollOptionsFromDeck. Null if nothing is eligible.
+function rollSubtypeFromDeck(slots, targetSlotIdx) {
+  const options = subtypeRollOptionsFromDeck(slots, targetSlotIdx);
+  if (options.length === 0) return null;
   let total = 0;
-  for (const [_, c] of entries) total += c;
+  for (const option of options) total += option.weight;
   let r = Math.random() * total;
-  for (const [tok, c] of entries) {
-    r -= c;
-    if (r <= 0) return tok;
+  for (const option of options) {
+    r -= option.weight;
+    if (r <= 0) return option.subtype;
   }
-  return entries[entries.length - 1][0];
+  return options[options.length - 1].subtype;
 }
 
 // Push a sticker onto a slot, recording an empower/subtype roll if needed.
