@@ -89,11 +89,12 @@ function stapleChainOf(card) {
   return (card && Array.isArray(card.stapledTpls)) ? card.stapledTpls : [];
 }
 
-// Splice compatibility:
-//   Base\Staple  Creature  Spell  Land
-//   Creature     ok(merge) ETB    tap-ability
-//   Spell        NO        concat add_mana
-//   Land         NO        ETB    mana-merge
+// Splice compatibility after canonical ordering:
+//   Base\Staple  Creature  Artifact  Land       Spell
+//   Creature     body      features  mana       ETB
+//   Artifact     NO        features  mana       ETB
+//   Land         NO        NO        mana-merge ETB
+//   Spell        NO        NO        NO         concat
 // Callers must canonicalize first (canonicalSplicePair).
 
 // Canonical ordering by type priority: Creature(0) > Artifact(1) > Land(2) > Spell(3).
@@ -147,11 +148,9 @@ function remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature, baseI
     return roll;
   }
   if (roll.location !== 'effects') return roll;
-  // A5-8: a spell staple on ANY permanent base (Creature OR Land) collapses into
-  // an ETB trigger — mergeStapleInto's basePermanent dispatch treats both the
-  // same, so a roll on a spell staple must relocate to location:'triggers'
-  // regardless of which permanent type is the base (the merged card has no
-  // effects[] — the spell became a trigger).
+  // A5-8: a spell staple on ANY permanent base collapses into an ETB trigger —
+  // mergeStapleInto's isPermanent dispatch treats Creature, Artifact, and Land
+  // alike, so a roll on the spell relocates to location:'triggers'.
   if (baseIsPermanent) {
     return {
       ...roll,
@@ -181,11 +180,9 @@ function mergeSpliceData(base, staple) {
   const stapleTpl = CARDS[staple.tplId];
   const baseIsCreature = hasType(baseTpl, 'Creature');
   const stapleIsCreature = !!(stapleTpl && hasType(stapleTpl, 'Creature'));
-  // A5-8: a Land base is ALSO a permanent — a spell staple collapses into an ETB
-  // trigger on it (mergeStapleInto's basePermanent dispatch), exactly as on a
-  // creature base. The empower remap must know this so a roll relocates from
-  // effects[] -> triggers[].
-  const baseIsPermanent = baseIsCreature || hasType(baseTpl, 'Land');
+  // Spell staples collapse into ETB triggers on every permanent behavior class.
+  // The empower remap must follow the same isPermanent dispatch as synthesis.
+  const baseIsPermanent = isPermanent(baseTpl);
   // Merged effect/trigger/ability counts BEFORE this staple — accounts for any
   // prior staples, since each shifts the indices a new staple's empower roll
   // points at. Derive these from the oracle (synthesizeStapledTemplate), not a
@@ -541,13 +538,50 @@ function synthesizeStapledTemplate(baseTplId, stapledTpls) {
   return merged;
 }
 
+// Copy the non-body characteristics contributed by a permanent staple.
+function mergePermanentFeatures(merged, stapleTpl) {
+  for (const kw of (stapleTpl.keywords || [])) {
+    if (!merged.keywords.includes(kw)) merged.keywords.push(kw);
+  }
+  if (stapleTpl.triggers) {
+    for (const t of stapleTpl.triggers) {
+      merged.triggers.push({
+        ...t,
+        effects: (t.effects || []).map(e => ({...e})),
+      });
+    }
+  }
+  if (stapleTpl.abilities) {
+    if (!Array.isArray(merged.abilities)) merged.abilities = [];
+    for (const ab of stapleTpl.abilities) {
+      merged.abilities.push({
+        ...ab,
+        cost: ab.cost ? {...ab.cost} : undefined,
+        effects: (ab.effects || []).map(e => ({...e})),
+      });
+    }
+  }
+  if (stapleTpl.static_buffs) {
+    if (!Array.isArray(merged.static_buffs)) merged.static_buffs = [];
+    for (const b of stapleTpl.static_buffs) {
+      merged.static_buffs.push({
+        ...b,
+        filter: b.filter ? {...b.filter} : undefined,
+        keywords: b.keywords ? b.keywords.slice() : undefined,
+      });
+    }
+  }
+  if (stapleTpl.permanent_eot) merged.permanent_eot = true;
+}
+
 // Mutate `merged` to add the staple's contribution. §3.10: dispatch on the
-// STAPLE's type (not base-type branch order), leveraging the canonicalization
-// hierarchy (Creature>Artifact>Land>Spell picks the base). Three behaviors:
-//   staple Creature → body merge (base is always Creature here).
-//   staple Land     → permanent base gains the land's tap-ability (Cr+Ld / Ld+Ld).
-//   staple Spell    → permanent base gets an ETB trigger (Cr+Sp / Ld+Sp, identical);
-//                     spell base concatenates effects (Sp+Sp, multi_target).
+// STAPLE's governing behavior (not base-type branch order), leveraging the
+// canonicalization hierarchy (Creature>Artifact>Land>Spell picks the base).
+//   staple Creature → body + permanent-feature merge (base is Creature).
+//   staple Artifact → permanent-feature merge (activated abilities included).
+//   staple Land     → permanent base gains the land's tap-ability (Cr/Ar/Ld + Ld).
+//   staple Spell    → permanent base gets an ETB trigger;
+//                     spell base concatenates effects and targeting descriptors.
 // Impossible pairs (a higher-priority staple that should have won the base slot)
 // throw rather than silently degrading to Sp+Sp.
 function mergeStapleInto(merged, stapleTpl) {
@@ -556,7 +590,7 @@ function mergeStapleInto(merged, stapleTpl) {
       merged.cost[k] = (merged.cost[k] || 0) + v;
     }
   }
-  const basePermanent = hasType(merged, 'Creature') || hasType(merged, 'Land');
+  const basePermanent = isPermanent(merged);
   if (hasType(stapleTpl, 'Creature')) {
     // Body merge. Base is always a Creature here (canonicalization), else a
     // creature staple would have won the base slot.
@@ -565,46 +599,13 @@ function mergeStapleInto(merged, stapleTpl) {
     }
     merged.power = (merged.power || 0) + (stapleTpl.power || 0);
     merged.toughness = (merged.toughness || 0) + (stapleTpl.toughness || 0);
-    const stapleKws = stapleTpl.keywords || [];
-    for (const kw of stapleKws) {
-      if (!merged.keywords.includes(kw)) merged.keywords.push(kw);
-    }
     // Subtype union (token-level dedup so Goblin+Goblin doesn't double) into the
     // merged type list — the single source of truth. Lord checks read subtypes
     // via subtypesOf / hasType.
     for (const st of subtypesOf(stapleTpl)) {
       addType(merged, st);
     }
-    // Triggers/abilities/static_buffs: concat with deep copy. Base's first.
-    if (stapleTpl.triggers) {
-      for (const t of stapleTpl.triggers) {
-        merged.triggers.push({
-          ...t,
-          effects: (t.effects || []).map(e => ({...e})),
-        });
-      }
-    }
-    if (stapleTpl.abilities) {
-      if (!Array.isArray(merged.abilities)) merged.abilities = [];
-      for (const ab of stapleTpl.abilities) {
-        merged.abilities.push({
-          ...ab,
-          cost: ab.cost ? {...ab.cost} : undefined,
-          effects: (ab.effects || []).map(e => ({...e})),
-        });
-      }
-    }
-    if (stapleTpl.static_buffs) {
-      if (!Array.isArray(merged.static_buffs)) merged.static_buffs = [];
-      for (const b of stapleTpl.static_buffs) {
-        merged.static_buffs.push({
-          ...b,
-          filter: b.filter ? {...b.filter} : undefined,
-          keywords: b.keywords ? b.keywords.slice() : undefined,
-        });
-      }
-    }
-    if (stapleTpl.permanent_eot) merged.permanent_eot = true;
+    mergePermanentFeatures(merged, stapleTpl);
   } else if (hasType(stapleTpl, 'Land')) {
     // Permanent base gains the staple land's tap-ability (§3.9). Merge into an
     // existing mana ability (Ld+Ld, or a creature that already taps for mana —
@@ -626,9 +627,14 @@ function mergeStapleInto(merged, stapleTpl) {
       if (!Array.isArray(merged.abilities)) merged.abilities = [];
     }
     merged.abilities.push(manaAbilityForColors(allColors));
+  } else if (isPermanent(stapleTpl)) {
+    if (!basePermanent) {
+      throw new Error('staple-merge: permanent staple on spell base ' + governingType(stapleTpl));
+    }
+    mergePermanentFeatures(merged, stapleTpl);
   } else if (basePermanent) {
-    // Spell staple on a permanent base → ETB trigger. Cr+Sp and Ld+Sp are
-    // structurally the same trigger; they differ only in whether it's free.
+    // Spell staple on a permanent base → ETB trigger. Every permanent behavior
+    // class shares the same trigger shape; Land alone adds the paid option.
     const nextFreeSlot = computeNextFreeSlot(merged);
     const remapped = remapEffectSlots(stapleTpl.effects, nextFreeSlot);
     const trig = {
@@ -667,15 +673,28 @@ function mergeStapleInto(merged, stapleTpl) {
     }
     merged.triggers.push(trig);
   } else {
-    // Spell base + spell staple: effects concat with slot remap. The merged
-    // spell is multi-target — recognized structurally via per-effect target_slot
-    // (slotsNeededForPending) and the canonical target API, not a flag.
-    const nextFreeSlot = computeNextFreeSlot(merged);
-    const remapped = remapEffectSlots(stapleTpl.effects, nextFreeSlot);
+    // Spell base + spell staple: concatenate the canonical target descriptors,
+    // then bind the appended effects to their shifted slots.
+    const baseSlots = targetingSlotsOf(merged);
+    const stapleSlots = targetingSlotsOf(stapleTpl);
+    const nextFreeSlot = baseSlots.length > 0 ? baseSlots.length : computeNextFreeSlot(merged);
+    if (merged.target && Array.isArray(merged.effects)) {
+      merged.effects = bindBareTargetEffects(merged.effects, 0);
+    }
+    const stapleEffects = stapleTpl.target
+      ? bindBareTargetEffects(stapleTpl.effects, 0)
+      : stapleTpl.effects;
+    const remapped = remapEffectSlots(stapleEffects, nextFreeSlot);
     if (!Array.isArray(merged.effects)) merged.effects = [];
     if (Array.isArray(remapped)) {
       merged.effects = merged.effects.concat(remapped);
     }
+    if (baseSlots.length > 0 || stapleSlots.length > 0) {
+      merged.target_slots = baseSlots.concat(stapleSlots);
+      delete merged.target;
+      delete merged.target_filter;
+    }
+    if (merged.distinct_targets || stapleTpl.distinct_targets) merged.distinct_targets = true;
   }
   // No merged.text is built here — describeCardText regenerates it from the
   // merged effects/triggers/abilities (in makeCard, and at render time via
@@ -685,12 +704,63 @@ function mergeStapleInto(merged, stapleTpl) {
   merged.name = merged.name + ' + ' + stapleTpl.name;
 }
 
+// Canonical slot descriptors contributed by one spell constituent. A single
+// target() step becomes one target_slots entry; its target_filter becomes the
+// slot's filter because getValidTargets reads slot restrictions from `filter`.
+// Legacy inline targets are normalized only when no owner-level descriptor exists.
+function targetingSlotsOf(obj) {
+  if (!obj) return [];
+  if (Array.isArray(obj.target_slots) && obj.target_slots.length > 0) {
+    return obj.target_slots.map(spec => ({
+      ...spec,
+      filter: spec.filter ? {...spec.filter} : undefined,
+      target_filter: spec.target_filter ? {...spec.target_filter} : undefined,
+    }));
+  }
+  if (obj.target) {
+    return [{
+      target: obj.target,
+      filter: obj.target_filter ? {...obj.target_filter} : undefined,
+    }];
+  }
+  const slots = [];
+  for (const eff of (Array.isArray(obj.effects) ? obj.effects : [])) {
+    if (!eff || !eff.target) continue;
+    const slot = eff.target_slot || 0;
+    if (!slots[slot]) {
+      slots[slot] = {
+        target: eff.target,
+        filter: eff.filter ? {...eff.filter} : undefined,
+      };
+    }
+  }
+  return slots;
+}
+
+// A top-level target() normally supplies the operative target to bare effects.
+// Once synthesis converts that step to target_slots, target-consuming effects
+// need an explicit slot binding; self-scoped and targetless rider kinds do not.
+function bindBareTargetEffects(effects, slot) {
+  if (!Array.isArray(effects)) return effects;
+  return effects.map(e => {
+    const copy = {...e};
+    if (!copy.scope && !copy.target && copy.target_slot == null
+        && TARGET_REQUIRED_KINDS.has(copy.kind)) {
+      copy.target_slot = slot;
+    }
+    return copy;
+  });
+}
+
 // Highest target_slot in use + 1 (next free slot). 0 if untargeted.
 function computeNextFreeSlot(merged) {
-  let maxSlot = -1;
+  let maxSlot = merged && merged.target ? 0 : -1;
+  if (Array.isArray(merged && merged.target_slots)) {
+    maxSlot = Math.max(maxSlot, merged.target_slots.length - 1);
+  }
   function visit(eff) {
     if (!eff) return;
-    if (eff.target) {
+    if (eff.target || eff.target_slot != null) {
       maxSlot = Math.max(maxSlot, eff.target_slot || 0);
     }
   }
@@ -703,15 +773,18 @@ function computeNextFreeSlot(merged) {
   return maxSlot + 1;
 }
 
-// Deep-copy effects and offset each target_slot. Same-slot grouping preserved.
+// Deep-copy effects and offset every explicit target_slot. Same-slot grouping
+// is preserved even when the target filter lives only in target_slots.
 // Modal shape (object) returned unchanged — staple-as-modal unsupported.
 function remapEffectSlots(effects, offset) {
   if (!effects) return [];
   if (!Array.isArray(effects)) return effects;
   return effects.map(e => {
     const copy = {...e};
-    if (copy.target) {
-      copy.target_slot = (e.target_slot || 0) + offset;
+    if (copy.target_slot != null) {
+      copy.target_slot = copy.target_slot + offset;
+    } else if (copy.target) {
+      copy.target_slot = offset;
     }
     return copy;
   });
@@ -3239,9 +3312,18 @@ const EFFECTS = {
       if (r.kind !== 'spell') return;
       const item = r.stackItem;
       const spellCard = item.card;
-      const spellCtx = { controller: item.controller, sourceName: spellCard.name, sourceIid: spellCard.iid, sourceCard: spellCard };
-      const getTargetForSlot = makeSlotTargetGetter(Array.isArray(item.targets) ? item.targets : []);
+      const lockedTargets = Array.isArray(item.targets) ? item.targets : [];
+      const spellCtx = { controller: item.controller, sourceName: spellCard.name,
+        sourceIid: spellCard.iid, sourceCard: spellCard, allTargets: lockedTargets };
+      const getTargetForSlot = makeSlotTargetGetter(lockedTargets);
       const activeEffects = effectsForMode(spellCard, item.modeIdx);
+      const hasTargetStep = !!spellCard.target;
+      let curTgt = null, curSnap = null;
+      if (hasTargetStep) {
+        const fetched = getTargetForSlot(0);
+        curTgt = fetched.tgt;
+        curSnap = fetched.snap;
+      }
       for (const eff of activeEffects) {
         let tgt = null;
         let snap = null;
@@ -3258,6 +3340,9 @@ const EFFECTS = {
           const fetched = getTargetForSlot(slot);
           tgt = fetched.tgt;
           snap = fetched.snap;
+        } else if (hasTargetStep) {
+          tgt = curTgt;
+          snap = curSnap;
         }
         applyEffect(spellCtx, eff, tgt, snap);
       }

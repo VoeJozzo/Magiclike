@@ -353,6 +353,9 @@ const CATEGORY_A = [
   // Audit A11-1 — slot/effect-level target strings validated at boot (an
   // unknown name = a silently-uncastable card); the live pool stays clean.
   'test_a11_target_string_validation.js',
+  // Synthesis regression roots: Artifact permanents, spell target-slot composition,
+  // and Stapler's consumed-spell locked-target forwarding.
+  'test_synthesis_mechanical_regressions.js',
   // Synthesis/staple (Stapler/Splice).
   // A5-4 — out-of-charges rip routes through the shared slot-pointer fixup
   // so a merged slot minted above the stapler keeps a valid cached slotIdx.
