@@ -60,6 +60,25 @@ for (const cond of GENERATOR_CONDITIONS) {
     triggerArchetype({event: cond.event, condition: cond.condition}) === cond.id);
 }
 
+console.log('\n=== damageFace assembles an opponent-only trigger ===');
+{
+  const cond = GENERATOR_CONDITIONS.find(c => c.id === 'thisEnters');
+  const generatorEffect = GENERATOR_EFFECTS.find(e => e.id === 'damageFace');
+  const effects = generatorEffect.roll();
+  const option = {
+    effId: generatorEffect.id,
+    effects,
+    describe: generatorEffect.describe(effects[0]),
+  };
+  const trig = assembleTrigger(cond, option);
+  check('damageFace roll uses the canonical opponent-only target',
+    effects[0].target === 'opp', JSON.stringify(effects[0]));
+  check('assembled damageFace trigger preserves opponent-only targeting',
+    trig.effects[0].target === 'opp', JSON.stringify(trig.effects[0]));
+  check('assembled damageFace text truthfully names the opponent',
+    trig.text === `When ~ enters, deal ${effects[0].amount} damage to opponent.`, trig.text);
+}
+
 // The only production path for assembling a generated trigger.
 function rollAssembled() {
   const conds = generateConditionOptions();

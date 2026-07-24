@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.46`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.48`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -3223,12 +3223,28 @@ labels (blackKnight→chupacabra; pre-fix-comment reference). One item
 backlogged: test_ai_targeting pins a weaker scenario than its comment
 claims. Suite 151 files / 3004 green; lint clean; Godot 12/12.
 
-v2.2.46: Growing Deck's pre-run bucket constellation preview now includes
+v2.2.46: Main-menu Stats button layering fix. The stats overlay and the
+start screen both used z-index 1100; because the start screen follows the
+stats modal in document order, it painted over the opened modal and made the
+working toggle appear inert. #statsModal now uses the established z-index
+1200 utility-modal layer (matching Settings), so it remains visible above the
+main menu. UI/CSS-only; the Node harness does not model browser layout. Suite
+151 files / 3004 green; lint clean; headless Chrome verified the button opens
+the visible Stats panel above the still-visible start screen with zero console
+errors.
+
+v2.2.47: Architect's Codex generated face-damage triggers now use the
+canonical opponent-only `opp` target instead of the free-choice `player`
+target. The assembled text remains mechanically truthful, and focused
+regressions pin the rolled/assembled target plus controller-relative legality
+so self-damage is never offered. Suite 151 files / 3009 green; lint clean.
+
+v2.2.48: Growing Deck's pre-run bucket constellation preview now includes
 its pick-#0 boon in the deck side of the graph. The draft stored the boon
 beside `youPicks`, while the preview read only `youPicks`; active-run
 previews already read the complete slot list. All five nonland boons now
 render as stars before the run starts. City of Brass and Phylactery remain
 intentionally absent because every constellation view excludes lands. The
 bucket analyzer and active addBucket candidate flow were already boon-aware;
-no bucket-selection semantics changed. Suite 151 files / 3006 green; lint
-clean; browser preview verified with Elystra present and zero app errors.
+no bucket-selection semantics changed. Suite 151 files / 3011 green; lint
+clean; browser preview verified Elystra present with zero app errors.

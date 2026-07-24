@@ -34,8 +34,6 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 - **Constellation P3: pool codex fog-of-war** (Joe, 2026-07-13: "something I DO want to implement, but now is not quite the time — I haven't thought through that FoW system yet"). Dim un-encountered cards in the Pool tab; blocked on Joe designing what "encountered" means (owned? offered? seen in battle?). P4 (realized-synergy postgame report — light only the edges that actually FIRED during play) also parked; Joe notes it should tie into PICKLOG, the existing data-gathering tool.
 - **Wave 3 candidate: second payoffs per tribe** — 13 of 14 tribes have exactly 1 payoff (goblins, with 2, are the tribe Joe said "feels better"); banked subtypes Wolf/Hydra/Construct/Hound/Spider have 0. GATED on playtesting v2.2.13 first — whether 1-payoff tribes feel samey is a hypothesis the assay can't test. Flavor-pass protocol learnings for the next wave are ledgered in docs/plans/plan-pool-waves.md (drop scoring judges, keep proposer menus, deterministic lint).
 
-- **Stats button on main menu does not work** — the stats button isn't functional.
-
 - **Check to confirm boon pull rules work** — verify that boon pulling rules are functioning correctly, particularly for Elystra which is not pulling buff effects highly.
 
 - **Should transform reward use bucket weights?** — evaluate whether reward transforms should use bucket weights in their selection logic.
@@ -85,7 +83,11 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 
 ## Recently done
 
-- **v2.2.46 — pre-run bucket graph previews now include the picked nonland boon.** The Growing Deck draft keeps its pick-#0 boon in `state.boon` beside `youPicks`; Constellation had read only `youPicks` until `RUN.start` moved every card into slots. The preview now combines both stores. Active-run previews, BUCKETS analysis, and active addBucket reward construction were already boon-aware. City of Brass and Phylactery remain intentionally absent from every constellation view because they are lands; the five nonland boons render.
+- **v2.2.48 — pre-run bucket graph previews now include the picked nonland boon.** The Growing Deck draft keeps its pick-#0 boon in `state.boon` beside `youPicks`; Constellation had read only `youPicks` until `RUN.start` moved every card into slots. The preview now combines both stores. Active-run previews, BUCKETS analysis, and active addBucket reward construction were already boon-aware. City of Brass and Phylactery remain intentionally absent from every constellation view because they are lands; the five nonland boons render.
+
+- **v2.2.47 — Architect's Codex generated face damage is opponent-only.** The `damageFace` trigger option now uses the canonical `opp` target, so its controller is never offered self-damage; assembled text and controller-relative legality are pinned by focused regressions.
+
+- **v2.2.46 — Stats button on the main menu restored.** The stats overlay now uses the established utility-modal layer above the start screen, so the already-working toggle opens a visible panel.
 
 - **v2.2.37 — audit A3 closed (post flake-merge)**: rollBucket demoted from
   public API to the `_rollBucketForTest` seam rather than deleted — the flake
