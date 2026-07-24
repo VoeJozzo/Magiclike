@@ -70,6 +70,38 @@ console.log('\n=== pinned design: SPELL effect damage from a trample source stil
     G.opp.life === 16, 'opp life=' + G.opp.life);
 })();
 
+console.log('\n=== deathtouch plus trample effect damage assigns one before spilling ===');
+(() => {
+  const G = newGame();
+  const giant = mk('hill_giant', 'opp');
+  G.opp.battlefield.push(giant);
+  const bolt = ENGINE.makeCard('lightning_bolt', ['kw_deathtouch', 'kw_trample']);
+  check('stickered Lightning Bolt carries both damage keywords',
+    bolt.keywords.includes('deathtouch') && bolt.keywords.includes('trample'));
+  const ctx = { controller: 'you', sourceName: bolt.name, sourceIid: bolt.iid, sourceCard: bolt };
+  ENGINE.applyEffect(ctx, { kind: 'damage', amount: 3 }, { kind: 'creature', iid: giant.iid });
+  check('undamaged 3/3 receives one lethal deathtouch damage',
+    giant.damage === 1 && giant.dealtDeathtouch === true,
+    'damage=' + giant.damage + ', marked=' + giant.dealtDeathtouch);
+  check('remaining two damage tramples to its controller',
+    G.opp.life === 18, 'opp life=' + G.opp.life);
+})();
+
+console.log('\n=== deathtouch effect damage without trample still deals its full amount ===');
+(() => {
+  const G = newGame();
+  const giant = mk('hill_giant', 'opp');
+  G.opp.battlefield.push(giant);
+  const bolt = ENGINE.makeCard('lightning_bolt', ['kw_deathtouch']);
+  const ctx = { controller: 'you', sourceName: bolt.name, sourceIid: bolt.iid, sourceCard: bolt };
+  ENGINE.applyEffect(ctx, { kind: 'damage', amount: 3 }, { kind: 'creature', iid: giant.iid });
+  check('ordinary deathtouch effect assigns all three to the creature',
+    giant.damage === 3 && giant.dealtDeathtouch === true,
+    'damage=' + giant.damage + ', marked=' + giant.dealtDeathtouch);
+  check('ordinary deathtouch effect does not spill to the controller',
+    G.opp.life === 20, 'opp life=' + G.opp.life);
+})();
+
 console.log('\n=== A4-9 fence: deathtouch rides fight damage (victim-mark) ===');
 (() => {
   const G = newGame();

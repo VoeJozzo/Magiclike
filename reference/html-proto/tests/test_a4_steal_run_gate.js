@@ -26,14 +26,26 @@ function mk(tplId, controller) {
     keywords: (inst.keywords || []).slice(),
   });
 }
-function newGame() {
+function newGame(cards) {
   RUN.clearSave && RUN.clearSave();
-  RUN.start({ cards: Array(12).fill('plains'), colors: ['B'] }, null);
+  RUN.start({ cards: cards || Array(12).fill('plains'), colors: ['B'] }, null);
   RUN.startNextGame();
   const G = ENGINE.state();
   G.you.battlefield = []; G.opp.battlefield = [];
   G.stack = []; G.gameOver = false;
   return G;
+}
+function moveRunCardToBattlefield(G, slotIdx) {
+  for (const zoneName of ['hand', 'library']) {
+    const zone = G.you[zoneName];
+    const idx = zone.findIndex(c => c.slotIdx === slotIdx);
+    if (idx < 0) continue;
+    const card = zone.splice(idx, 1)[0];
+    card.controller = 'you';
+    G.you.battlefield.push(card);
+    return card;
+  }
+  throw new Error('run card not found for slot ' + slotIdx);
 }
 
 console.log('=== A4-15: an OPP-controlled steal must NOT touch the human run deck ===');
@@ -84,6 +96,52 @@ console.log('\n=== control: the HUMAN-controlled steal still mints a slot ===');
     check('fresh instance points at the minted slot',
       typeof fresh.slotIdx === 'number' && fresh.slotIdx === slotsBefore);
   }
+})();
+
+console.log('\n=== a human-owned run permanent retains its slot when Steal targets it directly ===');
+(() => {
+  const cards = ['gray_ogre', ...Array(11).fill('plains')];
+  const G = newGame(cards);
+  const mine = moveRunCardToBattlefield(G, 0);
+  const slotsBefore = RUN.getSlots().length;
+  ENGINE.applyEffect(
+    { controller: 'you', sourceName: 'Steal', sourceIid: null },
+    { kind: 'steal' },
+    { kind: 'creature', iid: mine.iid });
+  check('direct self-target does not append a duplicate persisted slot',
+    RUN.getSlots().length === slotsBefore,
+    'slots ' + slotsBefore + ' -> ' + RUN.getSlots().length);
+  const fresh = G.you.library.find(c => c.tplId === 'gray_ogre');
+  check('direct self-target reuses the original slot identity',
+    !!fresh && fresh.slotIdx === 0, 'slotIdx=' + (fresh && fresh.slotIdx));
+  check('the retained slot still describes the original run card',
+    RUN.getSlots()[0].tplId === 'gray_ogre');
+})();
+
+console.log('\n=== stealing back a temporarily controlled run permanent retains its slot ===');
+(() => {
+  const cards = ['gray_ogre', ...Array(11).fill('plains')];
+  const G = newGame(cards);
+  const mine = moveRunCardToBattlefield(G, 0);
+  ENGINE.applyEffect(
+    { controller: 'opp', sourceName: 'Threaten', sourceIid: null },
+    { kind: 'change_control', duration: 'eot' },
+    { kind: 'creature', iid: mine.iid });
+  check('temporary control moved the human-owned permanent to the opponent',
+    G.opp.battlefield.includes(mine) && mine.owner === 'you' && mine.slotIdx === 0);
+  const slotsBefore = RUN.getSlots().length;
+  ENGINE.applyEffect(
+    { controller: 'you', sourceName: 'Steal', sourceIid: null },
+    { kind: 'steal' },
+    { kind: 'creature', iid: mine.iid });
+  check('steal-back does not append a duplicate persisted slot',
+    RUN.getSlots().length === slotsBefore,
+    'slots ' + slotsBefore + ' -> ' + RUN.getSlots().length);
+  const fresh = G.you.library.find(c => c.tplId === 'gray_ogre');
+  check('steal-back reuses the original slot identity',
+    !!fresh && fresh.slotIdx === 0, 'slotIdx=' + (fresh && fresh.slotIdx));
+  check('steal-back mints a clean human-owned instance',
+    !!fresh && fresh.owner === 'you' && !fresh.tempControlUntilEot);
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

@@ -28,9 +28,9 @@ function newGame() {
   G.you.hand = []; G.opp.hand = [];
   return G;
 }
-function place(who, tpl) {
+function place(who, tpl, stickers) {
   const G = ENGINE.state();
-  const c = ENGINE.makeCard(tpl); c.sick = false;
+  const c = ENGINE.makeCard(tpl, stickers); c.sick = false;
   G[who].battlefield.push(c); return c;
 }
 // Drive the turn to its end so CLEANUP runs. Both players pass at every
@@ -106,6 +106,57 @@ console.log('\n=== 3. leave-play revert unchanged: a bounced copy is the base wi
     inHand && JSON.stringify(inHand.keywords));
   check('copyOf cleared on leave-play', inHand && !inHand.copyOf);
   check('name reverted', inHand && inHand.name === CARDS.false_witness.name);
+})();
+
+console.log('\n=== 4. copied effective identity includes color, static cost, and implied keywords ===');
+(() => {
+  const G = newGame();
+  const witness = place('you', 'false_witness', [{ kind: 'set_color', color: 'C' }]);
+  check('setup: witness has a persistent color sticker', witness.color === 'C');
+  const whelp = place('opp', 'furnace_whelp');
+  ENGINE.applyEffect(
+    { controller: 'you', sourceName: 'The False Witness',
+      sourceIid: witness.iid, sourceCard: witness },
+    { kind: 'become_copy_of', keep_subtypes: ['Insect', 'Shapeshifter'] },
+    { kind: 'creature', iid: whelp.iid });
+  check('copy takes the source color identity', witness.color === 'R'
+    && JSON.stringify(witness.colors) === JSON.stringify(['R']),
+    'color=' + witness.color + ', colors=' + JSON.stringify(witness.colors));
+  check('Dragon subtype grants flying after copied types are installed',
+    witness.keywords.includes('flying'), 'keywords=' + JSON.stringify(witness.keywords));
+
+  ENGINE.applyEffect({ controller: 'opp', sourceName: 'Unsummon', sourceIid: -13 },
+    { kind: 'affect_creature', severity: 'bounce' },
+    { kind: 'creature', iid: witness.iid });
+  check('bounce restores the witness persistent color identity', witness.color === 'C',
+    'color=' + witness.color + ', colors=' + JSON.stringify(witness.colors));
+})();
+
+(() => {
+  const G = newGame();
+  const witness = place('you', 'false_witness');
+  const guardian = place('opp', 'city_guardian');
+  G.opp.battlefield.splice(G.opp.battlefield.indexOf(guardian), 1);
+  G.opp.exile.push(guardian);
+  const probe = ENGINE.makeCard('lightning_bolt');
+  const baseGeneric = (probe.cost && probe.cost.C) || 0;
+  ENGINE.applyEffect(
+    { controller: 'you', sourceName: 'The False Witness',
+      sourceIid: witness.iid, sourceCard: witness },
+    { kind: 'become_copy_of', keep_subtypes: ['Insect', 'Shapeshifter'] },
+    { kind: 'creature', iid: guardian.iid });
+  check('copy materializes City Guardian static cost bump', witness.static_cost_bump === 1);
+  check('live copied static bump affects cast costs',
+    ENGINE.effectiveCastCost(probe).C === baseGeneric + 1,
+    'cost=' + JSON.stringify(ENGINE.effectiveCastCost(probe)));
+
+  ENGINE.applyEffect({ controller: 'opp', sourceName: 'Unsummon', sourceIid: -14 },
+    { kind: 'affect_creature', severity: 'bounce' },
+    { kind: 'creature', iid: witness.iid });
+  check('bounce clears copied static cost bump', witness.static_cost_bump == null);
+  check('cast costs return to baseline after the copy leaves',
+    (ENGINE.effectiveCastCost(probe).C || 0) === baseGeneric,
+    'cost=' + JSON.stringify(ENGINE.effectiveCastCost(probe)));
 })();
 
 console.log(`\n=== TOTAL: ${pass} passed, ${fail} failed ===`);

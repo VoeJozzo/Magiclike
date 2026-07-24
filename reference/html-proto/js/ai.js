@@ -1492,7 +1492,8 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx, targetSlot) 
   // their own slot; without this context the first effect is selected for every
   // target and a bare per-slot effect scores as zero.
   let eff = targetSlot != null
-    ? modeEffects.find(e => e.target_slot === targetSlot && e.target !== 'self')
+    ? modeEffects.find(e => (e.target_slot || 0) === targetSlot
+      && e.target !== 'self' && ENGINE.effectNeedsTarget(e))
     : modeEffects.find(e => e.target && e.target !== 'self');
   if (!eff && targetSlot == null && card.target) eff = modeEffects.find(e => e.kind !== 'chooses' && e.kind !== 'apply_sticker' && e.scope == null);
   if (!eff && targetSlot == null && card.target) {

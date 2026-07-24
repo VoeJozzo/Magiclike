@@ -833,7 +833,7 @@ function applySubtypeKeywords(card) {
 // (in makeCard or anywhere downstream), add it here too, or a template
 // declaring that key would be deep-copied straight onto the instance.
 const MAKECARD_INSTANCE_KEYS = new Set([
-  'iid', 'slotIdx', 'controller', 'owner', 'isToken',
+  'iid', 'battlefieldIncarnation', 'slotIdx', 'controller', 'owner', 'isToken',
   'tapped', 'sick', 'damage', 'tempPower', 'tempTou', 'permPower', 'permTou',
   // NB: dealtDeathtouch is a victim-side lethality mark — set on the creature
   // that RECEIVED deathtouch damage, not on the dealer (the name reads
@@ -846,7 +846,7 @@ const MAKECARD_INSTANCE_KEYS = new Set([
   // build-on-draw systems) — a truthy template copyOf would trip
   // resetInPlayState's copy-revert, a template chargesLeft would shadow the
   // slot-derived charge count, etc.
-  'tempControlUntilEot', 'copyOf', 'copySourceIid', 'bargainsNum',
+  'tempControlUntilEot', 'copyOf', 'copySourceIid', 'copyBaseIdentity', 'bargainsNum',
   'chargesLeft', '_builtThisGame',
   // Assigned DURING makeCard but additively (recordStickerType never resets
   // the array), so a template-declared value wouldn't be rebuilt away — the
@@ -862,6 +862,7 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, bonusTrigger, stapledT
   if (!tpl) throw new Error('Unknown card: ' + tplId);
   const card = {
     iid: nextIid++,
+    battlefieldIncarnation: 0,
     tplId,
     // slotIdx: player → runState.slots index for run-persistent effects; opp → transient.
     slotIdx: (typeof slotIdx === 'number') ? slotIdx : null,
@@ -1006,6 +1007,7 @@ function makeToken(tokenTplId, controller) {
   if (!tpl) throw new Error('Unknown token: ' + tokenTplId);
   const card = {
     iid: nextIid++,
+    battlefieldIncarnation: 0,
     tplId: tokenTplId,
     isToken: true,
     owner: controller,
@@ -1251,9 +1253,18 @@ function makeState(playerDeck, oppDeck) {
 function log(msg, cls='') { G.log.unshift({msg, cls}); if (G.log.length > 100) G.log.pop(); }
 function pname(who) { return G[who].name; }
 
-function findCard(iid) {
+// A battlefield object is identified by (iid, battlefieldIncarnation). iid keeps
+// its existing cross-zone meaning; every genuine battlefield entry advances the
+// incarnation so old targets and source references cannot bind a returned card.
+function enterBattlefield(card, controller) {
+  card.battlefieldIncarnation = (card.battlefieldIncarnation || 0) + 1;
+  G[controller].battlefield.push(card);
+}
+
+function findCard(iid, battlefieldIncarnation) {
   for (const who of ['you','opp']) {
-    const c = G[who].battlefield.find(x => x.iid === iid);
+    const c = G[who].battlefield.find(x => x.iid === iid
+      && (battlefieldIncarnation == null || x.battlefieldIncarnation === battlefieldIncarnation));
     if (c) return { card: c, controller: who };
   }
   return null;
@@ -1279,7 +1290,7 @@ function findCardAnyZone(iid) {
 function copySourceRef(ctx) {
   const w = (ctx.event && ctx.event.subject_card)
     || ctx.sourceCard
-    || (ctx.sourceIid != null ? (findCard(ctx.sourceIid) || {}).card : null);
+    || (ctx.sourceIid != null ? (findCard(ctx.sourceIid, ctx.sourceBattlefieldIncarnation) || {}).card : null);
   const iid = w && w.copySourceIid;
   return (iid != null) ? { kind: 'creature', iid } : null;
 }
@@ -1300,7 +1311,7 @@ function resolveTarget(ctx, target) {
     log(`${ctx.sourceName} fizzles — no target.`, 'sp');
     return null;
   }
-  const f = findCard(target.iid);
+  const f = findCard(target.iid, target.battlefieldIncarnation);
   if (f) return f;
   log(`${ctx.sourceName} fizzles — target gone.`, 'sp');
   return null;
@@ -1311,7 +1322,7 @@ function resolveTarget(ctx, target) {
 function resolveStackOrPermanent(target) {
   if (!target) return null;
   if (target.kind === 'permanent' || target.kind === 'creature') {
-    const f = findCard(target.iid);
+    const f = findCard(target.iid, target.battlefieldIncarnation);
     if (!f) return null;
     return { kind: 'perm', card: f.card, controller: f.controller };
   }
@@ -1595,7 +1606,7 @@ function choosesEligiblePool(who, filter) {
 function choosesDescriptor(c, who) {
   return {
     kind: hasType(c, 'Creature') ? 'creature' : 'permanent',
-    iid: c.iid, label: c.name,
+    iid: c.iid, battlefieldIncarnation: c.battlefieldIncarnation, label: c.name,
     slotIdx: (typeof c.slotIdx === 'number') ? c.slotIdx : null,
     controller: who,
   };
@@ -1628,6 +1639,7 @@ function maybeDeferHumanChooses(ctx, eff, effList, curTgt) {
     who: chooser,
     source: ctx.sourceName,
     sourceIid: ctx.sourceIid,
+    sourceBattlefieldIncarnation: ctx.sourceBattlefieldIncarnation,
     controller: ctx.controller,
     filter: choosesFilter,
     pool: pool.map(c => choosesDescriptor(c, chooser)),
@@ -1660,7 +1672,8 @@ function maybeDeferTrailingForHumanPrompt(ctx, eff, effList) {
     prompt.trailingEffects = trailing.map(e => ({ ...e }));
     prompt.deferCtx = {
       controller: ctx.controller, sourceName: ctx.sourceName,
-      sourceIid: ctx.sourceIid, allTargets: ctx.allTargets || [],
+      sourceIid: ctx.sourceIid, sourceBattlefieldIncarnation: ctx.sourceBattlefieldIncarnation,
+      allTargets: ctx.allTargets || [],
       chosen: ctx.chosen || null,
     };
     return true;
@@ -1683,7 +1696,8 @@ function resumeTrailingEffects(ctx, effects) {
   for (const eff of (effects || [])) {
     let tgt = null, snap = null;
     if (eff.scope === 'self') {
-      const self = resolveSelfTarget(eff, ctx.sourceIid, ctx.sourceName, ctx.controller);
+      const self = resolveSelfTarget(eff, ctx.sourceIid, ctx.sourceName,
+        ctx.controller, ctx.sourceBattlefieldIncarnation);
       tgt = self.tgt; snap = self.snap;
     }
     applyEffect(ctx, eff, tgt, snap);
@@ -1879,9 +1893,8 @@ function totalStaticCostBump() {
   let bump = 0;
   for (const side of ['you', 'opp']) {
     for (const c of G[side].battlefield) {
-      const tpl = CARDS[c.tplId];
-      if (tpl && typeof tpl.static_cost_bump === 'number') {
-        bump += tpl.static_cost_bump;
+      if (typeof c.static_cost_bump === 'number') {
+        bump += c.static_cost_bump;
       }
     }
   }
@@ -2085,7 +2098,8 @@ function deductFromPool(pool, cost) {
 
 // ----- Effects -----
 
-// Damage with deathtouch/lifelink/trample. Source: ctx.sourceCard or findCard(ctx.sourceIid).
+// Damage with deathtouch/lifelink/trample. Source is captured LKI or the
+// matching live battlefield incarnation.
 function applyDamageFrom(ctx, target, amt) {
   // `!(amt > 0)` (not `amt <= 0`) also rejects undefined/NaN — a damage effect
   // authored without `amount` would otherwise pass `undefined <= 0` and write
@@ -2099,7 +2113,7 @@ function applyDamageFrom(ctx, target, amt) {
   }
   let sourceCard = ctx.sourceCard || null;
   if (!sourceCard && ctx.sourceIid != null) {
-    const sf = findCard(ctx.sourceIid);
+    const sf = findCard(ctx.sourceIid, ctx.sourceBattlefieldIncarnation);
     sourceCard = sf ? sf.card : null;
   }
   const hasDeathtouch = sourceCard && sourceCard.keywords && sourceCard.keywords.includes('deathtouch');
@@ -2124,7 +2138,8 @@ function applyDamageFrom(ctx, target, amt) {
     let spill = 0;
     if (hasTrample) {
       const [, tou] = getStats(f.card);
-      const lethalNeeded = Math.max(0, tou - f.card.damage);
+      const remainingToughness = Math.max(0, tou - f.card.damage);
+      const lethalNeeded = hasDeathtouch ? Math.min(1, remainingToughness) : remainingToughness;
       if (amt > lethalNeeded) {
         toCreature = lethalNeeded;
         spill = amt - lethalNeeded;
@@ -2196,7 +2211,8 @@ function creaturesInScope(ctx, scope) {
   const out = [];
   for (const who of sides) {
     for (const c of G[who].battlefield) {
-      if (hasType(c, 'Creature')) out.push({ kind: 'creature', iid: c.iid, controller: who });
+      if (hasType(c, 'Creature')) out.push({ kind: 'creature', iid: c.iid,
+        battlefieldIncarnation: c.battlefieldIncarnation, controller: who });
     }
   }
   return out;
@@ -2294,7 +2310,7 @@ function placeCardOnBattlefield(ctx, card, fromZone, post) {
   // card's owner is the opponent. Control ≠ ownership — owner is preserved, so the
   // card still returns to the opp's graveyard when it next leaves play.
   const ctrl = post.take_control ? ctx.controller : (card.owner || ctx.controller);
-  G[ctrl].battlefield.push(card);
+  enterBattlefield(card, ctrl);
   if (post.tap) card.tapped = true;
   if (post.untap_on_arrive) card.tapped = false;
   if (post.enter_via_etb !== false) {
@@ -2426,7 +2442,8 @@ const EFFECTS = {
       if (amt <= 0) return;
       log(`${ctx.sourceName} deals ${amt} to each creature.`, 'sp');
       for (const st of creaturesInScope(ctx, params.scope)) {
-        applyDamageFrom(ctx, { kind: 'creature', iid: st.iid }, amt);
+        applyDamageFrom(ctx, { kind: 'creature', iid: st.iid,
+          battlefieldIncarnation: st.battlefieldIncarnation }, amt);
       }
       return;
     }
@@ -2506,11 +2523,13 @@ const EFFECTS = {
     // mutable, so the reward persists to the right run slot AND shows on the
     // dead card). iid scan, not tplId: each cloned Endomorph credits its own
     // slot.
-    const live = findCard(target.iid);
+    const live = findCard(target.iid, target.battlefieldIncarnation);
     let absorber = live ? live.card : null;
     if (!absorber) {
       for (const who of ['you', 'opp']) {
-        const corpse = G[who].graveyard.find(c => c.iid === target.iid);
+        const corpse = G[who].graveyard.find(c => c.iid === target.iid
+          && (target.battlefieldIncarnation == null
+            || c.battlefieldIncarnation === target.battlefieldIncarnation));
         if (corpse) { absorber = corpse; break; }
       }
     }
@@ -2637,7 +2656,7 @@ const EFFECTS = {
   // chooser is opp(controller): boss controls it → the human picks; the player
   // controls it (drafted/stolen) → the AI picks.
   bargain_sticker_self(ctx, params) {
-    const sourceCard = findCard(ctx.sourceIid);
+    const sourceCard = findCard(ctx.sourceIid, ctx.sourceBattlefieldIncarnation);
     if (!sourceCard) return;
     const chooser = opp(sourceCard.controller);
     G.pendingNumberChoice = {
@@ -2674,13 +2693,19 @@ const EFFECTS = {
     const stolenTplId = r.card.tplId;
     const stolenCardName = r.card.name;
     const fromStack = r.kind === 'spell';
-    // Prefer runState slot for player-side perms (captures mid-game absorbs etc.).
+    // Prefer the existing runState slot for human-owned permanents (captures
+    // mid-game absorbs etc.). Controller can differ after a temporary control
+    // change, but ownership and slot identity remain stable.
     let stolenSlot = null;
-    if (r.kind === 'perm' && r.controller === 'you'
+    let retainedSlotIdx = null;
+    if (r.kind === 'perm' && r.card.owner === 'you'
         && typeof r.card.slotIdx === 'number'
         && typeof RUN !== 'undefined' && RUN.getSlots) {
       const slots = RUN.getSlots();
-      stolenSlot = slots && slots[r.card.slotIdx] ? slots[r.card.slotIdx] : null;
+      if (slots && slots[r.card.slotIdx]) {
+        retainedSlotIdx = r.card.slotIdx;
+        stolenSlot = slots[retainedSlotIdx];
+      }
     }
     // ─── Remove the source ─────────────────────────────────────────────
     // Permanent: pluck from battlefield, clear restrictions sourced from it,
@@ -2729,16 +2754,22 @@ const EFFECTS = {
         ? { stapledTpls, empowerRolls: r.card.empowerRolls, subtypeRolls: r.card.subtypeRolls }
         : undefined;
     }
-    // ─── Append the new slot and shuffle a fresh instance into library ──
+    // ─── Reuse the human slot or append a captured slot ──────────────────
     // RUN-state writes are HUMAN-side only (audit A4-15): there is exactly
     // one persisted run deck — the player's — and every RUN-writing handler
     // (endomorph_absorb, apply_sticker, rip, this appendSlot) gates on the
-    // controller. An opp thief keeps the theft in-game only: fresh instance
-    // into its in-game library below, slotIdx null (the opp transient-slot
-    // convention), and the victim's slot deliberately untouched.
-    const newSlotIdx = (ctx.controller === 'you' && typeof RUN !== 'undefined' && RUN.appendSlot)
-      ? RUN.appendSlot(stolenTplId, stickers, meta)
-      : null;
+    // controller. A human-owned permanent already has its persisted identity,
+    // so stealing it directly or back from temporary control retains slotIdx.
+    // An opp thief keeps the theft in-game only: fresh instance into its
+    // in-game library below, slotIdx null (the opp transient-slot convention),
+    // and the victim's slot deliberately untouched.
+    let newSlotIdx = null;
+    if (ctx.controller === 'you' && typeof RUN !== 'undefined') {
+      newSlotIdx = retainedSlotIdx;
+      if (newSlotIdx == null && RUN.appendSlot) {
+        newSlotIdx = RUN.appendSlot(stolenTplId, stickers, meta);
+      }
+    }
     // Fresh runtime card — template stats + sticker effects re-applied, no
     // residue from the original instance (counters, grants, damage, combat).
     const fresh = makeCard(stolenTplId, stickers, newSlotIdx,
@@ -2890,7 +2921,8 @@ const EFFECTS = {
         continue;
       }
       const t = (sel === 'target') ? (target || ctx.chosen)
-              : (sel === 'self') ? { kind: 'creature', iid: ctx.sourceIid }
+              : (sel === 'self') ? { kind: 'creature', iid: ctx.sourceIid,
+                battlefieldIncarnation: ctx.sourceBattlefieldIncarnation }
               : (sel === 'copy_source') ? copySourceRef(ctx)
               : null;
       if (!t) {
@@ -2901,7 +2933,7 @@ const EFFECTS = {
       }
 
       if (from === 'battlefield') {
-        const f = findCard(t.iid);
+        const f = findCard(t.iid, t.battlefieldIncarnation);
         if (!f) break;
         const card = pluckFromBattlefield(f);
         if (!card) break;
@@ -3038,7 +3070,7 @@ const EFFECTS = {
     const made = [];
     for (let i = 0; i < count; i++) {
       const tok = makeToken(token_id, owner);
-      G[owner].battlefield.push(tok);
+      enterBattlefield(tok, owner);
       made.push(tok);
     }
     const plural = count === 1 ? '' : 's';
@@ -3056,7 +3088,7 @@ const EFFECTS = {
     // Falls back to ctx.chosen (the chooses() pick) for the edict chain.
     const t = target || ctx.chosen;
     if (!t) return;
-    const f = findCard(t.iid);
+    const f = findCard(t.iid, t.battlefieldIncarnation);
     if (!f) return;
     sacrificeCard(f.card, f.controller);
   },
@@ -3066,7 +3098,7 @@ const EFFECTS = {
   annihilate(ctx, params, target) {
     const t = target || ctx.chosen;
     if (!t) return;
-    const f = findCard(t.iid);
+    const f = findCard(t.iid, t.battlefieldIncarnation);
     if (!f) return;
     annihilateCard(f.card, f.controller);
   },
@@ -3128,7 +3160,7 @@ const EFFECTS = {
   // the base identity) is never clobbered by the copied creature's triggers.
   become_copy_of(ctx, params, target) {
     const witness = ctx.sourceCard
-      || (ctx.sourceIid != null ? (findCard(ctx.sourceIid) || {}).card : null);
+      || (ctx.sourceIid != null ? (findCard(ctx.sourceIid, ctx.sourceBattlefieldIncarnation) || {}).card : null);
     if (!witness) return;
     const pick = target || ctx.chosen;
     const found = (pick && pick.iid != null) ? findCardAnyZone(pick.iid) : null;
@@ -3136,15 +3168,28 @@ const EFFECTS = {
     if (!srcTpl) { log(`${ctx.sourceName} finds nothing to copy.`, 'sp'); return; }
 
     // The link the leave trigger reads to return the exiled original, and the
-    // revert flag resetInPlayState keys on.
+    // revert flag resetInPlayState keys on. Preserve the witness's effective
+    // base fields so its own persistent stickers survive the copy cycle.
+    witness.copyBaseIdentity = {
+      color: witness.color,
+      colors: Array.isArray(witness.colors) ? witness.colors.slice() : [],
+      hasStaticCostBump: typeof witness.static_cost_bump === 'number',
+      staticCostBump: witness.static_cost_bump,
+    };
     witness.copyOf = found.card.tplId;
     witness.copySourceIid = pick.iid;
     // Copiable printed characteristics (the base template — not modified runtime
     // stats/damage), materialized onto the instance fields the engine reads.
     witness.name = srcTpl.name;
+    witness.color = found.card.color;
+    witness.colors = Array.isArray(found.card.colors) ? found.card.colors.slice() : [];
     witness.power = srcTpl.power;
     witness.toughness = srcTpl.toughness;
-    witness.keywords = (srcTpl.keywords || []).slice();
+    if (typeof found.card.static_cost_bump === 'number') {
+      witness.static_cost_bump = found.card.static_cost_bump;
+    } else {
+      delete witness.static_cost_bump;
+    }
     witness.abilities = srcTpl.abilities
       ? srcTpl.abilities.map(ab => ({ ...ab, cost: ab.cost ? { ...ab.cost } : undefined,
           effects: (ab.effects || []).map(e => ({ ...e })) }))
@@ -3165,6 +3210,8 @@ const EFFECTS = {
     // the auto-reverting typeGrants layer (cleared on leave like every grant).
     const keep = Array.isArray(params.keep_subtypes) ? params.keep_subtypes : [];
     applyTypeGrant(witness, [...(srcTpl.types || []), ...keep], 'set', null, false);
+    witness.keywords = (srcTpl.keywords || []).slice();
+    applySubtypeKeywords(witness);
     witness.text = describeCardText(witness);
     log(`${ctx.sourceName} becomes a copy of ${srcTpl.name}.`, 'sp');
   },
@@ -3258,8 +3305,10 @@ const EFFECTS = {
     // ruling) — see applyDamageFrom. Deathtouch/lifelink still ride.
     const aCtx = { controller: a.controller, sourceName: a.card.name, sourceIid: a.card.iid, fightDamage: true };
     const bCtx = { controller: b.controller, sourceName: b.card.name, sourceIid: b.card.iid, fightDamage: true };
-    applyDamageFrom(aCtx, {kind:'creature', iid: b.card.iid}, aPow);
-    applyDamageFrom(bCtx, {kind:'creature', iid: a.card.iid}, bPow);
+    applyDamageFrom(aCtx, {kind:'creature', iid: b.card.iid,
+      battlefieldIncarnation: b.card.battlefieldIncarnation}, aPow);
+    applyDamageFrom(bCtx, {kind:'creature', iid: a.card.iid,
+      battlefieldIncarnation: a.card.battlefieldIncarnation}, bPow);
   },
   untap(ctx, params, target) {
     const f = resolveTarget(ctx, target);
@@ -3414,12 +3463,14 @@ const EFFECTS = {
       const rebuilt = makeCard(baseCard.tplId, mergedStickers, newSlotIdx,
                                mergedRolls, mergedBonus, newStapledTpls, mergedSubtypeRolls);
       const preservedIid = baseCard.iid;
+      const preservedBattlefieldIncarnation = baseCard.battlefieldIncarnation;
       const preservedTapped = baseCard.tapped;
       const preservedSick = baseCard.sick;
       const preservedDamage = baseCard.damage;
       const preservedCounters = baseCard.counters;
       for (const k of Object.keys(rebuilt)) baseCard[k] = rebuilt[k];
       baseCard.iid = preservedIid;
+      baseCard.battlefieldIncarnation = preservedBattlefieldIncarnation;
       baseCard.tapped = preservedTapped;
       baseCard.sick = preservedSick;
       baseCard.damage = preservedDamage;
@@ -3619,12 +3670,14 @@ const EFFECTS = {
 function snapshotTarget(target) {
   if (!target) return null;
   if (target.kind === 'creature' && target.iid != null) {
-    const f = findCard(target.iid);
-    if (!f) return { kind: 'creature', iid: target.iid, missing: true };
+    const f = findCard(target.iid, target.battlefieldIncarnation);
+    if (!f) return { kind: 'creature', iid: target.iid,
+      battlefieldIncarnation: target.battlefieldIncarnation, missing: true };
     const [pow, tou] = getStats(f.card);
     return {
       kind: 'creature',
       iid: target.iid,
+      battlefieldIncarnation: target.battlefieldIncarnation,
       label: target.label || f.card.name,
       power: pow,
       toughness: tou,
@@ -3659,7 +3712,7 @@ function makeSlotTargetGetter(targets) {
 // battlefield-only, which is exactly "still in its expected zone" for a creature.
 function liveTargetView(targetSnap) {
   if (targetSnap && targetSnap.kind === 'creature' && targetSnap.iid != null) {
-    const f = findCard(targetSnap.iid);
+    const f = findCard(targetSnap.iid, targetSnap.battlefieldIncarnation);
     if (f) {
       const [power, toughness] = getStats(f.card);
       return { power, toughness, controller: f.controller };
@@ -4109,9 +4162,10 @@ function effectOperatesOnCreature(eff) {
 // creature instead of its controller). For a spell, the
 // "creature" descriptor is the spell card itself — not on the battlefield,
 // so creature-operating self effects fizzle gracefully there.
-function resolveSelfTarget(eff, sourceIid, sourceName, controller) {
+function resolveSelfTarget(eff, sourceIid, sourceName, controller, sourceBattlefieldIncarnation) {
   if (effectOperatesOnCreature(eff)) {
-    const tgt = { kind: 'creature', iid: sourceIid, label: sourceName };
+    const tgt = { kind: 'creature', iid: sourceIid,
+      battlefieldIncarnation: sourceBattlefieldIncarnation, label: sourceName };
     return { tgt, snap: snapshotTarget(tgt) };
   }
   const tgt = { kind: 'player', who: controller };
@@ -4244,6 +4298,7 @@ function emit(evt, extraSources) {
       G.pendingTriggers.push({
         trig,
         sourceIid: card.iid,
+        sourceBattlefieldIncarnation: card.battlefieldIncarnation,
         sourceName: card.name,
         controller: who,
         event: evt,
@@ -4328,7 +4383,8 @@ function resolveTriggerImmediate(p, targets) {
   const trigDesc = formatTriggerText(triggerLogText(p.trig), p.sourceName).replace(/\.$/, '');
   log(`${p.sourceName} triggers (split second): ${trigDesc}.`, 'sp');
   resolveTrigger({
-    kind: 'trigger', trig: p.trig, sourceIid: p.sourceIid, sourceName: p.sourceName,
+    kind: 'trigger', trig: p.trig, sourceIid: p.sourceIid,
+    sourceBattlefieldIncarnation: p.sourceBattlefieldIncarnation, sourceName: p.sourceName,
     controller: p.controller, targets, event: p.event || null,
   });
   // The board just mutated with no stack push: wipe any stale passes so a
@@ -4344,6 +4400,7 @@ function pushTriggerEntry(p, targets) {
     kind: 'trigger',
     trig: p.trig,
     sourceIid: p.sourceIid,
+    sourceBattlefieldIncarnation: p.sourceBattlefieldIncarnation,
     sourceName: p.sourceName,
     controller: p.controller,
     targets,
@@ -4422,7 +4479,8 @@ function advanceTriggerTargetPrompt(pt) {
 function triggerPlayerTargetPrompt(p) {
   if (p.controller !== 'you' || !objectNeedsTarget(p.trig)) return null;
   const pt = {
-    controller: p.controller, sourceIid: p.sourceIid, sourceName: p.sourceName,
+    controller: p.controller, sourceIid: p.sourceIid,
+    sourceBattlefieldIncarnation: p.sourceBattlefieldIncarnation, sourceName: p.sourceName,
     trig: p.trig, event: p.event || null,
     slotKeys: tsSlotKeys(p.trig, p.controller),
     pickedSlots: [], currentSlot: -1, valid: null, promptEff: null,
@@ -4496,7 +4554,7 @@ function drainTriggers() {
       subject_iid: p.sourceIid,
       // Last-known information: null if the source left play between firing
       // and drain (its ability still triggered; card-predicates just fail).
-      subject_card: (findCard(p.sourceIid) || {}).card || null,
+      subject_card: (findCard(p.sourceIid, p.sourceBattlefieldIncarnation) || {}).card || null,
       controller: p.controller,
       cause: p.event || null,
       trig: p.trig,
@@ -4522,7 +4580,7 @@ function drainTriggers() {
 function pickBestTriggerTarget(eff, valid, controller) {
   const them = opp(controller);
   const ctrlOf = t => {
-    const f = findCard(t.iid);
+    const f = findCard(t.iid, t.battlefieldIncarnation);
     return f ? f.controller : null;
   };
   if (eff.kind === 'damage') {
@@ -4586,7 +4644,7 @@ function pickBestTriggerTarget(eff, valid, controller) {
     const wantedCtrl = isDebuff ? them : controller;
     const candidates = valid.filter(t => t.kind === 'creature' && ctrlOf(t) === wantedCtrl);
     const usable = candidates.filter(t => {
-      const f = findCard(t.iid);
+      const f = findCard(t.iid, t.battlefieldIncarnation);
       return f && !f.card.keywords.includes(eff.keyword);
     });
     if (usable.length) {
@@ -4691,11 +4749,13 @@ function resolveTrigger(item) {
 function runTriggerEffects(item) {
   const ctx = {
     sourceIid: item.sourceIid,
+    sourceBattlefieldIncarnation: item.sourceBattlefieldIncarnation,
     sourceName: item.sourceName,
     controller: item.controller,
     // Best-effort lookup — source may have left play between queue and resolve.
     sourceCard: (() => {
-      const f = item.sourceIid != null ? findCard(item.sourceIid) : null;
+      const f = item.sourceIid != null
+        ? findCard(item.sourceIid, item.sourceBattlefieldIncarnation) : null;
       return f ? f.card : null;
     })(),
     event: item.event || null,
@@ -4731,7 +4791,8 @@ function runTriggerEffects(item) {
       applyEffect(ctx, eff, tgt, snap);
     } else if (eff.scope === 'self') {
       // Self → source creature OR source's controller (shared fork, A4-13).
-      const self = resolveSelfTarget(eff, item.sourceIid, item.sourceName, item.controller);
+      const self = resolveSelfTarget(eff, item.sourceIid, item.sourceName,
+        item.controller, item.sourceBattlefieldIncarnation);
       applyEffect(ctx, eff, self.tgt, self.snap);
     } else if (hasTargetStep && eff.scope == null) {
       // Bare effect after a target() step → operate on the established/chosen target.
@@ -4811,7 +4872,8 @@ function getValidTargets(effect, controller) {
         {kind:'player', who:'opp', label: G.opp.name},
         ...allCreatures
           .filter(x => matchFilter(x.card, effect.filter, x.ctrl, controller))
-          .map(x => ({kind:'creature', iid:x.card.iid, label:x.card.name})),
+          .map(x => ({kind:'creature', iid:x.card.iid,
+            battlefieldIncarnation:x.card.battlefieldIncarnation, label:x.card.name})),
       ];
     case 'player':
       // Card-axis filters never apply to players — a player/opp target
@@ -4827,7 +4889,8 @@ function getValidTargets(effect, controller) {
     case 'creature':
       return allCreatures
         .filter(x => matchFilter(x.card, effect.filter, x.ctrl, controller))
-        .map(x => ({kind:'creature', iid:x.card.iid, label:x.card.name}));
+        .map(x => ({kind:'creature', iid:x.card.iid,
+          battlefieldIncarnation:x.card.battlefieldIncarnation, label:x.card.name}));
     case 'permanent':
       // Creatures + Lands + Artifacts. Special-card exclusions live in caller filters.
       return [
@@ -4837,7 +4900,8 @@ function getValidTargets(effect, controller) {
         .filter(x => isPermanent(x.card))
         .filter(x => !hexproofBlocks(x.card, x.ctrl, controller))
         .filter(x => matchFilter(x.card, effect.filter, x.ctrl, controller))
-        .map(x => ({kind:'permanent', iid:x.card.iid, label:x.card.name}));
+        .map(x => ({kind:'permanent', iid:x.card.iid,
+          battlefieldIncarnation:x.card.battlefieldIncarnation, label:x.card.name}));
     case 'graveyard_card': {
       // Cards in one or more graveyards, via composable filter axes:
       //   graveyards: which yards to search, as controller-relative tokens
@@ -4888,7 +4952,8 @@ function getValidTargets(effect, controller) {
         .filter(x => isPermanent(x.card))
         .filter(x => !hexproofBlocks(x.card, x.ctrl, controller))
         .filter(x => matchFilter(x.card, effect.filter, x.ctrl, controller))
-        .map(x => ({kind:'permanent', iid:x.card.iid, label:x.card.name}));
+        .map(x => ({kind:'permanent', iid:x.card.iid,
+          battlefieldIncarnation:x.card.battlefieldIncarnation, label:x.card.name}));
       const spells = G.stack
         .filter(s => s.kind !== 'trigger' && s.kind !== 'ability' && s.card)
         .filter(s => matchFilterSpell(s.card, effect.filter))
@@ -5361,8 +5426,11 @@ function matchFilterNoStats(card, filter, controller, who) {
 function sameTarget(a, b) {
   if (a.kind !== b.kind) return false;
   if (a.kind === 'player') return a.who === b.who;
-  if (a.kind === 'creature') return a.iid === b.iid;
-  if (a.kind === 'permanent') return a.iid === b.iid;
+  if (a.kind === 'creature' || a.kind === 'permanent') {
+    return a.iid === b.iid
+      && (a.battlefieldIncarnation == null || b.battlefieldIncarnation == null
+        || a.battlefieldIncarnation === b.battlefieldIncarnation);
+  }
   if (a.kind === 'graveyard_card') return a.iid === b.iid;
   if (a.kind === 'stack') return a.stackItem === b.stackItem;
   return false;
@@ -5416,8 +5484,22 @@ function resetInPlayState(card, preserveDeathState) {
     const baseTpl = CARDS[card.tplId];
     if (baseTpl) {
       card.name = baseTpl.name;
+      const baseIdentity = card.copyBaseIdentity;
+      card.color = baseIdentity ? baseIdentity.color : baseTpl.color;
+      card.colors = baseIdentity && Array.isArray(baseIdentity.colors)
+        ? baseIdentity.colors.slice()
+        : (Array.isArray(baseTpl.colors) ? baseTpl.colors.slice() : []);
       card.power = baseTpl.power;
       card.toughness = baseTpl.toughness;
+      if (baseIdentity ? baseIdentity.hasStaticCostBump
+        : typeof baseTpl.static_cost_bump === 'number') {
+        card.static_cost_bump = baseIdentity
+          ? baseIdentity.staticCostBump
+          : baseTpl.static_cost_bump;
+      } else {
+        delete card.static_cost_bump;
+      }
+      delete card.copyBaseIdentity;
       card.abilities = baseTpl.abilities
         ? baseTpl.abilities.map(ab => ({ ...ab, cost: ab.cost ? { ...ab.cost } : undefined,
             effects: (ab.effects || []).map(e => ({ ...e })) }))
@@ -6345,18 +6427,20 @@ function applySpellRiders(item, card) {
       const filt = rider.spell_filter;
       if (filt && filt.has_effect && !cardHasEffect(card, (e) => e.kind === filt.has_effect)) continue;
       if (filt && filt.type && !hasType(card, filt.type)) continue;
-      const ctx = { controller: caster, sourceName: src.name, sourceIid: src.iid, sourceCard: src };
+      const ctx = { controller: caster, sourceName: src.name, sourceIid: src.iid,
+        sourceBattlefieldIncarnation: src.battlefieldIncarnation, sourceCard: src };
       const scope = rider.rider_scope || 'all_targets';
       if (scope === 'self') {
         for (const eff of (rider.effects || [])) {
-          const self = resolveSelfTarget(eff, src.iid, src.name, caster);
+          const self = resolveSelfTarget(eff, src.iid, src.name,
+            caster, src.battlefieldIncarnation);
           applyEffect(ctx, eff, self.tgt, self.snap);
         }
         continue;
       }
       for (const t of targets) {
         if (t.kind === 'creature') {
-          const f = findCard(t.iid);
+          const f = findCard(t.iid, t.battlefieldIncarnation);
           if (!f) continue;                                   // died during resolution
           if (scope === 'your_creature_targets' && f.controller !== caster) continue;
         } else if (t.kind === 'player') {
@@ -6395,7 +6479,7 @@ function resolveTopOfStack() {
     // anyway, but set sick=false defensively so any future "sick if
     // creature" code paths see a clean value.
     card.sick = hasType(card, 'Creature');
-    G[item.controller].battlefield.push(card);
+    enterBattlefield(card, item.controller);
     log(`${card.name} enters the battlefield.`, 'sp');
     emitZoneChange(card, item.controller, 'stack', 'battlefield');
   } else {
@@ -6433,7 +6517,7 @@ function resolveTopOfStack() {
     const ripEligible = (Array.isArray(item.targets) && typeof card.slotIdx === 'number') &&
       item.targets.some(t => {
         if (!t || t.kind !== 'creature' || typeof t.iid !== 'number') return false;
-        const f = findCard(t.iid);
+        const f = findCard(t.iid, t.battlefieldIncarnation);
         if (!f) return false;
         const targetTpl = CARDS[f.card.tplId];
         return targetTpl && targetTpl.rip_on_target;
@@ -6750,7 +6834,7 @@ function doPlayLand(who, cardIid) {
   const p = G[who];
   const idx = p.hand.findIndex(c => c.iid === cardIid);
   const card = p.hand.splice(idx, 1)[0];
-  p.battlefield.push(card);
+  enterBattlefield(card, who);
   // Comes-into-play tapped (Deepseam Quarry): unavailable for mana this turn;
   // untaps on the controller's next untap step like any tapland.
   if (card.enters_tapped) card.tapped = true;
@@ -6884,7 +6968,8 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
   const isMana = isManaAbility(ab);
   const entry = {
     kind: 'ability', ab,
-    sourceIid: card.iid, sourceName: card.name,
+    sourceIid: card.iid, sourceBattlefieldIncarnation: card.battlefieldIncarnation,
+    sourceName: card.name,
     // The source card object, captured at activation. Resolution reads it as
     // last-known information (§3.6 spirit): the source may leave play between
     // activation and resolution (it may even have paid itself as the
@@ -6955,7 +7040,7 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
 // arm of doActivateAbility (mana abilities + the dormant stackable:false
 // path) and kind:'ability' stack-entry resolution (resolveAbilityEntry).
 // `item` is the entry shape doActivateAbility builds: {ab, sourceIid,
-// sourceName, sourceCard, controller, targets}.
+// sourceBattlefieldIncarnation, sourceName, sourceCard, controller, targets}.
 function runAbilityEffects(item) {
   const ab = item.ab;
   const who = item.controller;
@@ -6963,6 +7048,7 @@ function runAbilityEffects(item) {
   // sourceCard is the activation-time object (last-known information) — see
   // the entry-construction comment in doActivateAbility.
   const ctx = { controller: who, sourceName: item.sourceName, sourceIid: item.sourceIid,
+                sourceBattlefieldIncarnation: item.sourceBattlefieldIncarnation,
                 sourceCard: item.sourceCard || null, allTargets: targets,
                 // Tap-for-mana lane threads the resolved color choice + log
                 // framing through to the add_mana handler (doTapLandForMana).
@@ -6999,7 +7085,8 @@ function runAbilityEffects(item) {
       // self-abilities all survive: pump/add_type are creature-routed by
       // CREATURE_EFFECT_KINDS; gain_life/move_card route to the controller,
       // which their handlers' ctx.controller fallbacks already produced.
-      const self = resolveSelfTarget(e, item.sourceIid, item.sourceName, who);
+      const self = resolveSelfTarget(e, item.sourceIid, item.sourceName,
+        who, item.sourceBattlefieldIncarnation);
       tgt = self.tgt;
       snap = self.snap;
     } else if (effectNeedsTarget(e)) {
@@ -7154,7 +7241,9 @@ function doEdictChoice(who, iid) {
   G.pendingEdictChoice = null;
   const ctx = {
     controller: p.controller, sourceName: p.source, sourceIid: p.sourceIid,
-    chosen: { kind: picked.kind, iid: picked.iid, label: picked.label,
+    sourceBattlefieldIncarnation: p.sourceBattlefieldIncarnation,
+    chosen: { kind: picked.kind, iid: picked.iid,
+      battlefieldIncarnation: picked.battlefieldIncarnation, label: picked.label,
       slotIdx: picked.slotIdx, controller: who },
   };
   log(`${pname(who)} chooses ${picked.label}.`, 'sp');

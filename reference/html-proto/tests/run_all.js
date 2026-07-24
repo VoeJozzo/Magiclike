@@ -216,6 +216,7 @@ const CATEGORY_A = [
   // included), multi-target entries partial-fizzle onto remaining legal
   // targets, happy path unchanged.
   'test_resolution_revalidation.js',
+  'test_battlefield_incarnation.js',
   // Audit A3-10 — no silent emit-time trigger eat: a targeted trigger with no
   // legal target queues on event match and fizzles WITH a log at the
   // stack-push moment (§1004/§1005).
