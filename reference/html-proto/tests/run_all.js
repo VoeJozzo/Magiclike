@@ -441,6 +441,12 @@ const CATEGORY_A = [
   // Audit bug proofs: each asserts the behavior a vibecode-audit finding
   // showed was broken, kept as the regression pin for that bug class.
   'proofs_audit.js',
+  // Resolution-context slot tracking, deferred-decision housekeeping, and
+  // queued Architect's Codex build prompts.
+  'test_engine_deferred_lifecycle.js',
+  // Priority-gated land plays, control-change sickness, type-change combat
+  // removal, and legendary cast-enumeration parity.
+  'test_engine_legality_and_combat.js',
 ];
 
 const TESTS_DIR = __dirname;

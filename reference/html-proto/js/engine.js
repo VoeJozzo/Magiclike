@@ -1153,8 +1153,11 @@ function makeState(playerDeck, oppDeck) {
     pendingOptionalCost: null,        // {who, cost, source, sourceIid, item} — "you may pay {cost}" trigger (Land+Spell staple ETB)
     forcedDiscard: null,              // {who, remaining}
     pendingSearch: null,              // {who, filter, source} — tutors
-    pendingTriggerBuild: null,        // {who, cardIid, options, allowKeep} — Codex etc.
+    pendingTriggerBuild: null,        // current Architect's Codex build prompt
+    pendingTriggerBuildQueue: [],     // later Codex prompts opened by the same draw effect
     pendingTriggerTarget: null,       // {controller, sourceIid, sourceName, trig, valid}
+    resolutionContext: null,          // popped stack item while its resolution is active
+    effectsCompletionPending: false,  // housekeeping waits until a deferred decision chain closes
     // Trigger queue/budget. Drained at priority-round open. triggerChainDepth
     // is (despite the name) a per-stack-episode trigger BUDGET — it counts
     // every trigger resolution since the stack last emptied, not nesting
@@ -3157,6 +3160,7 @@ const EFFECTS = {
     // attacker could legally be assigned to block itself. Shares the A2-3
     // helper: one "leaves combat" concept.
     removeFromCombat(card.iid);
+    if (hasType(card, 'Creature')) card.sick = true;
     if (params.untap) card.tapped = false;
     if (params.grant_haste) applyGrant(card, 'haste', ctx.sourceIid, true);
     if (params.duration === 'eot') card.tempControlUntilEot = true;
@@ -4592,6 +4596,7 @@ function resolveTrigger(item) {
       item,
     };
     log(`${item.sourceName}: ${pname(who)} may pay to use the stapled effect.`, 'sp');
+    finishEffectsBoundary();
     return;  // doOptionalCost resumes here (runs the effects on pay)
   }
   runTriggerEffects(item);
@@ -4652,7 +4657,7 @@ function runTriggerEffects(item) {
     if (maybeDeferTrailingForHumanPrompt(ctx, eff, item.trig.effects || [])) break;   // A4-23 leg-1
   }
   ctx.chosen = null;
-  afterEffectsApplied();
+  finishEffectsBoundary();
 }
 
 // Resolve an optional-cost ("you may pay {cost}") trigger after the controller
@@ -4664,13 +4669,13 @@ function doOptionalCost(who, pay) {
   G.pendingOptionalCost = null;
   if (!pay) {
     log(`${pname(who)} declines ${p.source}'s optional cost.`, 'sp');
-    afterEffectsApplied();
+    finishDeferredEffectsBoundary();
     return;
   }
   // Re-check affordability at resolution (board could have changed while paused).
   if (!canPayPotential(who, p.cost)) {
     log(`${pname(who)} can no longer pay ${p.source}'s cost — declined.`, 'sp');
-    afterEffectsApplied();
+    finishDeferredEffectsBoundary();
     return;
   }
   payMana(who, p.cost);
@@ -5482,6 +5487,7 @@ function applyTypeChange(ctx, params, target, op) {
   if (!tags.length) return;
   const eot = params.duration !== 'permanent';
   applyTypeGrant(f.card, tags, op, null, eot);
+  if (!hasType(f.card, 'Creature')) removeFromCombat(f.card.iid);
   const p = params.power || 0, t = params.toughness || 0;
   if (p || t) {
     if (eot) { f.card.tempPower = (f.card.tempPower || 0) + p; f.card.tempTou = (f.card.tempTou || 0) + t; }
@@ -5515,6 +5521,7 @@ function clearRestrictionsFromSource(sourceIid) {
       // One-shot spells pass source:null, so this never touches them.
       if (Array.isArray(c.typeGrants) && c.typeGrants.length) {
         c.typeGrants = c.typeGrants.filter(g => g.source !== sourceIid);
+        if (!hasType(c, 'Creature')) removeFromCombat(c.iid);
       }
       // Granted keywords: remove this source from each keyword's grant set
       // (e.g., Bindspeaker dies → target loses defender). Strip logic shared
@@ -5590,22 +5597,10 @@ function drawCard(who, sourceIid) {
   return c;
 }
 
-// Open the trigger-build prompt for a build_on_draw card if eligible.
-// Centralizes the prompt-setup logic so every "card moves to hand" path
-// (drawCard, tutors, opening-hand scan) can call it without duplicating.
-// Returns true if the prompt was opened, false if skipped (wrong player,
-// not a build_on_draw card, already built this game).
-function tryBuildOnDraw(card, who) {
-  if (who !== 'you') return false;
-  if (!card || card._builtThisGame) return false;
-  const tpl = CARDS[card.tplId];
-  if (!tpl || !tpl.build_on_draw) return false;
-  card._builtThisGame = true;
-  // Two-step build: step 1 picks the condition (when), step 2 picks the
-  // effect (what), step 3 (only if there's a current ability) chooses
-  // between the newly-built trigger and the existing one. The state field
-  // tracks step + accumulated picks; legality and dispatch branch on step.
-  G.pendingTriggerBuild = {
+// Create or queue the trigger-build prompt for an eligible build_on_draw card.
+// Every hand-entry path uses this helper, and each card builds at most once per game.
+function makeTriggerBuildPrompt(card, who) {
+  const prompt = {
     who,
     cardIid: card.iid,
     slotIdx: card.slotIdx,
@@ -5615,20 +5610,25 @@ function tryBuildOnDraw(card, who) {
     effectOptions: null,
     chosenEffect: null,
     assembledTrigger: null,
-    // Captured at build-start so step 3 can compare new vs existing.
-    // Looked up via slot at start time; slot.bonusTrigger may change
-    // between build moments, so capture-now-compare-later is correct.
     currentTrigger: null,
   };
-  // Snapshot the current trigger if there is one, so step 3 can compare.
-  // RUN may not be initialized yet (engine standalone tests, opening-hand
-  // scan before RUN setup) — getSlots can also return null when there's
-  // no run state. Both nullish cases collapse to "no slot, no current trigger".
   const slots = (typeof RUN !== 'undefined' && RUN.getSlots) ? RUN.getSlots() : null;
   const slot = (slots && typeof card.slotIdx === 'number') ? slots[card.slotIdx] : null;
-  if (slot && slot.bonusTrigger) {
-    G.pendingTriggerBuild.currentTrigger = slot.bonusTrigger;
-  }
+  if (slot && slot.bonusTrigger) prompt.currentTrigger = slot.bonusTrigger;
+  return prompt;
+}
+function advanceTriggerBuildQueue() {
+  G.pendingTriggerBuild = G.pendingTriggerBuildQueue.shift() || null;
+}
+function tryBuildOnDraw(card, who) {
+  if (who !== 'you') return false;
+  if (!card || card._builtThisGame) return false;
+  const tpl = CARDS[card.tplId];
+  if (!tpl || !tpl.build_on_draw) return false;
+  card._builtThisGame = true;
+  const prompt = makeTriggerBuildPrompt(card, who);
+  if (G.pendingTriggerBuild) G.pendingTriggerBuildQueue.push(prompt);
+  else G.pendingTriggerBuild = prompt;
   log(`📜 ${card.name} offers a build moment — choose a condition.`, 'sp');
   return true;
 }
@@ -5915,7 +5915,42 @@ function hasPhylacteryProtection(who) {
 // removed index must decrement (so slot-based lookups stay valid); (2) the
 // player's playedSlotIdxs Set — read by the win-reward filter (filterByPlayed)
 // — must be remapped the SAME way (DROP the removed index, DECREMENT every
-// index above it), or sticker rewards mis-aim.
+// index above it), or sticker rewards mis-aim. The sweep includes stack and
+// active-resolution cards because either can hold the removed slot.
+function slotBearingStackItems() {
+  const items = G.stack.slice();
+  if (G.resolutionContext && G.resolutionContext.item) items.push(G.resolutionContext.item);
+  return items;
+}
+function cardBelongsToSlotOwner(card, item, who) {
+  return card && (card.owner || item.controller) === who;
+}
+function removeCardForRemovedSlot(who, removedIdx) {
+  const zones = ['library', 'hand', 'battlefield', 'graveyard', 'exile'];
+  let removed = null;
+  for (const zoneName of zones) {
+    const zone = G[who][zoneName];
+    if (!zone) continue;
+    const idx = zone.findIndex(c => c.slotIdx === removedIdx);
+    if (idx < 0) continue;
+    removed = zone.splice(idx, 1)[0];
+    if (zoneName === 'battlefield') clearRestrictionsFromSource(removed.iid);
+    break;
+  }
+  if (!removed) {
+    const stackIdx = G.stack.findIndex(item => item.card
+      && cardBelongsToSlotOwner(item.card, item, who) && item.card.slotIdx === removedIdx);
+    if (stackIdx >= 0) removed = G.stack.splice(stackIdx, 1)[0].card;
+  }
+  const resolving = G.resolutionContext && G.resolutionContext.item;
+  if (resolving && resolving.card && cardBelongsToSlotOwner(resolving.card, resolving, who)
+      && resolving.card.slotIdx === removedIdx) {
+    removed = removed || resolving.card;
+    G.resolutionContext.cardRemoved = true;
+  }
+  if (removed) removed.slotIdx = null;
+  return removed;
+}
 function fixupSlotPointersAfterRemoval(who, removedIdx) {
   const zones = ['library', 'hand', 'battlefield', 'graveyard', 'exile'];
   for (const zoneName of zones) {
@@ -5925,12 +5960,17 @@ function fixupSlotPointersAfterRemoval(who, removedIdx) {
       if (typeof c.slotIdx === 'number' && c.slotIdx > removedIdx) c.slotIdx -= 1;
     }
   }
+  for (const item of slotBearingStackItems()) {
+    const c = item.card;
+    if (cardBelongsToSlotOwner(c, item, who)
+        && typeof c.slotIdx === 'number' && c.slotIdx > removedIdx) c.slotIdx -= 1;
+  }
   const played = G[who] && G[who].playedSlotIdxs;
   if (played instanceof Set && played.size > 0) {
     const remapped = new Set();
     for (const i of played) {
-      if (i === removedIdx) continue;            // drop-at: the slot is gone
-      remapped.add(i > removedIdx ? i - 1 : i);  // decrement-above
+      if (i === removedIdx) continue;
+      remapped.add(i > removedIdx ? i - 1 : i);
     }
     G[who].playedSlotIdxs = remapped;
   }
@@ -5955,25 +5995,8 @@ function ripSlotForPhylactery(who) {
   const ripIdx = pool[Math.floor(Math.random() * pool.length)];
   const ripped = RUN.removeSlotByIdx(ripIdx);
   if (!ripped) return false;
-  const zones = ['library', 'hand', 'battlefield', 'graveyard', 'exile'];
-  let removedCardName = ripped.tplId;
-  for (const zoneName of zones) {
-    const zone = G[who][zoneName];
-    if (!zone) continue;
-    const idx = zone.findIndex(c => c.slotIdx === ripIdx);
-    if (idx >= 0) {
-      const [c] = zone.splice(idx, 1);
-      removedCardName = c.name || c.tplId;
-      // If it was on the battlefield, also clear any restrictions it was
-      // granting to other creatures (mirrors moveToGraveyard's cleanup).
-      if (zoneName === 'battlefield') {
-        clearRestrictionsFromSource(c.iid);
-      }
-      break;
-    }
-  }
-  // Decrement slotIdx for cards past the removed slot AND remap playedSlotIdxs
-  // (audit A9-2/A9-3 — the shared contract fixup).
+  const removedCard = removeCardForRemovedSlot(who, ripIdx);
+  const removedCardName = (removedCard && (removedCard.name || removedCard.tplId)) || ripped.tplId;
   fixupSlotPointersAfterRemoval(who, ripIdx);
   log(`💀 Phylactery rips ${removedCardName} from your deck — gone forever.`, 'dmg');
   return true;
@@ -5991,19 +6014,9 @@ function ripSlotByIdx(who, ripIdx, logPrefix) {
     if (!ripped) return false;
     removedCardName = ripped.tplId;
   }
-  const zones = ['library', 'hand', 'battlefield', 'graveyard', 'exile'];
-  for (const zoneName of zones) {
-    const zone = G[who][zoneName];
-    if (!zone) continue;
-    const idx = zone.findIndex(c => c.slotIdx === ripIdx);
-    if (idx >= 0) {
-      const [c] = zone.splice(idx, 1);
-      removedCardName = c.name || c.tplId;
-      if (zoneName === 'battlefield') clearRestrictionsFromSource(c.iid);
-      break;
-    }
-  }
-  fixupSlotPointersAfterRemoval(who, ripIdx);  // slotIdx decrement + playedSlotIdxs remap (audit A9-2/A9-3)
+  const removedCard = removeCardForRemovedSlot(who, ripIdx);
+  if (removedCard) removedCardName = removedCard.name || removedCard.tplId;
+  fixupSlotPointersAfterRemoval(who, ripIdx);
   const deckLabel = who === 'you' ? 'your deck' : "opponent's deck";
   const duration = who === 'you' ? 'gone forever' : 'gone for the rest of this fight';
   log(`${logPrefix || '✂'} ${removedCardName || 'card'} ripped from ${deckLabel} — ${duration}.`, 'dmg');
@@ -6069,6 +6082,22 @@ function emitCombatDamageToPlayer(source, controller, who, amount) {
   });
 }
 function afterEffectsApplied() { checkDeaths(); checkLifeTotals(); }
+
+// Resolution housekeeping belongs after the last human continuation, not when
+// the prompt first opens. A chained prompt keeps the single pending boundary.
+function finishEffectsBoundary() {
+  if (anyoneOwesDecision()) {
+    G.effectsCompletionPending = true;
+    return;
+  }
+  G.effectsCompletionPending = false;
+  afterEffectsApplied();
+}
+function finishDeferredEffectsBoundary() {
+  if (!G.effectsCompletionPending || anyoneOwesDecision()) return;
+  G.effectsCompletionPending = false;
+  afterEffectsApplied();
+}
 
 // =========================================================================
 // Priority-round primitives. MtG-style: holders take turns acting/passing;
@@ -6259,6 +6288,8 @@ function applySpellRiders(item, card) {
 function resolveTopOfStack() {
   if (!G.stack.length) return;
   const item = G.stack.pop();
+  G.resolutionContext = { item, cardRemoved: false };
+  try {
   // Triggered abilities use a different shape — handle them separately.
   if (item.kind === 'trigger') {
     resolveTrigger(item);
@@ -6299,7 +6330,7 @@ function resolveTopOfStack() {
       G[card.owner || item.controller].graveyard.push(card);
       // A3-6: a fizzled spell still moves stack→graveyard — announce it.
       emitZoneChange(card, item.controller, 'stack', 'graveyard');
-      afterEffectsApplied();
+      finishEffectsBoundary();
       return;
     }
     // Snapshot rip-on-target eligibility BEFORE effects fire. The targets
@@ -6406,15 +6437,20 @@ function resolveTopOfStack() {
       // no-trigger removal verb (the card never durably arrives anywhere).
       G[card.owner || item.controller].graveyard.push(card);
       ripSlotByIdx(item.controller, card.slotIdx, `Elystra binds ${card.name}`);
-      afterEffectsApplied();
+      finishEffectsBoundary();
       return;
     }
-    G[card.owner || item.controller].graveyard.push(card);
-    // A3-6: a resolved sorcery moving stack→graveyard is announced. As with
-    // `counter`, `controller` is the caster; the pile is owner-routed.
-    emitZoneChange(card, item.controller, 'stack', 'graveyard');
+    if (!G.resolutionContext.cardRemoved) {
+      G[card.owner || item.controller].graveyard.push(card);
+      // A3-6: a resolved sorcery moving stack→graveyard is announced. As with
+      // `counter`, `controller` is the caster; the pile is owner-routed.
+      emitZoneChange(card, item.controller, 'stack', 'graveyard');
+    }
   }
-  afterEffectsApplied();
+  finishEffectsBoundary();
+  } finally {
+    G.resolutionContext = null;
+  }
 }
 
 // ----- Combat damage -----
@@ -6486,12 +6522,13 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
     emit({type: 'life_changed', who: srcCtrl, delta: amt, source_iid: source.iid});
   };
   G.attackers.forEach(aIid => {
-    const fa = findCard(aIid); if (!fa) return;
+    const fa = findCard(aIid); if (!fa || !hasType(fa.card, 'Creature')) return;
     const atk = fa.card;
     const atkCtrl = fa.controller;
     const [aPow] = getStats(atk);
     const wasBlocked = !!blocked[aIid];
-    const livingBlockers = (blocked[aIid] || []).map(b => findCard(b)).filter(Boolean);
+    const livingBlockers = (blocked[aIid] || []).map(b => findCard(b))
+      .filter(f => f && hasType(f.card, 'Creature'));
     const atkDeals = dealsDamage(atk);
 
     if (!wasBlocked) {
@@ -6893,7 +6930,7 @@ function runAbilityEffects(item) {
     if (maybeDeferTrailingForHumanPrompt(ctx, e, ab.effects)) break;   // A4-23 leg-1
   }
   ctx.chosen = null;
-  afterEffectsApplied();
+  finishEffectsBoundary();
 }
 
 // kind:'ability' stack-entry resolution (A3-2 stackable infrastructure) —
@@ -6971,6 +7008,7 @@ function doDiscard(who, cardIid) {
       const deferCtx = G.forcedDiscard.deferCtx;
       G.forcedDiscard = null;
       if (trailing && trailing.length) resumeTrailingEffects(deferCtx, trailing);
+      finishDeferredEffectsBoundary();
     }
   }
 }
@@ -6995,6 +7033,7 @@ function doSearchPick(who, cardIid) {
   // A4-23 leg-1: the effects after the search now resume, AFTER the pick (canon
   // §704.2 in-order resolution) — e.g. Demonic Tutor's "lose 2 life".
   if (trailing && trailing.length) resumeTrailingEffects(deferCtx, trailing);
+  finishDeferredEffectsBoundary();
 }
 function doTriggerTargetPick(who, target) {
   // Player submits a target for the CURRENT slot of the pending trigger prompt.
@@ -7038,6 +7077,7 @@ function doEdictChoice(who, iid) {
   // human pause). ctx.chosen is set, so non-self trailing effects (sacrifice/
   // annihilate/rip) operate on the pick.
   resumeTrailingEffects(ctx, p.trailingEffects);
+  finishDeferredEffectsBoundary();
   drainTriggers();
 }
 function doSymmetricizeChoice(who, which) {
@@ -7066,6 +7106,7 @@ function doSymmetricizeChoice(who, which) {
   if (dPow !== 0 || dTou !== 0) apply({ kind: 'stat_boost', power: dPow, toughness: dTou, stackable: true });
   if (dCost !== 0) apply({ kind: 'cost_mod', amount: dCost, stackable: true });
   log(`${p.targetName} becomes ${n}/${n} for {${n}}.`, 'sp');
+  finishDeferredEffectsBoundary();
 }
 function doNumberChoice(who, number) {
   // Currently only the Archdemon's bargain uses this — onChoose:'bargainEtb'
@@ -7090,6 +7131,7 @@ function doNumberChoice(who, number) {
       applyRandomStickersToSide(G, f.controller, number, sourceName, log);
     }
   }
+  finishDeferredEffectsBoundary();
 }
 function doTriggerBuildPick(who, choice) {
   // Multi-step build flow:
@@ -7102,7 +7144,7 @@ function doTriggerBuildPick(who, choice) {
   //                      advance to step 'compare' for the keep/replace
   //                      decision.
   //   step 'compare'   → choice is 'new' (use built) or 'keep' (keep existing).
-  //                      Either way, prompt clears.
+  //                      Either way, advance to the next queued build prompt.
   if (!G.pendingTriggerBuild || G.pendingTriggerBuild.who !== who) return;
   const p = G.pendingTriggerBuild;
   if (p.step === 'condition') {
@@ -7129,8 +7171,9 @@ function doTriggerBuildPick(who, choice) {
   }
   if (p.step === 'compare') {
     if (choice === 'keep') {
-      G.pendingTriggerBuild = null;
+      advanceTriggerBuildQueue();
       log(`📜 Kept the existing ability.`, 'sp');
+      finishDeferredEffectsBoundary();
       return;
     }
     if (choice === 'new') {
@@ -7174,7 +7217,8 @@ function finalizeBuild(p, trigger) {
   // ~ → card name (audit A10-3). If the live card wasn't found, '~' → '~'
   // is an identity substitution — better an honest placeholder than ''.
   log(`📜 Built ability: ${formatTriggerText(triggerLogText(trigger), liveCard ? liveCard.name : '~')}`, 'sp');
-  G.pendingTriggerBuild = null;
+  advanceTriggerBuildQueue();
+  finishDeferredEffectsBoundary();
 }
 
 function doPass(who) {
@@ -7277,9 +7321,7 @@ function isLegalAction(who, action) {
     case 'playLand': {
       const card = G[who].hand.find(c => c.iid === action.cardIid);
       if (!card || !hasType(card, 'Land')) return false;
-      if (G.activePlayer !== who) return false;
-      if (G.phase !== 'MAIN1' && G.phase !== 'MAIN2') return false;
-      if (G.stack.length > 0) return false;
+      if (!isMainPhaseWindow(who)) return false;
       if (G[who].landPlayedThisTurn) return false;
       return true;
     }
@@ -7531,9 +7573,7 @@ function getLegalActions(who) {
   const waitingForForcedAction = isWaitingForForcedAction();
 
   // Land plays
-  if (!waitingForForcedAction
-      && who === G.activePlayer && (G.phase === 'MAIN1' || G.phase === 'MAIN2')
-      && G.stack.length === 0 && !G[who].landPlayedThisTurn && !G.gameOver) {
+  if (!G[who].landPlayedThisTurn && isMainPhaseWindow(who)) {
     for (const card of G[who].hand) {
       if (hasType(card, 'Land')) actions.push({type:'playLand', cardIid: card.iid});
     }
@@ -7570,6 +7610,7 @@ function getLegalActions(who) {
   for (const castable of castableSpellEntries(who)) {
     const card = castable.card;
     if (hasType(card, 'Land')) continue;
+    if (hasType(card, 'Legendary') && G[who].battlefield.some(c => c.tplId === card.tplId)) continue;
     if (!canPayPotential(who, effectiveCastCostWithPermission(card, castable.permission))) continue;
     // Timing: flash spells (incl. retired-Instant cards) and flash creatures
     // use the instant window. Other permanents/sorceries need sorcery window.
