@@ -469,11 +469,23 @@ function stickersForSlot(slot, deckColors) {
     if (s.kind === 'subtype') {
       const rolled = (slot.subtypeRolls || [])[subtypeCursor];
       subtypeCursor++;
-      if (rolled) addType(view, rolled);
+      if (rolled) {
+        addType(view, rolled);
+        // Persisted subtype rolls can add an implied keyword (Dragon → flying,
+        // Wall → defender); derive it before the eligibility pass sees the view.
+        ENGINE.applySubtypeKeywords(view);
+      }
     }
     if (s.kind === 'add_type') {
       addType(view, s.type);
+      ENGINE.applySubtypeKeywords(view);
       grantBasicLandMana(view);  // reflect §305.6 mana so landProducibleColors re-offer dedup sees it
+    }
+    if (s.kind === 'set_types') {
+      // Reapply persisted type replacement before appliesTo checks; a converted
+      // creature must no longer qualify for creature-only offers.
+      view.types = (Array.isArray(s.types) ? s.types : [s.type]).filter(Boolean);
+      ENGINE.applySubtypeKeywords(view);
     }
     // §3.8 cost_mod (−1 for the reduction reward, +1 for embargo) — reflect on the
     // view so re-offer eligibility sees the modified cost.

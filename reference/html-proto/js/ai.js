@@ -1321,13 +1321,14 @@ function scoreMultiTargetSpell(state, who, card, targets, modeIdx) {
     return 0;
   }
   if (slotsUsed.size === 1 && !hasFight) {
-    return scoreSpellTargetForMode(state, who, card, targets[0], modeIdx);
+    const slot = [...slotsUsed][0];
+    return scoreSpellTargetForMode(state, who, card, targets[slot], modeIdx, slot);
   }
   let total = fightScore;
   for (const slot of slotsUsed) {
     const t = targets[slot];
     if (!t) continue;
-    total += scoreSpellTargetForMode(state, who, card, t, modeIdx);
+    total += scoreSpellTargetForMode(state, who, card, t, modeIdx, slot);
   }
   return total;
 }
@@ -1479,7 +1480,7 @@ function scoreBounceAll(state, who, whose) {
 function scoreSpellTarget(state, who, card, target) {
   return scoreSpellTargetForMode(state, who, card, target, 0);
 }
-function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
+function scoreSpellTargetForMode(state, who, card, target, modeIdx, targetSlot) {
   const us = who, them = opp(who);
   const modeEffects = ENGINE.effectsForMode(card, modeIdx);
   // Some effects carry their own `target`; others rely on a top-level
@@ -1487,12 +1488,14 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
   // target-operating effect (skip chooses(), mass-scoped effects, and the
   // apply_sticker rider so embargo/bleach score their move_card removal half,
   // not the persistent-tax sticker).
-  // Score the effect that consumes the CHOSEN target — skip target:'self'
-  // effects (they hit the source/controller, not the pick: e.g. Grave Charm's
-  // "you gain 4 life AND that opponent loses 2" — the drain is the targeted half).
-  let eff = modeEffects.find(e => e.target && e.target !== 'self');
-  if (!eff && card.target) eff = modeEffects.find(e => e.kind !== 'chooses' && e.kind !== 'apply_sticker' && e.scope == null);
-  if (!eff && card.target) {
+  // Per-slot effects (e.g. Branching Bolt / Drain Life) consume the target for
+  // their own slot; without this context the first effect is selected for every
+  // target and a bare per-slot effect scores as zero.
+  let eff = targetSlot != null
+    ? modeEffects.find(e => e.target_slot === targetSlot && e.target !== 'self')
+    : modeEffects.find(e => e.target && e.target !== 'self');
+  if (!eff && targetSlot == null && card.target) eff = modeEffects.find(e => e.kind !== 'chooses' && e.kind !== 'apply_sticker' && e.scope == null);
+  if (!eff && targetSlot == null && card.target) {
     const stickerSetTypes = modeEffects.find(e => e.kind === 'apply_sticker'
       && e.sticker && e.sticker.kind === 'set_types');
     // Artifice Triumphant's sticker looks permanent at the run layer, but the

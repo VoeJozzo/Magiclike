@@ -67,5 +67,31 @@ console.log('\n=== A9-8 happy path (reward-pick coverage seed) ===');
   check('valid ripUp removes one slot', RUN.getSlots().length === before - 1, 'len=' + RUN.getSlots().length);
 })();
 
+console.log('\n=== two-sticker reward is atomic when only one application is eligible ===');
+(() => {
+  freshRun();
+  const before = RUN.getSlots()[0].stickers.slice();
+  RUN._setPendingRewardForTest(reward([{ kind: 'twoStickers', slotIdx: 0 }]));
+  RUN.pickRewardCandidate(0);
+  check('one-eligible two-sticker pick commits no partial sticker',
+    JSON.stringify(RUN.getSlots()[0].stickers) === JSON.stringify(before));
+  check('one-eligible two-sticker pick does not open reveal', RUN.getReward() == null);
+})();
+
+console.log('\n=== two-sticker reward reveal has two applied stickers ===');
+(() => {
+  RUN.clearSave();
+  RUN.start({ cards: ['savannah_lions'].concat(Array(11).fill('plains')), colors: ['W'] }, null);
+  const opts = stickersForSlot(RUN.getSlots()[0], ['W']);
+  RUN._setPendingRewardForTest(reward([{ kind: 'twoStickers', slotIdx: 0 }]));
+  RUN.pickRewardCandidate(0);
+  const reveal = RUN.getReward();
+  check('eligible two-sticker pick opens reveal', !!reveal && reveal.phase === 'twoStickersReveal');
+  check('eligible two-sticker reveal lists two applications',
+    !!reveal && reveal.appliedStickerIds && reveal.appliedStickerIds.length === 2,
+    'eligible=' + opts.length);
+  RUN.dismissReveal();
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

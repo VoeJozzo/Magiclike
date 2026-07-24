@@ -1086,14 +1086,31 @@ function pickRewardCandidate(idx) {
       save();
       return;
     }
+    const slot = runState.slots[slotIdx];
+    const stickersBefore = slot.stickers.slice();
+    const empowerRollsBefore = Array.isArray(slot.empowerRolls) ? slot.empowerRolls.slice() : undefined;
+    const subtypeRollsBefore = Array.isArray(slot.subtypeRolls) ? slot.subtypeRolls.slice() : undefined;
     const applied = [];
     for (let i = 0; i < 2; i++) {
       const opts = stickersFor(slotIdx);
       if (opts.length === 0) break;
       const sticker = pickWeightedSticker(opts);
-      const slot = runState.slots[slotIdx];
+      if (!sticker) break;
       pushStickerWithRoll(slot, sticker.id, runState.slots);
       applied.push(sticker.id);
+    }
+    if (applied.length < 2) {
+      // The reveal promises two applications. Restore the slot atomically when
+      // eligibility changed between offer and pick, so one sticker is never
+      // committed behind a misleading two-sticker reward.
+      slot.stickers = stickersBefore;
+      if (empowerRollsBefore === undefined) delete slot.empowerRolls;
+      else slot.empowerRolls = empowerRollsBefore;
+      if (subtypeRollsBefore === undefined) delete slot.subtypeRolls;
+      else slot.subtypeRolls = subtypeRollsBefore;
+      runState.pendingReward = null;
+      save();
+      return;
     }
     runState.pendingReward = {
       phase: 'twoStickersReveal',

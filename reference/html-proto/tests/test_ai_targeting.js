@@ -111,5 +111,36 @@ console.log('\n=== spellValueForEffects: mass/severity forms are valued sanely =
     singleTap < singleKill && singleKill <= singleExile, `tap=${singleTap} destroy=${singleKill} exile=${singleExile}`);
 })();
 
+console.log('\n=== AI scores per-slot effects for multi-target spells ===');
+(() => {
+  const G = newGame();
+  const victimA = mk(TOUGH, 'you'); victimA.toughness = 2; victimA.power = 2;
+  const victimB = mk(TOUGH, 'you'); victimB.toughness = 2; victimB.power = 2;
+  G.you.battlefield.push(victimA, victimB);
+  const bolt = mk('branching_bolt', 'opp'); G.opp.hand = [bolt];
+  aiMain(G, 'opp');
+  const action = AI.decide(G, 'opp');
+  check('AI casts Branching Bolt when both slots have real effects',
+    !!action && action.type === 'castSpell' && action.cardIid === bolt.iid, action && action.type);
+  check('Branching Bolt assigns both creature targets',
+    !!action && action.targets && action.targets.length === 2
+      && action.targets.every(t => t.kind === 'creature'
+        && (t.iid === victimA.iid || t.iid === victimB.iid)), JSON.stringify(action && action.targets));
+
+  const G2 = newGame();
+  const victim = mk(TOUGH, 'you'); victim.toughness = 2; victim.power = 2;
+  G2.you.battlefield.push(victim);
+  const drain = mk('drain_life', 'opp'); G2.opp.hand = [drain];
+  aiMain(G2, 'opp');
+  const drainAction = AI.decide(G2, 'opp');
+  check('AI casts Drain Life when creature and opponent slots score',
+    !!drainAction && drainAction.type === 'castSpell' && drainAction.cardIid === drain.iid,
+    drainAction && drainAction.type);
+  check('Drain Life assigns creature and opponent targets',
+    !!drainAction && drainAction.targets && drainAction.targets.length === 2
+      && drainAction.targets.some(t => t.iid === victim.iid)
+      && drainAction.targets.some(t => t.kind === 'player' && t.who === 'you'));
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

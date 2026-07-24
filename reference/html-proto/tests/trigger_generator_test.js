@@ -260,5 +260,16 @@ console.log("\n=== Architect's Codex template (build_on_draw / procedural path) 
   }
 }
 
+console.log('\n=== Codex token descriptions use canonical color text ===');
+{
+  const soldier = GENERATOR_EFFECTS.find(e => e.id === 'createTokenSoldier');
+  const goblin = GENERATOR_EFFECTS.find(e => e.id === 'createTokenGoblin');
+  const soldierText = soldier.describe({kind: 'create_tokens', token_id: 'soldier_w_1_1', count: 1});
+  const goblinText = goblin.describe({kind: 'create_tokens', token_id: 'goblin_r_1_1', count: 1});
+  check('Soldier description includes white token color', /white 1\/1 Soldier token/.test(soldierText), soldierText);
+  check('Goblin description includes red token color', /red 1\/1 Goblin token/.test(goblinText), goblinText);
+  check('Goblin description includes intrinsic haste', /with haste/.test(goblinText), goblinText);
+}
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

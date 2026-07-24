@@ -86,6 +86,30 @@ console.log('\n=== Test: stickersForSlot on stapled slot uses merged template ==
   check('Stapled slot offers empower (merged effects)', result.some(s => s.id === 'empower'));
 }
 
+console.log('\n=== Test: persisted set_types and subtype rolls shape eligibility ===');
+{
+  const converted = {
+    tplId: 'savannah_lions',
+    stickers: [{kind: 'set_types', types: ['Artifact']}],
+  };
+  const convertedResult = stickersForSlot(converted, ['W']);
+  check('set_types replay removes Creature-only offers',
+    !convertedResult.some(s => s.id === 'plus1_plus1'));
+  check('set_types replay removes subtype offer',
+    !convertedResult.some(s => s.id === 'subtype'));
+
+  const dragon = {
+    tplId: 'savannah_lions', stickers: ['subtype'], subtypeRolls: ['Dragon'],
+  };
+  const dragonResult = stickersForSlot(dragon, ['W']);
+  check('Dragon subtype roll suppresses duplicate flying offer',
+    !dragonResult.some(s => s.id === 'kw_flying'));
+
+  const wallResult = stickersForSlot({tplId: 'steadfast_wall', stickers: []}, ['W']);
+  check('Wall subtype implication enables lose_defender',
+    wallResult.some(s => s.id === 'lose_defender'));
+}
+
 console.log('\n=== Test: subtype roll dedup works through view ===');
 {
   const slot = { tplId: 'savannah_lions', stickers: ['subtype'], subtypeRolls: ['Dragon'] };
