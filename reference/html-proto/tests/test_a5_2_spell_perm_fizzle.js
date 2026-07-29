@@ -19,8 +19,8 @@ function mk(tplId, controller) {
   });
 }
 
-const baseCre = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceableBase(k));
-const stapleLand = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Land') && isSpliceableStaple(k) && k !== 'city_of_brass');
+const baseCre = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceable(k));
+const stapleLand = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Land') && isSpliceable(k) && k !== 'city_of_brass');
 
 console.log('=== A5-2: a creature spell stapled onto a battlefield land FIZZLES (no data loss) ===');
 (() => {

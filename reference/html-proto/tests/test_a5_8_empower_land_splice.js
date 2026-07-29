@@ -48,7 +48,7 @@ console.log('=== A5-8: empower roll survives a spell-onto-LAND splice ===');
 
 (() => {
   // 3. Control: a CREATURE base still works (no over-correction / regression).
-  const cre = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceableBase(k));
+  const cre = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceable(k));
   const merged = mergeSpliceData(
     { tplId: cre, empowerRolls: [], priorStaples: [] },
     { tplId: SPELL, empowerRolls: [effectsRoll()] });

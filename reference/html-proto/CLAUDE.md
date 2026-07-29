@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.2.48`** — source of truth: `js/main.js` `const VERSION` (keep in sync on bump). Full version history: [`CHANGELOG.md`](CHANGELOG.md).
+**Current: `v2.2.49`** — source of truth: `js/main.js` `const VERSION` (keep in sync on bump). Full version history: [`CHANGELOG.md`](CHANGELOG.md).
 
 ## File structure
 
@@ -21,7 +21,7 @@ Also in the repo: `index.html` at the repo root — a small redirect that points
 | `js/cards.js` | `CARDS = {}` + `async loadCards()` fetcher (populates CARDS from the per-card JSONs at boot). Also holds `TOKENS`, `KEYWORDS`, `STICKERS`, `EMPOWER_FIELDS`, `KEYWORD_DISPLAY`, `KEYWORD_STICKER_WEIGHTS` — the shared registries that don't fit the per-card model — plus the §305.6 basic-land-mana layer (`BASIC_LAND_MANA`, `basicLandTypeColors`, `grantBasicLandMana`). |
 | `js/keyword-icons.js` | `KEYWORD_ICON_SVG` — inline-ready keyword coin SVGs (generated from `assets/keywords/<kw>.svg`; glyph ink is `currentColor`, disc/rim are CSS vars so the source class recolors the coin). |
 | `js/types.js` | Unified type identity — `TYPE_REGISTRY` + the accessor layer (`typesOf`, `hasType`, `addType`, `subtypesOf`, `governingType`, `isPermanent`, `typeLineParts`/`typeLine`). The SOLE source of truth for a card's type line. |
-| `js/engine.js` | Mercurial trigger pool, splice eligibility helpers (`isSpliceableBase`, `canonicalSplicePair`, `isCompatibleStaplePair`, `remapEmpowerRollForStaple`, etc.), general helpers (`tplForSlot`, `deckColorsFromSlots`, `fakeTargetsForLegality`), `ENGINE` IIFE (state, mana, triggers, phases, combat, synthesis, `EFFECTS` dispatch ~25 kinds). |
+| `js/engine.js` | Mercurial trigger pool, splice eligibility helpers (`isSpliceable`, `canonicalSplicePair`, `isCompatibleStaplePair`, `remapEmpowerRollForStaple`, etc.), general helpers (`tplForSlot`, `deckColorsFromSlots`, `fakeTargetsForLegality`), `ENGINE` IIFE (state, mana, triggers, phases, combat, synthesis, `EFFECTS` dispatch ~25 kinds). |
 | `js/card-text.js` | Card-text description helpers — `describeCardSegments`, `describeCardText`, `describeEffect/Trigger/Ability/StaticBuff/ModalSegs` + internal helpers (targetPhrase, withFilter, bumpedSeg/Derived, capitalizeSegs, triggerPreamble, abilityCostPhrase, segsToText). Pure data → English; reads `ENGINE.synthesizeStapledTemplate` for stapled-card baselines. |
 | `js/stickers.js` | Sticker pipeline — runtime application (`weightedPick`, `applyStickersToCard`, `applyOneStickerToRuntimeCard`, `applyRandomStickersToSide`, `empowerRollLabel`, `applyEmpowerRoll`) and deck-construction helpers (`rollSubtypeFromDeck`, `pushStickerWithRoll`, `stickersForSlot`). Late-binds to `ENGINE.synthesizeStapledTemplate`, `tplForSlot`, `deckColorsFromSlots`. |
 | `js/buckets.js` | `BUCKETS` IIFE — synergy-graph bucket generation for the Growing Deck (`docs/plans/plan-bucket-draft.md`): PROVIDES/WANTS extraction from card structure, labeled producer/consumer edges, seed-and-grow with softmax sampling, per-slot value fill for stranded seats (whole-bundle `fallback: true` only on seeding starvation; a bucket's identity is its story — seed at `cards[0]` + `why[]` — not a derived name, killed v2.2.22), boot theme-health report. Late-binds to `DRAFT.allocLandsFor` and `ENGINE.getCardValue`. |

@@ -51,8 +51,8 @@ console.log('\n=== A5-5 review: a charged clone Stapler SURVIVES the original ri
   // The charge-rip must purge only the out-of-charges instance's own slot, not
   // every card sharing tplId (which would also destroy the still-charged clone).
   // Drives a real cross-owner splice so the charge-accounting rip block fires.
-  const baseTpl = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceableBase(k));
-  const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k], 'Creature') && isSpliceableStaple(k));
+  const baseTpl = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceable(k));
+  const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k], 'Creature') && isSpliceable(k));
 
   RUN.start({ cards: [...Array(5).fill('plains'), 'stapler'], colors: ['W'] });
   RUN.startNextGame();

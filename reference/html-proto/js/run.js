@@ -854,7 +854,7 @@ function rollOneCandidate(type, alreadyOffered) {
         const [canonBaseTpl, , swapped] = canonicalSplicePair(tplI, tplJ);
         const baseIdx = swapped ? j : i;
         const stapleIdx = swapped ? i : j;
-        if (!isSpliceableBase(runState.slots[baseIdx].tplId)) continue;
+        if (!isSpliceable(runState.slots[baseIdx].tplId)) continue;
         const stapleSlot = runState.slots[stapleIdx];
         if (Array.isArray(stapleSlot.stapledTpls) && stapleSlot.stapledTpls.length > 0) continue;
         if (!isCompatibleStaplePair(runState.slots[baseIdx].tplId, stapleSlot.tplId)) continue;
@@ -1223,7 +1223,7 @@ function applySplice(baseSlotIdx, stapleSlotIdx) {
   const baseSlot = runState.slots[baseSlotIdx];
   const stapleSlot = runState.slots[stapleSlotIdx];
   if (!baseSlot || !stapleSlot) return false;
-  if (!isSpliceableBase(baseSlot.tplId)) return false;
+  if (!isSpliceable(baseSlot.tplId)) return false;
   if (Array.isArray(stapleSlot.stapledTpls) && stapleSlot.stapledTpls.length > 0) return false;
   if (!isCompatibleStaplePair(baseSlot.tplId, stapleSlot.tplId)) return false;
   // Merge the staple's slot data into the base via the shared splice core

@@ -61,15 +61,11 @@ const MERCURIAL_TRIGGER_POOL = [
 
 
 // Splice eligibility — module-level so ENGINE (synthesis) and RUN (reward) share.
-// Modal-as-base unsupported. See isCompatibleStaplePair for type-pair matrix.
-function isSpliceableBase(tplId) {
-  const tpl = CARDS[tplId];
-  if (!tpl) return false;
-  if (tpl.stapleable === false) return false;
-  if (tpl.effects && tpl.effects.modes) return false;
-  return true;
-}
-function isSpliceableStaple(tplId) {
+// One predicate for both cards of a pair: splice has no base/staple role in the
+// design — "base" is only the ordering label canonicalSplicePair assigns.
+// stapleable:false is the sole splice-exclusion axis (see types.js note);
+// modal-as-base unsupported. See isCompatibleStaplePair for type-pair matrix.
+function isSpliceable(tplId) {
   const tpl = CARDS[tplId];
   if (!tpl) return false;
   if (tpl.stapleable === false) return false;
@@ -114,13 +110,12 @@ function canonicalSplicePair(tplA, tplB) {
 }
 
 function isCompatibleStaplePair(baseTplId, stapleTplId) {
-  if (!isSpliceableBase(baseTplId)) return false;
-  if (!isSpliceableStaple(stapleTplId)) return false;
+  if (!isSpliceable(baseTplId)) return false;
+  if (!isSpliceable(stapleTplId)) return false;
   // §3.10: there is no multi-color-land restriction — the synthesized
   // tap-ability uses the add_mana choose form (§3.9), so a multi-color land is a
-  // valid staple onto any base. (City of Brass, the only such land today, is
-  // `special` — run-boon only — so it's excluded above; the capability stands
-  // for any future non-special multi-color land.)
+  // valid staple onto any base (City of Brass included — splice exclusion is
+  // the stapleable axis alone, pinned in test_mana.js).
   return true;
 }
 
@@ -681,7 +676,7 @@ function mergeStapleInto(merged, stapleTpl) {
   // merged effects/triggers/abilities (in makeCard, and at render time via
   // describeCardSegments). The merged `name` IS concatenated (names aren't
   // regenerated). Special/custom_text cards can't be staple bases or staples
-  // (isSpliceableBase/Staple reject them), so regeneration always applies.
+  // (isSpliceable reject them), so regeneration always applies.
   merged.name = merged.name + ' + ' + stapleTpl.name;
 }
 
@@ -1276,7 +1271,7 @@ function resolveSplicePair(allTargets) {
   const stapleR = swapped ? r0 : r1;
   const baseCard = baseR.card;
   const stapleCard = stapleR.card;
-  if (!isSpliceableBase(baseCard.tplId)) {
+  if (!isSpliceable(baseCard.tplId)) {
     return { reason: `${baseCard.name} can't be a splice base.` };
   }
   if (stapleChainOf(stapleCard).length > 0) {
@@ -5164,12 +5159,12 @@ function probeTargetsForObject(obj, who) {
 // Stack-item filter (stack items aren't on bf, so no tapped/controller/hexproof).
 function matchFilterSpell(card, filter) {
   if (!filter) return true;
-  if (filter.spliceable_base && !isSpliceableBase(card.tplId)) return false;
+  if (filter.spliceable_base && !isSpliceable(card.tplId)) return false;
   // Same staple eligibility as matchFilter's permanent branch: template
   // spliceable AND no prior chain (stapleChainOf) — without it, a stapled
   // spell on the STACK passes legality and only fizzles at resolution.
   if (filter.spliceable_staple
-      && (!isSpliceableStaple(card.tplId) || stapleChainOf(card).length > 0)) {
+      && (!isSpliceable(card.tplId) || stapleChainOf(card).length > 0)) {
     return false;
   }
   if (filter.not_token && card.isToken) return false;
@@ -5222,23 +5217,23 @@ function matchFilter(card, filter, controller, who) {
   // not_token filter: rejects token permanents/spells. Used by Steal — you
   // can't put a token into your library as a trophy because tokens have no
   // CARDS template to instantiate from on later games. Mirrors how the
-  // Stapler filters tokens implicitly via isSpliceableBase/Staple's
+  // Stapler filters tokens implicitly via isSpliceable's
   // CARDS[tplId] guard.
   if (filter.not_token && card.isToken) return false;
   // Spliceable-base filter (Stapler's first target). Must be a card that
   // can act as a base in the existing splice infrastructure: no special
   // cards (Elystra/Codex/Stapler itself), no tokens, no modal cards. Lands
   // ARE valid bases — designed and tiebreak-prioritized (canonicalSplicePair
-  // ranks Land above Spell for the base). Routes through isSpliceableBase
+  // ranks Land above Spell for the base). Routes through isSpliceable
   // which is the canonical check.
-  if (filter.spliceable_base && !isSpliceableBase(card.tplId)) return false;
+  if (filter.spliceable_base && !isSpliceable(card.tplId)) return false;
   // Spliceable-staple filter (Stapler's second target). Must be a card
   // that can act as a staple-half: spliceable AND not already stapled
-  // (the stapled-as-staple constraint). Tokens fail isSpliceableStaple's
+  // (the stapled-as-staple constraint). Tokens fail isSpliceable's
   // template lookup since they live in TOKENS, not CARDS — handled inside
   // the helper.
   if (filter.spliceable_staple) {
-    if (!isSpliceableStaple(card.tplId)) return false;
+    if (!isSpliceable(card.tplId)) return false;
     // "Already stapled" check — stapleChainOf reads whichever chain field is
     // populated (the one shared definition; see its header).
     if (stapleChainOf(card).length > 0) return false;

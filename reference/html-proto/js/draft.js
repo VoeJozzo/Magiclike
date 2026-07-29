@@ -326,7 +326,7 @@ function applyOpponentStaples(slots, n) {
         const [, , swapped] = canonicalSplicePair(slots[i].tplId, slots[j].tplId);
         const bi = swapped ? j : i;
         const si = swapped ? i : j;
-        if (!isSpliceableBase(slots[bi].tplId)) continue;
+        if (!isSpliceable(slots[bi].tplId)) continue;
         const stapleSlot = slots[si];
         if (Array.isArray(stapleSlot.stapledTpls) && stapleSlot.stapledTpls.length > 0) continue;
         if (!isCompatibleStaplePair(slots[bi].tplId, stapleSlot.tplId)) continue;

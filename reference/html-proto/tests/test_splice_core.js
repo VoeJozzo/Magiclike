@@ -15,8 +15,8 @@ function check(label, ok, info) {
 }
 function eqArr(a, b) { return JSON.stringify(a || []) === JSON.stringify(b || []); }
 
-const baseTpl = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceableBase(k));
-const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k], 'Creature') && isSpliceableStaple(k));
+const baseTpl = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceable(k));
+const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k], 'Creature') && isSpliceable(k));
 
 console.log('=== mergeSpliceData core: concat + bonus precedence + chain ===');
 (() => {
@@ -48,7 +48,7 @@ console.log('\n=== empower-roll remap accounts for prior staple chain ===');
   // roll on a trigger must shift its subIdx by the base card's own trigger
   // count plus the prior staple's trigger count.
   const priorWithTrigger = Object.keys(CARDS).find(k =>
-    hasType(CARDS[k], 'Creature') && isSpliceableStaple(k) && (CARDS[k].triggers || []).length >= 1);
+    hasType(CARDS[k], 'Creature') && isSpliceable(k) && (CARDS[k].triggers || []).length >= 1);
   if (!priorWithTrigger) { check('(skipped: no creature staple with a trigger in pool)', true); return; }
   const roll = { location: 'triggers', subIdx: 0, effIdx: 0, field: 'amount' };
   const baseTriggers = (CARDS[baseTpl].triggers || []).length;
