@@ -3257,8 +3257,6 @@ exclusion checks kept, including the ratified `stapleable` axis. Renamed all
 call sites (engine/draft/run + tests; `_setup.js` export deduped) and fixed
 the stale isCompatibleStaplePair comment still claiming City of Brass is
 excluded via `special` (accepted as a staple since the stapleable
-ratification). New tier-two audit lint: `npm run lint:audit`
-(eslint.audit.config.js, sonarjs/no-identical-functions, warn-only) —
-advisory duplication scan, triaged not enforced; rule verified live on a
-planted duplicate; zero findings on the merged codebase. Suite 151 files /
-3011 green; lint clean.
+ratification). The lint gate gains `sonarjs/no-identical-functions` (error) —
+validated against the twins before the merge: fires on them, and they are the
+sole finding across js/ and tests/. Suite 151 files / 3011 green; lint clean.

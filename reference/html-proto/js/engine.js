@@ -61,10 +61,9 @@ const MERCURIAL_TRIGGER_POOL = [
 
 
 // Splice eligibility — module-level so ENGINE (synthesis) and RUN (reward) share.
-// One predicate for both cards of a pair: splice has no base/staple role in the
-// design — "base" is only the ordering label canonicalSplicePair assigns.
-// stapleable:false is the sole splice-exclusion axis (see types.js note);
-// modal-as-base unsupported. See isCompatibleStaplePair for type-pair matrix.
+// One predicate for both halves of a pair — the design has no base/staple role
+// distinction; "base" is only the ordering label canonicalSplicePair assigns.
+// See types.js (stapleable note) and isCompatibleStaplePair (type-pair matrix).
 function isSpliceable(tplId) {
   const tpl = CARDS[tplId];
   if (!tpl) return false;

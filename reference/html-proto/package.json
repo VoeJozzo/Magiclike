@@ -6,8 +6,7 @@
     "test": "tests"
   },
   "scripts": {
-    "lint": "eslint js/ tests/",
-    "lint:audit": "eslint --config eslint.audit.config.js js/ tests/"
+    "lint": "eslint js/ tests/"
   },
   "keywords": [],
   "author": "",
