@@ -3257,6 +3257,9 @@ exclusion checks kept, including the ratified `stapleable` axis. Renamed all
 call sites (engine/draft/run + tests; `_setup.js` export deduped) and fixed
 the stale isCompatibleStaplePair comment still claiming City of Brass is
 excluded via `special` (accepted as a staple since the stapleable
-ratification). The lint gate gains `sonarjs/no-identical-functions` (error) —
+ratification), and the type-pair matrix's Spell-base+Land-staple cell — it
+read `add_mana`, describing a branch deleted as unreachable (canonicalization
+always makes the land the base; mergeStapleInto throws); now `NO` like the
+other canonicalization-forbidden cells. The lint gate gains `sonarjs/no-identical-functions` (error) —
 validated against the twins before the merge: fires on them, and they are the
 sole finding across js/ and tests/. Suite 151 files / 3011 green; lint clean.

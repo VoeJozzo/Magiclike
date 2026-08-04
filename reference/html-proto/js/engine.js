@@ -87,9 +87,10 @@ function stapleChainOf(card) {
 // Splice compatibility:
 //   Base\Staple  Creature  Spell  Land
 //   Creature     ok(merge) ETB    tap-ability
-//   Spell        NO        concat add_mana
+//   Spell        NO        concat NO
 //   Land         NO        ETB    mana-merge
-// Callers must canonicalize first (canonicalSplicePair).
+// Callers must canonicalize first (canonicalSplicePair); NO cells are orderings
+// canonicalization never produces — mergeStapleInto throws if one sneaks through.
 
 // Canonical ordering by type priority: Creature(0) > Artifact(1) > Land(2) > Spell(3).
 // Returns [base, staple, swapped] so callers can fix parallel arrays.
