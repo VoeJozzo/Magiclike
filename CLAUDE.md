@@ -64,7 +64,7 @@ A comment must state something the code cannot: a constraint, invariant, rule ci
 - **`dev`** — primary working branch for Godot-side work and the html-proto. PR to here. **`main`** — periodic forward-merge from `dev`.
 - **GitHub Pages serves from `dev`**, pointing at `reference/html-proto/magiclike_engine.html`. Pushing to `dev` makes html-proto changes live for play-testing. Godot work doesn't affect Pages but shares the branch.
 - Commit changes, but only push when explicitly asked. Don't open PRs unless asked.
-- **Every `gh` write goes through the bot account** — prefix `GH_TOKEN="$(gh auth token --user <your-bot-account>)"` or a PreToolUse hook (`.claude/hooks/gh-write-guard.js`) denies the command; bare `gh` writes post as the owner. Commit *author* is separate (per-worktree `git config`, already set). Which bot you are, tokens, push/PR flow, branch protection: [`docs/IDENTITIES.md`](docs/IDENTITIES.md).
+- gh and git on the Claudhaus authenticate as **Thaumaturge-Claude** (global git identity uses its noreply), so commits, pushes, and PRs attribute to the bot by default. The PreToolUse guard (`.claude/hooks/gh-write-guard.js`) still requires prefixing `gh` writes with `GH_TOKEN="$(gh auth token --user Thaumaturge-Claude)"`.
 - New work happens in a git worktree (they live at `.claude/worktrees/` inside the repo). Parallel Claude sessions each need their own worktree — sharing one causes branch-switch clobbering.
 - No version-bump rule for the Godot side (the binary isn't browser-served; Pages serves html-proto only).
 
