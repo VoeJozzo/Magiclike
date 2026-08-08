@@ -8,7 +8,7 @@ How the **Godot port** is built: where each piece of behavior lives (modules) **
 - [`DIVERGENCE.md`](DIVERGENCE.md) — where the Godot port and html-proto behave differently.
 - The html-proto's own internals live in its onboarding doc, [`reference/html-proto/CLAUDE.md`](../reference/html-proto/CLAUDE.md) (module map) + [`CHANGELOG.md`](../reference/html-proto/CHANGELOG.md) — not restated here (§3).
 
-*(For durable architecture rationale — the "why" — see [`docs/wiki/`](wiki/README.md). Live counts (LOC, card totals) are deliberately omitted here; read the code.)*
+*(For durable architecture rationale — the "why" — see [`C:/Users/Claude/k-wiki/magiclike/`](wiki/README.md). Live counts (LOC, card totals) are deliberately omitted here; read the code.)*
 
 ---
 
@@ -181,7 +181,7 @@ Some effect handlers accept an alternate bare-string form (e.g. `"controller"`, 
 
 ### 2.4 Stack, priority, combat, SBAs
 
-**Stack and priority.** The stack is `Array[StackEntry]`, holding both spell entries and triggered-ability entries; both resolve via `_resolve_*_entry`. Priority follows MTG semantics where it matters (caster retains after casting; pools empty at phase boundaries; defender declares blocks before priority opens at COMBAT_BLOCK; triggers drain APNAP). Auto-passes (AI driver, unattended windows) are agent UX on top — the priority pass IS happening, it's just `execute_action(pass_priority)` called automatically. (Rule numbers + the design rationale: [§600](wiki/rules/600-priority-and-the-stack.md) and [`docs/wiki/magiclike-architecture.md`](wiki/magiclike-architecture.md).)
+**Stack and priority.** The stack is `Array[StackEntry]`, holding both spell entries and triggered-ability entries; both resolve via `_resolve_*_entry`. Priority follows MTG semantics where it matters (caster retains after casting; pools empty at phase boundaries; defender declares blocks before priority opens at COMBAT_BLOCK; triggers drain APNAP). Auto-passes (AI driver, unattended windows) are agent UX on top — the priority pass IS happening, it's just `execute_action(pass_priority)` called automatically. (Rule numbers + the design rationale: [§600](wiki/rules/600-priority-and-the-stack.md) and `C:/Users/Claude/k-wiki/magiclike/magiclike-architecture.md`.)
 
 **Combat damage.** Two-pass (`_combat_damage_pass` called twice — first-strike layer, then normal). Inner loop iterates attacker → assigned blockers, applies trample / menace collapse / first-strike skip / lifelink / deathtouch. SBAs sweep after each pass.
 
@@ -219,7 +219,7 @@ Handlers read `ctx.state` for cross-player lookups; they do **not** reach into t
 
 **Trigger drain.** `_fire_event` scans battlefield creatures, matches `event` + `cond_id`, enqueues `TriggerEntry` to `pending_triggers`. `_drain_pending_triggers` orders APNAP, resolves listeners with no target prompt, and pauses on `awaiting_target_for_trigger` for cards needing input (Pyromaniac). Resumes on `pick_trigger_target`.
 
-**Predicate contract** (`engine/predicates/predicates.gd`). Card conditions are referenced by string `cond_id`; the registry resolves name → function. (Design rationale: [`docs/wiki/predicate-registry.md`](wiki/predicate-registry.md).)
+**Predicate contract** (`engine/predicates/predicates.gd`). Card conditions are referenced by string `cond_id`; the registry resolves name → function. (Design rationale: `C:/Users/Claude/k-wiki/magiclike/predicate-registry.md`.)
 ```gdscript
 static func cond_<name>(state: EngineState, source: CardInstance, event: Dictionary) -> bool
 ```
@@ -311,7 +311,7 @@ No batch runner — each `.tscn` is invoked individually (flagged in [`REFACTOR-
 
 ## 3. html-proto
 
-The html-proto's own internals — module map, `G` singleton, `step()` loop, effect dispatch, draft/run/persistence — are documented in its onboarding doc, **[`reference/html-proto/CLAUDE.md`](../reference/html-proto/CLAUDE.md)** (with version history in **[`CHANGELOG.md`](../reference/html-proto/CHANGELOG.md)**). They are not restated here — that's the home, and restating them is what made this section rot. For the **relationship** between the two engines, see §4 and [`docs/wiki/cross-engine-port.md`](wiki/cross-engine-port.md); for the wire contract they share, [`PROTOCOL.md`](PROTOCOL.md).
+The html-proto's own internals — module map, `G` singleton, `step()` loop, effect dispatch, draft/run/persistence — are documented in its onboarding doc, **[`reference/html-proto/CLAUDE.md`](../reference/html-proto/CLAUDE.md)** (with version history in **[`CHANGELOG.md`](../reference/html-proto/CHANGELOG.md)**). They are not restated here — that's the home, and restating them is what made this section rot. For the **relationship** between the two engines, see §4 and `C:/Users/Claude/k-wiki/magiclike/cross-engine-port.md`; for the wire contract they share, [`PROTOCOL.md`](PROTOCOL.md).
 
 ---
 

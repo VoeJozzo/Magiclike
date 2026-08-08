@@ -1,6 +1,6 @@
 // Indestructible creatures still die at toughness <= 0.
 //
-// Canon (docs/wiki/rules/1100-state-based-actions.md, MTG 704.5f):
+// Canon (C:/Users/Claude/k-wiki/magiclike/rules/1100-state-based-actions.md, MTG 704.5f):
 // indestructible exempts a creature from the lethal-damage / deathtouch
 // death checks, but a creature whose toughness is 0 or less dies anyway —
 // 0-toughness death is not "destruction", so indestructible doesn't apply.

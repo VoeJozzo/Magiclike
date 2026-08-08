@@ -3,7 +3,7 @@
 // priority window between the strike steps, so nothing can respond to a
 // keyword change mid-combat: each combatant deals damage in exactly the wave
 // the snapshot assigned it (pass 1 if it had first strike when damage
-// started, pass 2 otherwise) — never both. Canon: docs/wiki/rules/800-combat.md
+// started, pass 2 otherwise) — never both. Canon: C:/Users/Claude/k-wiki/magiclike/rules/800-combat.md
 // §803.
 //
 // (not_keyword rather than a stat-gated filter like max_power: a stat gate on
