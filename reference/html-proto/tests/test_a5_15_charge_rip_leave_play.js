@@ -9,8 +9,8 @@ setup.loadEngine();
 let pass = 0, fail = 0;
 function check(label, ok, info) { console.log('  ' + (ok ? 'PASS' : 'FAIL') + ': ' + label + (info ? ' -- ' + info : '')); if (ok) pass++; else fail++; }
 
-const baseTpl = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceableBase(k));
-const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k], 'Creature') && isSpliceableStaple(k));
+const baseTpl = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceable(k));
+const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k], 'Creature') && isSpliceable(k));
 
 console.log('=== A5-15: charge-rip routes battlefield removal through leave-play discipline ===');
 (() => {

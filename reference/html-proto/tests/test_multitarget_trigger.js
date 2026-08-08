@@ -44,7 +44,7 @@ function newGame() {
 }
 const VANILLA = Object.keys(CARDS).find(k =>
   hasType(CARDS[k], 'Creature') && !CARDS[k].triggers && !CARDS[k].abilities
-  && !CARDS[k].static_buffs && isSpliceableBase(k));
+  && !CARDS[k].static_buffs && isSpliceable(k));
 
 console.log('=== a multi-target ACTIVATED ability is enumerated via the component ===');
 (() => {

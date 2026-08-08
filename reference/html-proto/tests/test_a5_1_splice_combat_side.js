@@ -56,8 +56,8 @@ function gone(G, iid) {
   return !G.you.battlefield.some(c => c.iid === iid) && !G.opp.battlefield.some(c => c.iid === iid);
 }
 
-const baseTpl = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceableBase(k));
-const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k], 'Creature') && isSpliceableStaple(k));
+const baseTpl = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceable(k));
+const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k], 'Creature') && isSpliceable(k));
 const VANILLA = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && !CARDS[k].triggers && !CARDS[k].abilities && !CARDS[k].static_buffs);
 
 if (!baseTpl || !stapleTpl || !VANILLA) {

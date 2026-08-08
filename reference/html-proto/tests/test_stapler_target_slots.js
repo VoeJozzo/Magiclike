@@ -11,8 +11,8 @@ function check(label, ok, info) {
 }
 
 // Vanilla creatures (non-special, non-modal) are spliceable as both base and staple.
-const baseTpl = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceableBase(k));
-const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k], 'Creature') && isSpliceableStaple(k));
+const baseTpl = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceable(k));
+const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k], 'Creature') && isSpliceable(k));
 
 let nextIid = 7000;
 function mk(tplId, controller) {

@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.48`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.49`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -3248,3 +3248,18 @@ intentionally absent because every constellation view excludes lands. The
 bucket analyzer and active addBucket candidate flow were already boon-aware;
 no bucket-selection semantics changed. Suite 151 files / 3011 green; lint
 clean; browser preview verified Elystra present with zero app errors.
+
+v2.2.49: splice-eligibility dedup — `isSpliceableBase`/`isSpliceableStaple`
+were character-identical twins; merged into one `isSpliceable` used for both
+cards of a pair (splice has no base/staple role in the design — "base" is
+only canonicalSplicePair's ordering label). Behavior unchanged: all three
+exclusion checks kept, including the ratified `stapleable` axis. Renamed all
+call sites (engine/draft/run + tests; `_setup.js` export deduped) and fixed
+the stale isCompatibleStaplePair comment still claiming City of Brass is
+excluded via `special` (accepted as a staple since the stapleable
+ratification), and the type-pair matrix's Spell-base+Land-staple cell — it
+read `add_mana`, describing a branch deleted as unreachable (canonicalization
+always makes the land the base; mergeStapleInto throws); now `NO` like the
+other canonicalization-forbidden cells. The lint gate gains `sonarjs/no-identical-functions` (error) —
+validated against the twins before the merge: fires on them, and they are the
+sole finding across js/ and tests/. Suite 151 files / 3011 green; lint clean.

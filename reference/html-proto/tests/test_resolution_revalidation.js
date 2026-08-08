@@ -143,7 +143,7 @@ console.log('\n=== A3-1 (b): multi-target PARTIAL fizzle — drop the illegal sl
   const G = newGame();
   const VANILLA = Object.keys(CARDS).find(k =>
     hasType(CARDS[k], 'Creature') && !CARDS[k].triggers && !CARDS[k].abilities
-    && !CARDS[k].static_buffs && isSpliceableBase(k));
+    && !CARDS[k].static_buffs && isSpliceable(k));
   const staple = ENGINE.makeCard(VANILLA, undefined, 0, undefined, undefined, ['roots_and_branches']);
   staple.iid = nextIid++; staple.controller = 'opp'; staple.owner = 'opp';
   G.opp.hand.push(staple);

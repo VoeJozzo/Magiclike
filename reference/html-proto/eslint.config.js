@@ -27,6 +27,7 @@ module.exports = [
       'sonarjs/no-identical-expressions': 'error',   // x || x, x && x, x === x, …
       'sonarjs/no-identical-conditions': 'error',     // if (a) … else if (a)
       'sonarjs/no-all-duplicated-branches': 'error',  // every branch does the same thing
+      'sonarjs/no-identical-functions': 'error',      // whole-function twins (edit one, forget the other)
 
       // ESLint core bug detectors (no stylistic rules).
       'no-dupe-else-if': 'error',
