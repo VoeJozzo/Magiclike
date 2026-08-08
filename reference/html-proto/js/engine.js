@@ -5858,7 +5858,7 @@ function checkDeaths() {
           // A1-3: the exemption covers only the damage/deathtouch death causes.
           // A creature at toughness <= 0 dies regardless of indestructible —
           // 0-toughness death isn't destruction (MTG 704.5f; canon
-          // docs/wiki/rules/1100-state-based-actions.md), hence the `t > 0`.
+          // C:/Users/Claude/k-wiki/magiclike/rules/1100-state-based-actions.md), hence the `t > 0`.
           continue;
         }
         bf.splice(i, 1);

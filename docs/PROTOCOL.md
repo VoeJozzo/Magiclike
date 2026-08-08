@@ -29,13 +29,13 @@ Conversion between wire and idiom is mechanical: `card_id` ⇔ `cardId`.
 The wire form is authoritative.
 
 **Canonical game terms (concept layer).** Concept-layer names that diverge
-from Magic on purpose are pinned in the rules wiki (`docs/wiki/rules/`) and used
+from Magic on purpose are pinned in the rules wiki (`C:/Users/Claude/k-wiki/magiclike/rules/`) and used
 verbatim in card text, docs, and selectors. The first such term: **total mana
 cost** — Magiclike's name for the total amount of mana in a card's mana cost:
 generic mana plus colored pips, with `{X}` counting as 0 everywhere except on
 the stack, where it counts as the value chosen for that spell. Do **not** write
 "mana value" or "CMC." Definition and the `{X}` ruling:
-`docs/wiki/rules/200-parts-of-a-card.md` §200.2a.
+`C:/Users/Claude/k-wiki/magiclike/rules/200-parts-of-a-card.md` §200.2a.
 
 ## 2. Card JSON schema
 

@@ -95,4 +95,4 @@ In order:
 
 - **card-pitch-generator** — upstream: what card should exist.
 - **magiclike-card-art** — its portrait (a finished art ≠ a playable card; that's this skill).
-- `reference/html-proto/CLAUDE.md` (module map) · `docs/README.md` (doc router) · `docs/wiki/` (the engine's "why").
+- `reference/html-proto/CLAUDE.md` (module map) · `docs/README.md` (doc router) · `C:/Users/Claude/k-wiki/magiclike/` (the engine's "why").

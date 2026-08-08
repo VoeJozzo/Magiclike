@@ -21,41 +21,41 @@ Run it from the root of the checkout you are working in — **your worktree, not
 
 Each test prints assertion results and exits with code 0 (pass) / 1 (fail). Roughly 30 seconds per scene. A change is "done" when the whole `tests/` suite passes and the change itself is exercised by a test — extending an existing scene beats adding a new one.
 
-## Durable concepts wiki (`docs/wiki/`)
+## Durable concepts wiki (`C:/Users/Claude/k-wiki/magiclike/`)
 
-Interlinked concept pages owning the **"why"** — architecture rationale, design discipline, the cross-engine relationship. Entry point: [`docs/wiki/README.md`](docs/wiki/README.md). Rules:
+Interlinked concept pages owning the **"why"** — architecture rationale, design discipline, the cross-engine relationship. The cluster lives in the k-wiki vault on this machine — it versions with the vault's git and carries the vault's frontmatter schema. Entry point: `C:/Users/Claude/k-wiki/magiclike/README.md`. Rules:
 
 - **When you make a new durable design decision, mirror it into the wiki** — this file stays terse directives only.
-- Don't move reference content there (wire format, module map, cross-engine gaps, live status) — the wiki links `docs/` proper. One exception: the canonical rulebook lives at `docs/wiki/rules/`.
-- "Sync the wiki" = follow `docs/wiki/README.md` → *Keeping it current*.
+- Don't move reference content there (wire format, module map, cross-engine gaps, live status) — the wiki links `docs/` proper. One exception: the canonical rulebook lives at `C:/Users/Claude/k-wiki/magiclike/rules/`.
+- "Sync the wiki" = follow the entry point's *Keeping it current*.
 
 ## Engine rules — follow these when writing code
 
-*The "why" for these lives in the durable concepts wiki ([`docs/wiki/magiclike-architecture.md`](docs/wiki/magiclike-architecture.md)); the directives to follow while coding stay here.*
+*The "why" for these lives in the durable concepts wiki (`C:/Users/Claude/k-wiki/magiclike/magiclike-architecture.md`); the directives to follow while coding stay here.*
 
 - **`engine/engine.gd` is the autoload `RulesEngine`.** State holder + action dispatcher. (Named `RulesEngine`, not `Engine` — Godot reserves that global.)
 - **State logic in `RefCounted` classes** — `Player`, `ManaPool`, `Stack`, `PhaseMachine`, `CardInstance`, `EngineState` — instantiable in tests without autoload boilerplate; each has `duplicate_deep()` for AI snapshots.
-- **Action-descriptor pattern.** All state mutations go through `RulesEngine.execute_action(action: Dictionary)` (`{kind, source, targets, ...}`); mirrors the JS `executeAction`. → [`docs/wiki/action-descriptor-pattern.md`](docs/wiki/action-descriptor-pattern.md)
-- **String-keyed trigger predicates.** Cards reference conditions by `cond_id`; the registry at `engine/predicates/predicates.gd` resolves name → fn. → [`docs/wiki/predicate-registry.md`](docs/wiki/predicate-registry.md)
+- **Action-descriptor pattern.** All state mutations go through `RulesEngine.execute_action(action: Dictionary)` (`{kind, source, targets, ...}`); mirrors the JS `executeAction`. → `C:/Users/Claude/k-wiki/magiclike/action-descriptor-pattern.md`
+- **String-keyed trigger predicates.** Cards reference conditions by `cond_id`; the registry at `engine/predicates/predicates.gd` resolves name → fn. → `C:/Users/Claude/k-wiki/magiclike/predicate-registry.md`
 - **Click-to-cast UI, not drag-to-cast.** Drag conflicts with card-framework's drag-to-move semantics. Click a spell → target-picking mode → click a target → resolve.
 - **Data on `EngineState`, behavior on `RulesEngine`.** One-way dependency: `RulesEngine` reads/writes `EngineState`, never the reverse. Don't put helpers needing `get_legal_actions`/`_dispatch_action` on `EngineState` (circular ref) — new behavior goes on the autoload.
 
 ## Patterns to NOT replicate from the prototype
 
-Port the **behavior**, not the implementation shape — the prototype's engine has known scars from organic growth. The reasoning and cautionary tales live in the wiki ([`docs/wiki/magiclike-architecture.md`](docs/wiki/magiclike-architecture.md) design discipline, [`docs/wiki/cross-engine-port.md`](docs/wiki/cross-engine-port.md)); the directives:
+Port the **behavior**, not the implementation shape — the prototype's engine has known scars from organic growth. The reasoning and cautionary tales live in the wiki (`C:/Users/Claude/k-wiki/magiclike/magiclike-architecture.md` design discipline, `C:/Users/Claude/k-wiki/magiclike/cross-engine-port.md`); the directives:
 
-- **Don't reach into autoloads from predicates or effect handlers.** Predicates take `(state, source, event)`; effect handlers take `(effect, ctx)` and read `ctx.state`. No reading `RulesEngine.state()` from inside. (One documented exception: `counter.gd` — see `docs/ARCHITECTURE.md` §2.5.) → [`docs/wiki/predicate-registry.md`](docs/wiki/predicate-registry.md)
-- **Don't model per-instance state as dynamically-attached dictionary fields.** Use typed properties on `CardInstance` / `Player`; the `duplicate_deep()` overrides exist to prevent that class of bug. → [`docs/wiki/magiclike-architecture.md`](docs/wiki/magiclike-architecture.md)
-- **Don't let the engine call the text generator.** Keep the engine UI-free — emit a structured "trigger fired" signal; the presentation layer renders the log/text. → [`docs/wiki/magiclike-architecture.md`](docs/wiki/magiclike-architecture.md)
+- **Don't reach into autoloads from predicates or effect handlers.** Predicates take `(state, source, event)`; effect handlers take `(effect, ctx)` and read `ctx.state`. No reading `RulesEngine.state()` from inside. (One documented exception: `counter.gd` — see `docs/ARCHITECTURE.md` §2.5.) → `C:/Users/Claude/k-wiki/magiclike/predicate-registry.md`
+- **Don't model per-instance state as dynamically-attached dictionary fields.** Use typed properties on `CardInstance` / `Player`; the `duplicate_deep()` overrides exist to prevent that class of bug. → `C:/Users/Claude/k-wiki/magiclike/magiclike-architecture.md`
+- **Don't let the engine call the text generator.** Keep the engine UI-free — emit a structured "trigger fired" signal; the presentation layer renders the log/text. → `C:/Users/Claude/k-wiki/magiclike/magiclike-architecture.md`
 
 ## Comments
 
-A comment must state something the code cannot: a constraint, invariant, rule citation, caller contract, or external data shape. Write in the eternal present — no diff narration ("removed", "the old X", version stamps), no port-phase labels, no "verified"-style claims (pin those with a test), no features that don't exist. In test files, assertion labels are the spec: a comment dominated by an adjacent check/assert label is noise. Shortest true form; when editing code, update or delete the comments it touches. *(Why + the failure taxonomy: [`docs/wiki/comment-doctrine.md`](docs/wiki/comment-doctrine.md).)*
+A comment must state something the code cannot: a constraint, invariant, rule citation, caller contract, or external data shape. Write in the eternal present — no diff narration ("removed", "the old X", version stamps), no port-phase labels, no "verified"-style claims (pin those with a test), no features that don't exist. In test files, assertion labels are the spec: a comment dominated by an adjacent check/assert label is noise. Shortest true form; when editing code, update or delete the comments it touches. *(Why + the failure taxonomy: `C:/Users/Claude/k-wiki/magiclike/comment-doctrine.md`.)*
 
 ## Risks and gotchas
 
 - **`addons/card-framework/` is vendored — never edit it in place.**
-- **Auto-passes are deliberate UX, not rules cheats — don't "fix" them.** AI auto-pass, the Space/Enter pass-priority keybind, and single-sweep SBAs are pragmatic shortcuts on top of a real priority model (canon: [§600 Priority & the Stack](docs/wiki/rules/600-priority-and-the-stack.md)).
+- **Auto-passes are deliberate UX, not rules cheats — don't "fix" them.** AI auto-pass, the Space/Enter pass-priority keybind, and single-sweep SBAs are pragmatic shortcuts on top of a real priority model (canon: [§600 Priority & the Stack](C:/Users/Claude/k-wiki/magiclike/rules/600-priority-and-the-stack.md)).
 - **Stack as `Array[StackEntry]`, not as a `CardContainer`.** Triggered abilities go on the stack but aren't cards. The engine model is `Array[StackEntry]`; the UI is a plain VBoxContainer repainted on `RulesEngine.state_changed`.
 - **`@tool` and the autoload don't mix.** `@tool` scripts run inside the editor, where the `RulesEngine` autoload isn't initialized — any script that touches `RulesEngine` must NOT be `@tool`, or the editor spams errors. (Framework-derived visuals — `scenes/card.gd`, `scenes/tres_card_factory.gd` — are `@tool` by card-framework convention and are fine: they never read the autoload.)
 
