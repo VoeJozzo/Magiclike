@@ -1,7 +1,7 @@
 {
   "card_id": "feinting_sprite",
   "name": "Feinting Sprite",
-  "art": "🧚",
+  "art": "art.png",
   "cost": {
     "U": 1,
     "C": 1

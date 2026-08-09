@@ -1,13 +1,17 @@
 {
   "card_id": "toll_of_silence",
-  "art": "🔕",
+  "art": "art.png",
   "cost": {
     "U": 2,
     "B": 1
   },
   "target_slots": [
-    { "target": "spell" },
-    { "target": "opp" }
+    {
+      "target": "spell"
+    },
+    {
+      "target": "opp"
+    }
   ],
   "effects": [
     {

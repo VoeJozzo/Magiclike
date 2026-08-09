@@ -1,7 +1,7 @@
 {
   "card_id": "reckless_bloodletter",
   "name": "Reckless Bloodletter",
-  "art": "\ud83d\udca2",
+  "art": "art.png",
   "cost": {
     "R": 1,
     "C": 1

@@ -1,7 +1,7 @@
 {
   "card_id": "wildfire_colossus",
   "name": "Wildfire Colossus",
-  "art": "🌋",
+  "art": "art.png",
   "cost": {
     "R": 1,
     "G": 1,

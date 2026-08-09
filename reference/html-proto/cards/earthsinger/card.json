@@ -1,7 +1,7 @@
 {
   "card_id": "earthsinger",
   "name": "Earthsinger",
-  "art": "\ud83c\udfb5",
+  "art": "art.png",
   "cost": {
     "G": 1,
     "C": 1

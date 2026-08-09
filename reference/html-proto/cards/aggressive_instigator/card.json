@@ -1,7 +1,7 @@
 {
   "card_id": "aggressive_instigator",
   "name": "Aggressive Instigator",
-  "art": "📣",
+  "art": "art.png",
   "cost": {
     "R": 1,
     "C": 1

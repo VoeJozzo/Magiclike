@@ -35,3 +35,25 @@ the answer key.
   diagnose-then-inpaint posture (C5) didn't beat control.
 - A final production run then arted the never-arted card tail with the merged
   breadth skill; keepers are placed under `reference/html-proto/cards/<tplId>/`.
+
+## The model-arms round (2026-08)
+
+A second blind program asked whether the **authoring LLM** matters: four Claude
+tiers (fable / haiku / opus / sonnet) each wrote 10-prompt pools for the same
+cards under the identical skill; the director judged pools blind to authorship
+(deterministic per-card label permutations; seeds derived from card|label|gen so
+container resets couldn't lose the key). 4 rounds, 21 cards, ~850 frames.
+
+| Question | Result |
+|---|---|
+| Does tier affect keeper rate? | **Null** — keepers 5/5/4/4 across tiers, p≈1.0 |
+| Does the director prefer any tier's pools? | **Null** — points p=0.51; per-round rankings inverted violently (r1 winner was r2 loser) |
+| Any effect at all? | **Opus bench depth** — most high-value flags per pool, p=0.0064, pre-registered between rounds |
+| Sighted iteration vs blind batch? | Tie on the one card that resisted both (n=1) — process is a weak lever; the image model's subject prior is the bottleneck |
+
+Conclusion (now in SKILL.md §Model choice): default batch authoring to Opus for
+the deeper bench; substitute any tier freely — keeper rate won't move. Never
+judge a model on one round. A production run then arted the remaining card tail
+(34 cards, ~82% first-pool keeper rate); the last holdouts fell to director-
+prescreened fresh-context prompts and one sighted-iteration session. Full
+per-round ledger: git history of this branch + the off-repo archive.

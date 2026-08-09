@@ -1,7 +1,7 @@
 {
   "card_id": "vanishing_act",
   "name": "Vanishing Act",
-  "art": "🎩",
+  "art": "art.png",
   "cost": {
     "U": 1,
     "C": 1

@@ -385,3 +385,8 @@ Spend your generation budget on **breadth over depth.** The instinct is to find 
 Aim for a spread where any two frames look like separate *attempts* at the card, not neighbours in a refinement chain. Deliberately cover the option space: if one roll is a close-up, make the next a wide shot; if one centres the caster, make the next centre the target; vary the palette-mood, the angle, the moment of action. Only at the very end of the budget, if a single direction is clearly strongest, may you spend one or two rolls tightening it.
 
 Why: a wide spread of distinct candidates yields a better single best frame than a deep refinement of one early pick — random variance across fresh attempts does more work than directed tweaking, and the final selection is the director's to make from the spread. Your job is to maximise the quality *and diversity* of that spread, not to pre-converge it.
+
+
+## Model choice for batch authoring
+
+Default batch authoring to **Opus** agents — measured to produce the deepest benches (most high-value frames per pool). Model tier doesn't move the keeper rate, so substitute any tier freely when capacity is short.

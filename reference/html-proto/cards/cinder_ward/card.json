@@ -1,7 +1,7 @@
 {
   "card_id": "cinder_ward",
   "name": "Cinder Ward",
-  "art": "\ud83d\udee1\ufe0f",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "R": 1

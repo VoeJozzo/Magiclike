@@ -1,7 +1,7 @@
 {
   "card_id": "wing_commander",
   "name": "Wing Commander",
-  "art": "🦅",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "U": 1,

@@ -1,7 +1,7 @@
 {
   "card_id": "rootbound_sentinel",
   "name": "Rootbound Sentinel",
-  "art": "🌳",
+  "art": "art.png",
   "cost": {
     "G": 1,
     "W": 1,

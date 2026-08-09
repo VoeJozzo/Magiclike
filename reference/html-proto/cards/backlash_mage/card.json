@@ -1,7 +1,7 @@
 {
   "card_id": "backlash_mage",
   "name": "Backlash Mage",
-  "art": "🌩️",
+  "art": "art.png",
   "cost": {
     "R": 1,
     "C": 1

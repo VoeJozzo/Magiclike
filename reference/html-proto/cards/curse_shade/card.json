@@ -1,6 +1,6 @@
 {
   "card_id": "curse_shade",
-  "art": "\ud83c\udf2b",
+  "art": "art.png",
   "cost": {
     "B": 1,
     "C": 2

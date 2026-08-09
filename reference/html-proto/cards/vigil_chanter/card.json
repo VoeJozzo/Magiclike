@@ -1,7 +1,7 @@
 {
   "card_id": "vigil_chanter",
   "name": "Vigil Chanter",
-  "art": "🕯️",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 2

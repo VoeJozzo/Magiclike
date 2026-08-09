@@ -1,7 +1,7 @@
 {
   "card_id": "covenant_scholar",
   "name": "Covenant Scholar",
-  "art": "📜",
+  "art": "art.png",
   "cost": {
     "G": 1,
     "U": 1,

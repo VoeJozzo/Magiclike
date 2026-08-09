@@ -1,7 +1,7 @@
 {
   "card_id": "bramble_acolyte",
   "name": "Bramble Acolyte",
-  "art": "🌿",
+  "art": "art.png",
   "cost": {
     "G": 1,
     "C": 2

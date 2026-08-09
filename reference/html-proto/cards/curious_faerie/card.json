@@ -1,7 +1,7 @@
 {
   "card_id": "curious_faerie",
   "name": "Curious Faerie",
-  "art": "✨",
+  "art": "art.png",
   "cost": {
     "U": 1
   },

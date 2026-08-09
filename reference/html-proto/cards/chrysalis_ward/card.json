@@ -1,7 +1,7 @@
 {
   "card_id": "chrysalis_ward",
   "name": "Chrysalis Ward",
-  "art": "🦋",
+  "art": "art.png",
   "cost": {
     "U": 1,
     "C": 1
