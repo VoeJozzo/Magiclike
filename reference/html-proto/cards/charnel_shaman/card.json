@@ -1,7 +1,7 @@
 {
   "card_id": "charnel_shaman",
   "name": "Charnel Shaman",
-  "art": "💀",
+  "art": "art.png",
   "cost": {
     "B": 1,
     "G": 1,

@@ -34,10 +34,19 @@ from PIL import Image
 TOKEN_FILE = os.path.join(os.path.dirname(__file__), "..", "pixellab-token")
 
 
+def _auth_header() -> str:
+    # PIXELLAB_API_KEY env var is the canonical source; the token file is a
+    # legacy local fallback (gitignored -- never commit it).
+    tok = os.environ.get("PIXELLAB_API_KEY", "").strip()
+    if not tok:
+        with open(TOKEN_FILE) as f:
+            tok = f.read().strip()
+    return tok if tok.lower().startswith("bearer ") else "Bearer " + tok
+
+
 def _call_pixflux(prompt: str, seed: int, guidance=None,
                   init_b64=None, init_strength=None) -> bytes:
-    with open(TOKEN_FILE) as f:
-        token = f.read().strip()
+    token = _auth_header()
     body = {
         "description": prompt,
         "image_size": {"width": 64, "height": 32},

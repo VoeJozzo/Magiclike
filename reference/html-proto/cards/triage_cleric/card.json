@@ -1,7 +1,7 @@
 {
   "card_id": "triage_cleric",
   "name": "Triage Cleric",
-  "art": "\u26d1\ufe0f",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 1

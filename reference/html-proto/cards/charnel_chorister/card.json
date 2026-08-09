@@ -1,7 +1,7 @@
 {
   "card_id": "charnel_chorister",
   "name": "Charnel Chorister",
-  "art": "\ud83c\udfb6",
+  "art": "art.png",
   "cost": {
     "B": 1,
     "C": 1

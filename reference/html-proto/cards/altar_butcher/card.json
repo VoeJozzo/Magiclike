@@ -1,7 +1,7 @@
 {
   "card_id": "altar_butcher",
   "name": "Altar Butcher",
-  "art": "🔪",
+  "art": "art.png",
   "cost": {
     "R": 1,
     "C": 1

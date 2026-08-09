@@ -1,6 +1,6 @@
 {
   "card_id": "twin_strike",
-  "art": "⚔",
+  "art": "art.png",
   "cost": {
     "W": 1
   },

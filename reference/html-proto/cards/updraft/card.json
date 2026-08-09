@@ -1,7 +1,7 @@
 {
   "card_id": "updraft",
   "name": "Updraft",
-  "art": "🌬️",
+  "art": "art.png",
   "cost": {
     "U": 1
   },

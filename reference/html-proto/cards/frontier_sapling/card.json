@@ -1,7 +1,7 @@
 {
   "card_id": "frontier_sapling",
   "name": "Frontier Sapling",
-  "art": "🌲",
+  "art": "art.png",
   "cost": {
     "G": 1,
     "C": 1

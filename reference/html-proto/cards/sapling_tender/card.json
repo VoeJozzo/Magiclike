@@ -1,7 +1,7 @@
 {
   "card_id": "sapling_tender",
   "name": "Sapling Tender",
-  "art": "🌱",
+  "art": "art.png",
   "cost": {
     "G": 1,
     "C": 2

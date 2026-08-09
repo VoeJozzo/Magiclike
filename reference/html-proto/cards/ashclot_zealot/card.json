@@ -1,7 +1,7 @@
 {
   "card_id": "ashclot_zealot",
   "name": "Ashclot Zealot",
-  "art": "\u26b1\ufe0f",
+  "art": "art.png",
   "cost": {
     "B": 1,
     "R": 1

@@ -1,7 +1,7 @@
 {
   "card_id": "vanguard_ensign",
   "name": "Vanguard Ensign",
-  "art": "🚩",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "R": 1,

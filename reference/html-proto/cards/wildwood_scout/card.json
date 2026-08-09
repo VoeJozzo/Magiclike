@@ -1,7 +1,7 @@
 {
   "card_id": "wildwood_scout",
   "name": "Wildwood Scout",
-  "art": "🏹",
+  "art": "art.png",
   "cost": {
     "G": 1
   },

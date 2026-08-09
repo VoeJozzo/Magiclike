@@ -1,6 +1,6 @@
 {
   "card_id": "walking_wall",
-  "art": "\ud83e\uddf1",
+  "art": "art.png",
   "cost": {
     "C": 2
   },

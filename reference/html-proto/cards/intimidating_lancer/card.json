@@ -1,7 +1,7 @@
 {
   "card_id": "intimidating_lancer",
   "name": "Intimidating Lancer",
-  "art": "🗡️",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 3

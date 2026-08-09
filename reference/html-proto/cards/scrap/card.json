@@ -1,7 +1,7 @@
 {
   "card_id": "scrap",
   "name": "Scrap",
-  "art": "🔨",
+  "art": "art.png",
   "cost": {
     "R": 1
   },

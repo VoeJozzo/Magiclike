@@ -1,7 +1,7 @@
 {
   "card_id": "primal_metamagus",
   "name": "Primal Metamagus",
-  "art": "💥",
+  "art": "art.png",
   "cost": {
     "R": 1,
     "G": 1,

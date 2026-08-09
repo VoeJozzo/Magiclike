@@ -1,7 +1,7 @@
 {
   "card_id": "strategic_retreat",
   "name": "Strategic Retreat",
-  "art": "↩️",
+  "art": "art.png",
   "cost": {
     "U": 1,
     "C": 1
