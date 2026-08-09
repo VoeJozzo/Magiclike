@@ -6,12 +6,8 @@
     "B": 1
   },
   "target_slots": [
-    {
-      "target": "spell"
-    },
-    {
-      "target": "opp"
-    }
+    { "target": "spell" },
+    { "target": "opp" }
   ],
   "effects": [
     {

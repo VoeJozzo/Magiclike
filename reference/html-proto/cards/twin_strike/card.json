@@ -22,15 +22,11 @@
   "target_slots": [
     {
       "target": "creature",
-      "filter": {
-        "controller": "self"
-      }
+      "filter": { "controller": "self" }
     },
     {
       "target": "creature",
-      "filter": {
-        "controller": "self"
-      }
+      "filter": { "controller": "self" }
     }
   ],
   "keywords": [
