@@ -19,6 +19,10 @@ config/icon="res://icon.svg"
 
 RulesEngine="*res://engine/engine.gd"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg")
+
 [display]
 
 window/size/viewport_width=1920

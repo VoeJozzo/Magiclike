@@ -32,7 +32,16 @@ schema later.
 - **Copyright:** © 2022-present Marek Belski
 - **Source:** https://github.com/Maaack/Godot-Menus-Template — vendored at v1.5.3
 - **Used for:** main menu / options / pause / credits / scene-loader scaffolding for the Godot port's settings layer
-- **Note:** vendored but **not yet enabled** in `project.godot` — enabling runs its setup wizard, which happens when the settings layer is built (see `docs/BACKLOG.md`, priority-pass stops item). Vendored as-is; do not modify.
+- **Note:** vendored but **not yet enabled** in `project.godot` — enabling runs its setup wizard, which happens when the settings layer is built (see `docs/BACKLOG.md`, priority-pass stops item). Vendored as-is; do not modify. Bundles third-party assets (input icons, engine/Git logos) under their own licenses — see `addons/maaacks_menus_template/ATTRIBUTION.md`.
+
+### gdUnit4 (unit testing framework — dev tooling)
+
+- **Location in tree:** `addons/gdUnit4/`
+- **License:** MIT (`addons/gdUnit4/LICENSE`)
+- **Copyright:** © 2023 Mike Schulze
+- **Source:** https://github.com/godot-gdunit-labs/gdUnit4 — vendored at v6.2.1 (supports Godot 4.5–4.7.1 per upstream compatibility table)
+- **Used for:** fine-grained engine tests from the effects refactor onward; the phase scenes in `tests/` remain the end-to-end smoke tier (see `docs/BACKLOG.md`)
+- **Note:** dev-only tooling, enabled as an editor plugin — not part of the shipped game. Vendored as-is; do not modify.
 
 ### ESLint + eslint-plugin-sonarjs (dev tooling)
 
