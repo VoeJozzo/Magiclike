@@ -50,7 +50,7 @@ schema later.
 - **Copyright:** © 2025 Godot AI contributors
 - **Source:** https://github.com/hi-godot/godot-ai — plugin vendored at v3.1.5 (from the repo's `plugin/addons/godot_ai`)
 - **Used for:** letting an MCP client (Claude Code) drive the Godot editor and the running game — error visibility, screenshots, input injection
-- **Note:** dev-only editor plugin, never a runtime dependency of the shipped game. Machine-side it needs the `uv` launcher (logged in `CLAUDHAUS.md`); the plugin's dock writes the MCP client config (set `godot_ai/mcp_client_scope` to `project` for a repo-local `.mcp.json`). Vendored as-is; do not modify.
+- **Note:** dev-only editor plugin, never a runtime dependency of the shipped game. Machine-side it needs the `uv` launcher (logged in `CLAUDHAUS.md`); v3.1.5 registers the Claude Code entry at user scope in `~/.claude.json` (a project-scope option exists upstream but not in this release). Vendored as-is; do not modify.
 
 ### ESLint + eslint-plugin-sonarjs (dev tooling)
 
