@@ -43,6 +43,15 @@ schema later.
 - **Used for:** fine-grained engine tests from the effects refactor onward; the phase scenes in `tests/` remain the end-to-end smoke tier (see `docs/BACKLOG.md`)
 - **Note:** dev-only tooling, enabled as an editor plugin — not part of the shipped game. Vendored as-is; do not modify.
 
+### Godot AI — editor MCP plugin (dev tooling)
+
+- **Location in tree:** `addons/godot_ai/`
+- **License:** MIT (`addons/godot_ai/LICENSE`)
+- **Copyright:** © 2025 Godot AI contributors
+- **Source:** https://github.com/hi-godot/godot-ai — plugin vendored at v3.1.5 (from the repo's `plugin/addons/godot_ai`)
+- **Used for:** letting an MCP client (Claude Code) drive the Godot editor and the running game — error visibility, screenshots, input injection
+- **Note:** dev-only editor plugin, never a runtime dependency of the shipped game. Machine-side it needs the `uv` launcher (logged in `CLAUDHAUS.md`); the plugin's dock writes the MCP client config (set `godot_ai/mcp_client_scope` to `project` for a repo-local `.mcp.json`). Vendored as-is; do not modify.
+
 ### ESLint + eslint-plugin-sonarjs (dev tooling)
 
 - **Location in tree:** `reference/html-proto/` (`package.json` devDependencies; `node_modules/` is git-ignored, `package-lock.json` pins versions)
