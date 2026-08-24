@@ -25,6 +25,15 @@ schema later.
 - **Source:** https://godotengine.org
 - **Note:** runtime dependency only — the engine binary isn't checked in, but `.tres` / `.tscn` / `.gd` files are Godot-format.
 
+### Maaack's Menus Template
+
+- **Location in tree:** `addons/maaacks_menus_template/`
+- **License:** MIT (`addons/maaacks_menus_template/LICENSE.txt`)
+- **Copyright:** © 2022-present Marek Belski
+- **Source:** https://github.com/Maaack/Godot-Menus-Template — vendored at v1.5.3
+- **Used for:** main menu / options / pause / credits / scene-loader scaffolding for the Godot port's settings layer
+- **Note:** vendored but **not yet enabled** in `project.godot` — enabling runs its setup wizard, which happens when the settings layer is built (see `docs/BACKLOG.md`, priority-pass stops item). Vendored as-is; do not modify.
+
 ### ESLint + eslint-plugin-sonarjs (dev tooling)
 
 - **Location in tree:** `reference/html-proto/` (`package.json` devDependencies; `node_modules/` is git-ignored, `package-lock.json` pins versions)
