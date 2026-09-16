@@ -1,0 +1,527 @@
+<meta charset="utf-8">
+<title>Redaction Preflight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ink:      #14161A;
+    --paper:    #F6F6F4;
+    --surface:  #FFFFFF;
+    --slate:    #5B6470;
+    --hairline: #DCDDD8;
+    --signal:   #0B6E5F;
+    --crit:     #B3261E;
+    --warn:     #8A5400;
+    --ok:       #1F6F4A;
+    --expose:   #F2C14E;
+    --bar:      #14161A;
+    --bar-text: #F6F6F4;
+    --tint:      #EDF4F2;
+    --expose-bg: #FBEBC3;
+    --expose-fg: #14161A;
+
+    --sans:  "Archivo", ui-sans-serif, system-ui, "Helvetica Neue", Arial, sans-serif;
+    --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --mono:  "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+    --step--1: 0.8125rem;
+    --step-0:  0.9375rem;
+    --step-1:  1.125rem;
+    --step-2:  1.5rem;
+    --step-3:  2.125rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink:      #E8E8E4;
+      --paper:    #111316;
+      --surface:  #191C20;
+      --slate:    #9AA3AE;
+      --hairline: #2C3138;
+      --signal:   #3FAE97;
+      --crit:     #F2857B;
+      --warn:     #E0A94A;
+      --ok:       #5FBF8F;
+      --bar:      #000000;
+      --bar-text: #F6F6F4;
+      --tint:      #16221F;
+      --expose-bg: #4A3A12;
+      --expose-fg: #F8F2E2;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink:      #E8E8E4;
+    --paper:    #111316;
+    --surface:  #191C20;
+    --slate:    #9AA3AE;
+    --hairline: #2C3138;
+    --signal:   #3FAE97;
+    --crit:     #F2857B;
+    --warn:     #E0A94A;
+    --ok:       #5FBF8F;
+    --bar:      #000000;
+    --bar-text: #F6F6F4;
+    --tint:      #16221F;
+    --expose-bg: #4A3A12;
+    --expose-fg: #F8F2E2;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: var(--step-0);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 62rem;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 2.5rem 4rem;
+  }
+
+  /* ---------------------------------------------------------- masthead */
+  .masthead { border-bottom: 2px solid var(--ink); padding-bottom: 1rem; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--slate);
+    margin: 0 0 0.5rem;
+  }
+  h1 {
+    font-size: var(--step-3);
+    font-weight: 700;
+    letter-spacing: -0.021em;
+    line-height: 1.08;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .standfirst {
+    font-family: var(--serif);
+    font-size: var(--step-1);
+    color: var(--slate);
+    max-width: 42ch;
+    margin: 0.75rem 0 0;
+  }
+
+  /* ---------------------------------------------------------- dropzone */
+  .intake { margin-top: 1.75rem; }
+  .drop {
+    display: block; width: 100%;
+    border: 1.5px dashed var(--hairline);
+    background: var(--surface);
+    color: var(--ink);
+    border-radius: 3px;
+    padding: 2rem 1.25rem;
+    text-align: center;
+    cursor: pointer;
+    font: inherit;
+    transition: border-color .15s, background .15s;
+  }
+  .drop:hover, .drop:focus-visible { border-color: var(--signal); }
+  .drop.hot { border-color: var(--signal); border-style: solid; background: var(--tint); }
+  .drop b { display: block; font-size: var(--step-1); font-weight: 600; }
+  .drop span { display: block; color: var(--slate); font-size: var(--step--1); margin-top: 0.3rem; }
+  .drop:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+  .assurance {
+    display: flex; flex-wrap: wrap; gap: 0.4rem 1.1rem;
+    margin: 0.85rem 0 0; padding: 0; list-style: none;
+    font-family: var(--mono); font-size: 0.6875rem;
+    letter-spacing: 0.04em; color: var(--slate);
+  }
+  .assurance li::before { content: "\2713"; color: var(--signal); margin-right: 0.35rem; font-weight: 600; }
+
+  /* ---------------------------------------------------------- verdict */
+  .verdict {
+    margin-top: 2.5rem;
+    border: 1px solid var(--hairline);
+    border-top: 5px solid var(--vcolor, var(--slate));
+    background: var(--surface);
+    padding: 1.35rem 1.4rem;
+  }
+  .verdict[data-v="fail"]   { --vcolor: var(--crit); }
+  .verdict[data-v="review"] { --vcolor: var(--warn); }
+  .verdict[data-v="pass"]   { --vcolor: var(--ok); }
+
+  .vtop { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.6rem 1rem; }
+  .vword {
+    font-size: var(--step-2); font-weight: 700; letter-spacing: -0.015em;
+    color: var(--vcolor); margin: 0;
+  }
+  .vfile {
+    font-family: var(--mono); font-size: var(--step--1);
+    color: var(--slate); overflow-wrap: anywhere;
+  }
+  .vsummary { font-family: var(--serif); font-size: var(--step-1); margin: 0.5rem 0 0; max-width: 58ch; }
+  .tallies { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-top: 1.1rem; padding-top: 1rem; border-top: 1px solid var(--hairline); }
+  .tally { display: flex; flex-direction: column; }
+  .tally b { font-family: var(--mono); font-size: var(--step-2); font-weight: 500; font-variant-numeric: tabular-nums; line-height: 1; }
+  .tally span { font-family: var(--mono); font-size: 0.625rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--slate); margin-top: 0.35rem; }
+  .tally.c b { color: var(--crit); } .tally.w b { color: var(--warn); } .tally.n b { color: var(--slate); }
+
+  /* ---------------------------------------------------------- findings */
+  .section-label {
+    font-family: var(--mono); font-size: 0.6875rem; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--slate);
+    margin: 2.5rem 0 0.75rem; padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .finding { border-left: 3px solid var(--fcolor, var(--slate)); padding: 0 0 0 1.1rem; margin: 1.6rem 0 0; }
+  .finding[data-s="critical"] { --fcolor: var(--crit); }
+  .finding[data-s="warning"]  { --fcolor: var(--warn); }
+  .finding[data-s="notice"]   { --fcolor: var(--slate); }
+
+  .chip {
+    display: inline-block; font-family: var(--mono); font-size: 0.625rem;
+    letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500;
+    color: var(--fcolor); border: 1px solid currentColor;
+    padding: 0.1rem 0.4rem; border-radius: 2px; margin-bottom: 0.5rem;
+  }
+  .finding h3 { font-size: var(--step-1); font-weight: 600; margin: 0 0 0.35rem; letter-spacing: -0.01em; text-wrap: balance; }
+  .finding p.why { font-family: var(--serif); color: var(--slate); margin: 0; max-width: 64ch; }
+
+  /* key/value rows (metadata, counts) */
+  .rows { margin: 0.9rem 0 0; display: grid; gap: 1px; background: var(--hairline); border: 1px solid var(--hairline); }
+  .row { display: grid; grid-template-columns: minmax(7rem, 14rem) 1fr; gap: 0.75rem; background: var(--surface); padding: 0.5rem 0.7rem; }
+  .row dt { font-family: var(--mono); font-size: var(--step--1); color: var(--slate); margin: 0; overflow-wrap: anywhere; }
+  .row dd { font-family: var(--mono); font-size: var(--step--1); margin: 0; overflow-wrap: anywhere; }
+  @media (max-width: 34rem) { .row { grid-template-columns: 1fr; gap: 0.15rem; } }
+
+  /* the redaction bar --------------------------------------------------- */
+  .exposures { margin: 0.9rem 0 0; display: flex; flex-direction: column; gap: 0.55rem; }
+  .exposure { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem; }
+  .locus {
+    flex: 0 0 auto; font-family: var(--mono); font-size: 0.6875rem;
+    letter-spacing: 0.06em; color: var(--slate); white-space: nowrap;
+    padding-top: 0.15rem;
+  }
+  .bar {
+    flex: 1 1 18rem; min-width: 0;
+    font-family: var(--serif); font-size: var(--step-0); text-align: left;
+    background: var(--bar); color: transparent;
+    border: 0; border-radius: 1px;
+    padding: 0.28rem 0.6rem; cursor: pointer;
+    position: relative; overflow-wrap: anywhere;
+    transition: color .12s, background .12s;
+  }
+  .bar::after {
+    content: "click to reveal";
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 0.625rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: #6E747C;
+  }
+  .bar:hover::after { color: var(--expose); }
+  .bar.revealed { background: var(--expose-bg); color: var(--expose-fg); }
+  .bar.revealed::after { content: none; }
+  .bar:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+  .exnote { flex: 0 0 auto; font-family: var(--mono); font-size: 0.6875rem; color: var(--slate); }
+
+  .revealall {
+    font-family: var(--mono); font-size: 0.6875rem; letter-spacing: 0.08em;
+    text-transform: uppercase; background: none; border: 1px solid var(--hairline);
+    color: var(--slate); padding: 0.25rem 0.55rem; border-radius: 2px; cursor: pointer;
+  }
+  .revealall:hover { border-color: var(--signal); color: var(--signal); }
+
+  /* ---------------------------------------------------------- chrome */
+  .toolbar { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 2rem; }
+  .btn {
+    font-family: var(--sans); font-size: var(--step--1); font-weight: 500;
+    padding: 0.45rem 0.9rem; border-radius: 2px; cursor: pointer;
+    border: 1px solid var(--ink); background: var(--ink); color: var(--paper);
+  }
+  .btn.ghost { background: none; color: var(--ink); }
+  .btn:hover { border-color: var(--signal); }
+  .btn.ghost:hover { color: var(--signal); }
+
+  .sample-flag {
+    display: inline-block; font-family: var(--mono); font-size: 0.625rem;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    background: var(--expose); color: #14161A;
+    padding: 0.15rem 0.45rem; border-radius: 2px; margin-bottom: 0.9rem;
+  }
+  .status { font-family: var(--mono); font-size: var(--step--1); color: var(--slate); margin-top: 1rem; }
+  .status.err { color: var(--crit); }
+
+  footer { margin-top: 4rem; padding-top: 1.25rem; border-top: 1px solid var(--hairline); color: var(--slate); font-size: var(--step--1); }
+  footer p { max-width: 68ch; }
+  .spin { display: inline-block; width: 0.7em; height: 0.7em; border: 2px solid var(--hairline); border-top-color: var(--signal); border-radius: 50%; animation: spin .7s linear infinite; margin-right: 0.4rem; vertical-align: -1px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation-duration: 3s; } * { transition: none !important; } }
+
+  @media print {
+    .intake, .toolbar, .revealall, footer .noprint { display: none !important; }
+    body { background: #fff; color: #000; }
+    .bar { background: #fff !important; color: #000 !important; border: 1px solid #000; }
+    .bar::after { content: none !important; }
+    .finding { break-inside: avoid; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <p class="eyebrow">Pre-release document check</p>
+    <h1>Redaction Preflight</h1>
+    <p class="standfirst">A black box is a drawing instruction, not a deletion. This reads the
+      file the way an adversary would and tells you what is still recoverable.</p>
+  </header>
+
+  <div class="intake">
+    <button type="button" class="drop" id="drop">
+      <b>Drop a PDF here, or click to choose</b>
+      <span>Nothing is uploaded. The file is read in this browser tab and never sent anywhere.</span>
+    </button>
+    <input type="file" id="picker" accept="application/pdf,.pdf" multiple hidden>
+    <ul class="assurance">
+      <li>Parsed on this device by an engine that ships with the page</li>
+      <li>No account, no upload, no logging</li>
+      <li>No network request carries any part of your document</li>
+    </ul>
+    <p class="status" id="status" hidden></p>
+  </div>
+
+  <div id="results"></div>
+
+  <footer>
+    <p><strong>What this checks.</strong> Text covered by an opaque shape or image; text drawn in an
+      invisible render mode; reviewer comments and annotations; form-field values; earlier revisions
+      left behind by incremental saves; embedded attachments and scripts; optional-content layers;
+      bookmark labels; document metadata and embedded filesystem paths; and identifiers left in
+      extractable text.</p>
+    <p class="noprint"><strong>What it cannot tell you.</strong> It reads structure, not meaning. It
+      cannot know whether a name is supposed to be in the document, and it will not recover text from
+      a page that was genuinely flattened to an image without an OCR layer &mdash; which is also the
+      one case where there is nothing left to recover. A clean result means no recoverable content was
+      found by these checks, not that the document is fit to release. That judgement stays with you.</p>
+    <p class="noprint"><strong>Where your file goes.</strong> Nowhere. The PDF engine is served from
+      the same folder as this page, so your document is parsed in this tab and no request carrying any
+      part of it is ever made. The page does fetch its two typefaces from Google Fonts on first load
+      &mdash; that request happens before you choose a file and contains none of its content. Serve the
+      fonts locally, or delete the stylesheet link, for an installation that touches nothing at all.</p>
+  </footer>
+</div>
+
+<script src="vendor/pdf.min.js"></script>
+<script src="audit.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var drop = document.getElementById('drop');
+  var picker = document.getElementById('picker');
+  var statusEl = document.getElementById('status');
+  var results = document.getElementById('results');
+
+  // Same-origin worker: the PDF engine ships with the page, so parsing a
+  // document never involves a third party.
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js';
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function setStatus(html, isErr) {
+    statusEl.hidden = !html;
+    statusEl.className = 'status' + (isErr ? ' err' : '');
+    statusEl.innerHTML = html || '';
+  }
+  function bytes(n) {
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n / 1024).toFixed(0) + ' KB';
+    return (n / 1048576).toFixed(1) + ' MB';
+  }
+
+  var VERDICT = {
+    fail:   { word: 'Do not release',
+              line: 'Content that should have been removed is still present in this file and can be recovered with ordinary tools.' },
+    review: { word: 'Review before release',
+              line: 'Nothing is recoverable from behind a redaction, but the file carries information worth a second look.' },
+    pass:   { word: 'No recoverable content found',
+              line: 'These checks found no hidden-but-readable content, no reviewer markup and no leftover revisions.' }
+  };
+
+  function renderRows(items) {
+    if (!items || !items.length) return '';
+    return '<dl class="rows">' + items.map(function (i) {
+      return '<div class="row"><dt>' + esc(i.label) + '</dt><dd>' + esc(i.value) + '</dd></div>';
+    }).join('') + '</dl>';
+  }
+
+  function renderExposures(ex) {
+    if (!ex || !ex.length) return '';
+    return '<div class="exposures">' + ex.map(function (e) {
+      return '<div class="exposure">' +
+        '<span class="locus">p.' + esc(e.page) + '</span>' +
+        '<button type="button" class="bar">' + esc(e.text) + '</button>' +
+        '<span class="exnote">' + esc(e.note || '') + '</span>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  function renderReport(r, isSample) {
+    var v = VERDICT[r.verdict];
+    var facts = [
+      r.pageCount + (r.pageCount === 1 ? ' page' : ' pages'),
+      bytes(r.byteLength),
+      r.pdfVersion ? 'PDF ' + r.pdfVersion : ''
+    ].filter(Boolean).join('  ·  ');
+
+    var html = '';
+    if (isSample) html += '<p class="sample-flag">Sample report</p>';
+
+    html += '<section class="verdict" data-v="' + esc(r.verdict) + '">' +
+      '<div class="vtop"><h2 class="vword">' + esc(v.word) + '</h2>' +
+      '<span class="vfile">' + esc(r.fileName) + '  ·  ' + esc(facts) + '</span></div>' +
+      '<p class="vsummary">' + esc(v.line) + '</p>' +
+      '<div class="tallies">' +
+        '<div class="tally c"><b>' + r.counts.critical + '</b><span>Critical</span></div>' +
+        '<div class="tally w"><b>' + r.counts.warning + '</b><span>Warning</span></div>' +
+        '<div class="tally n"><b>' + r.counts.notice + '</b><span>Notice</span></div>' +
+      '</div></section>';
+
+    if (r.findings.length) {
+      var anyExposed = r.findings.some(function (f) { return f.exposures && f.exposures.length; });
+      html += '<p class="section-label">Findings' +
+        (anyExposed ? ' <button type="button" class="revealall" id="revealall">Reveal all</button>' : '') +
+        '</p>';
+      html += r.findings.map(function (f) {
+        return '<article class="finding" data-s="' + esc(f.severity) + '">' +
+          '<span class="chip">' + esc(f.severity) + '</span>' +
+          '<h3>' + esc(f.title) + '</h3>' +
+          '<p class="why">' + esc(f.detail) + '</p>' +
+          renderExposures(f.exposures) + renderRows(f.items) +
+        '</article>';
+      }).join('');
+    }
+
+    html += '<div class="toolbar">' +
+      '<button type="button" class="btn" id="printbtn">Print / save this report</button>' +
+      '<button type="button" class="btn ghost" id="another">Check another file</button>' +
+      '</div>';
+
+    return html;
+  }
+
+  function wireReport() {
+    results.querySelectorAll('.bar').forEach(function (b) {
+      b.addEventListener('click', function () { b.classList.toggle('revealed'); });
+    });
+    var ra = document.getElementById('revealall');
+    if (ra) ra.addEventListener('click', function () {
+      var bars = results.querySelectorAll('.bar');
+      var hide = ra.textContent === 'Hide all';
+      bars.forEach(function (b) { b.classList.toggle('revealed', !hide); });
+      ra.textContent = hide ? 'Reveal all' : 'Hide all';
+    });
+    var pb = document.getElementById('printbtn');
+    if (pb) pb.addEventListener('click', function () {
+      results.querySelectorAll('.bar').forEach(function (b) { b.classList.add('revealed'); });
+      window.print();
+    });
+    var an = document.getElementById('another');
+    if (an) an.addEventListener('click', function () { picker.click(); });
+  }
+
+  async function handleFiles(files) {
+    if (!files || !files.length) return;
+    if (!window.pdfjsLib || !window.RedactionAudit) {
+      setStatus('The PDF engine did not load. Check your connection and reload the page.', true);
+      return;
+    }
+    results.innerHTML = '';
+    var reports = [];
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      setStatus('<span class="spin"></span>Reading ' + esc(f.name) +
+        (files.length > 1 ? ' (' + (i + 1) + ' of ' + files.length + ')' : '') + '…');
+      try {
+        var buf = await f.arrayBuffer();
+        reports.push(await RedactionAudit.audit(pdfjsLib, buf, { fileName: f.name }));
+      } catch (err) {
+        reports.push(null);
+        setStatus('Could not read ' + esc(f.name) + ': ' +
+          esc((err && err.message) || 'unreadable or password-protected PDF'), true);
+      }
+    }
+    var good = reports.filter(Boolean);
+    if (good.length) {
+      results.innerHTML = good.map(function (r) { return renderReport(r, false); }).join('');
+      wireReport();
+      if (good.length === reports.length) setStatus('');
+      results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  drop.addEventListener('click', function () { picker.click(); });
+  picker.addEventListener('change', function () { handleFiles(picker.files); });
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('hot'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('hot'); });
+  });
+  drop.addEventListener('drop', function (e) {
+    if (e.dataTransfer && e.dataTransfer.files) handleFiles(e.dataTransfer.files);
+  });
+
+  /* Open in a working state: a real report from a representative filing, so the
+     page shows what it does before the user has committed a document to it. */
+  var SAMPLE = {
+    fileName: 'Halvorsen-v-Meridian-ExhibitC.pdf',
+    byteLength: 284197, pageCount: 12, pdfVersion: '1.7',
+    verdict: 'fail',
+    counts: { critical: 3, warning: 2, notice: 1 },
+    findings: [
+      { id: 'covered', severity: 'critical',
+        title: '2 text runs are hidden behind an opaque shape but still readable',
+        detail: 'This is the failure behind every famous un-redaction. The shape is only a drawing instruction — the characters underneath are untouched in the content stream, and a copy-paste or any text extractor returns them in full.',
+        exposures: [
+          { page: 4, text: 'identified by the informant as Gregory Halvorsen, 88 Wexford Lane', note: 'covered by a rgb(0,0,0) shape' },
+          { page: 9, text: 'settlement authority up to $2,400,000 without board approval', note: 'covered by a rgb(0,0,0) shape' }
+        ] },
+      { id: 'annotations', severity: 'critical',
+        title: '1 annotation carries reviewer text',
+        detail: 'Comments, sticky notes and markup live outside the page content. They are invisible in a flattened-looking print preview and are routinely forgotten.',
+        exposures: [
+          { page: 4, text: 'do not produce this page — client admitted fault on the 3rd', note: 'Text by m.delacroix' }
+        ] },
+      { id: 'revisions', severity: 'critical',
+        title: 'The file retains 1 earlier revision',
+        detail: 'This PDF was saved incrementally, so previous versions of its objects are still present in the bytes. Anyone can truncate the file at an earlier %%EOF and open the document as it was before your edits — including before the redactions. Re-save as a new, linearised file to discard history.',
+        items: [ { label: '%%EOF markers', value: '2' }, { label: '/Prev xref chains', value: '1' } ] },
+      { id: 'metadata', severity: 'warning',
+        title: 'Document metadata identifies its author or origin',
+        detail: 'These fields travel with the file and are visible in any viewer’s document-properties panel. They survive printing to PDF and are a routine source of accidental attribution.',
+        items: [
+          { label: 'Author', value: 'm.delacroix@harlow-finch.com' },
+          { label: 'Title', value: 'Halvorsen-settlement-DRAFT-v7.docx' },
+          { label: 'Keywords', value: 'settlement, do-not-produce, internal' }
+        ] },
+      { id: 'pii', severity: 'warning',
+        title: 'Extractable text contains 3 possible identifiers',
+        detail: 'These strings are readable by any text extractor. That is expected if the document is meant to carry them — confirm each one is intended for this audience.',
+        items: [
+          { label: 'US Social Security number', value: '482-19-7734' },
+          { label: 'Email address', value: 'r.halvorsen@example.com' },
+          { label: 'Phone number', value: '(415) 555-0142' }
+        ] },
+      { id: 'toolprint', severity: 'notice',
+        title: 'The file names the software that produced it',
+        detail: 'A workflow fingerprint rather than a disclosure. It can still be telling — it reveals which tool performed the redaction, and therefore which known weaknesses to try.',
+        items: [ { label: 'Producer', value: 'Acrobat Distiller 23.0 (Windows)' } ] }
+    ]
+  };
+  results.innerHTML = renderReport(SAMPLE, true);
+  wireReport();
+})();
+</script>

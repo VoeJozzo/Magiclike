@@ -35,6 +35,17 @@ schema later.
 
 ---
 
+### Mozilla pdf.js (vendored — Redaction Preflight)
+
+- **Location in tree:** `ventures/redaction-preflight/vendor/` (`pdf.min.js`, `pdf.worker.min.js`, licence text at `vendor/pdf.js-LICENSE`); also a devDependency in that folder's `package.json` for the Node test suite.
+- **License:** Apache-2.0
+- **Copyright:** (c) Mozilla Foundation and pdf.js contributors
+- **Source:** https://github.com/mozilla/pdf.js (npm `pdfjs-dist`, pinned to 3.11.174)
+- **Used for:** parsing PDF structure — operator lists, text content, annotations, metadata, attachments — in the Redaction Preflight document auditor. Unrelated to the game; see `ventures/README.md`.
+- **Note:** deliberately **vendored rather than CDN-loaded**, so auditing a document makes no network request at all. Apache-2.0 requires the licence text and attribution to travel with the binaries, which `vendor/pdf.js-LICENSE` satisfies. Redistribution is fine, including in a commercial product, provided that notice is preserved.
+
+---
+
 ## Visual assets
 
 ### pixellab — AI-generated pixel art
