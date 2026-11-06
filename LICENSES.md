@@ -60,6 +60,13 @@ schema later.
 - **Source:** Google Fonts
 - **Files:** `Almendra-Regular.ttf` and `Almendra-Bold.ttf` (Bold registered as a separate `'Almendra Bold'` family so the font picker can offer it without a font-weight UI). Italic and BoldItalic cuts shipped alongside but not currently wired into a font-family.
 
+### Alegreya Sans + Silkscreen (Google Fonts) — design-doc page only
+
+- **Location in tree:** not vendored. Loaded at view time from the Google Fonts CDN by `docs/design/board-tapestry/mockup.html`.
+- **Used for:** body text (Alegreya Sans) and small spec labels (Silkscreen) on the board-concept page. Not used by either game engine; the board itself draws text in Almendra and pixel numerals.
+- **License:** SIL Open Font License v1.1 (both families)
+- **Source:** Google Fonts
+
 ### Mana symbol SVGs (Claude-authored, "manaiconsv13" spec)
 
 - **Location in tree:** `assets/mana/{W,U,B,R,G,C}.svg`

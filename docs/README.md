@@ -42,6 +42,7 @@ The reference docs are partitioned by **job**; most real questions are **topics*
 |---|---|
 | [`godot-port-plan.md`](plans/godot-port-plan.md) | Forward phase roadmap for the Godot port (what ships next, in order). |
 | [`BACKLOG.md`](BACKLOG.md) | Deferred **features**, unsequenced parking lot (Godot side). Proto side: [`../reference/html-proto/BACKLOG.md`](../reference/html-proto/BACKLOG.md). |
+| [`design/board-tapestry/`](design/board-tapestry/README.md) | **Board concept draft** ("Tapestry Over Stone"): a live pixel-art mockup of the in-game board plus its layout budget and open questions. Undecided; for discussion. |
 | [`REFACTOR-NOTES.md`](REFACTOR-NOTES.md) | Structural **debt**, prioritized P0–P2. Advisory; pick up opportunistically. |
 | [`STANDARDIZATION-PLAN.md`](STANDARDIZATION-PLAN.md) | Cross-engine standardization rollout (Passes 1–4 shipped: snake_case wire, 258-card migration, JsonCardLoader; Pass 5/6 = future Godot-native wire shape, retire `.tres`, effect-kind porting). |
 | [`STANDARDIZATION-CONTEXT.md`](archive/STANDARDIZATION-CONTEXT.md) | Handoff narrative + decision record from the standardization work (locked decisions, gotchas). History, not an active to-do. |
